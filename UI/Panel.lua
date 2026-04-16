@@ -440,8 +440,13 @@ local function GetOrCreateItemRow(pool, parent)
                 selectedItemIDs[id] = true
             end
         else
-            wipe(selectedItemIDs)
-            selectedItemIDs[id] = true
+            if selectedItemIDs[id] and not next(selectedItemIDs, next(selectedItemIDs)) then
+                -- Clicking the only selected item deselects it
+                wipe(selectedItemIDs)
+            else
+                wipe(selectedItemIDs)
+                selectedItemIDs[id] = true
+            end
         end
         -- Refresh highlight visuals on all visible rows immediately.
         for _, r in ipairs(pool) do
