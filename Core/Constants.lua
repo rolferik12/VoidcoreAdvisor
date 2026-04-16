@@ -49,6 +49,21 @@ VCA.MythicPlusEJDifficulty = VCA.Difficulty.DUNGEON_MYTHIC
 VCA.MythicPlusBonusIDs = { 13440, 6652, 12699 }  -- shared M+ base bonus IDs
 VCA.VoidcoreTrackBonusID = 12801                  -- Myth 1/6 track
 
+-- ── M+ Great Vault reward data ────────────────────────────────────────────────
+-- Maps each key level to its Great Vault reward upgrade track.
+-- Track bonus IDs: Champion 12785-12790, Hero 12793-12798, Myth 12801-12806.
+VCA.MythicPlusVaultRewards = {
+    [2]  = { track = "Hero 1/6",  bonusID = 12793 },
+    [3]  = { track = "Hero 1/6",  bonusID = 12793 },
+    [4]  = { track = "Hero 2/6",  bonusID = 12794 },
+    [5]  = { track = "Hero 2/6",  bonusID = 12794 },
+    [6]  = { track = "Hero 3/6",  bonusID = 12795 },
+    [7]  = { track = "Hero 4/6",  bonusID = 12796 },
+    [8]  = { track = "Hero 4/6",  bonusID = 12796 },
+    [9]  = { track = "Hero 4/6",  bonusID = 12796 },
+    [10] = { track = "Myth 1/6",  bonusID = 12801 },
+}
+
 -- ── Detection ─────────────────────────────────────────────────────────────────
 -- How long (seconds) after a successful encounter the addon watches for loot
 -- appearing in bags from a Voidcore bonus prompt.

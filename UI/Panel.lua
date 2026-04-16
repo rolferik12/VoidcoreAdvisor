@@ -23,7 +23,10 @@ local Panel = VCA.Panel
 -- Tracks which itemIDs the user has clicked to highlight.
 -- Ctrl+click toggles an item; plain click is single-select.
 local selectedItemIDs = {}  -- set: { [itemID] = true }
+-- Tracks which specIDs the user has clicked to filter the loot column.
+local selectedSpecIDs = {}  -- set: { [specID] = true }
 local RefreshSpecColumn     -- forward declaration; defined after PopulateSpecColumn
+local RefreshItemColumn     -- forward declaration; defined after PopulateItemColumn
 
 -- ── Sizing ────────────────────────────────────────────────────────────────────
 
@@ -108,7 +111,7 @@ divider:SetHeight(1)
 
 local contentArea = CreateFrame("Frame", nil, frame)
 contentArea:SetPoint("TOPLEFT",     frame, "TOPLEFT",     0, -(HEADER_H + 1))
-contentArea:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+contentArea:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 11)
 Panel.contentArea = contentArea
 
 -- ── Column widths ─────────────────────────────────────────────────────────────
@@ -133,9 +136,116 @@ lootColHeader:SetPoint("TOPLEFT", contentArea, "TOPLEFT", PADDING, -6)
 lootColHeader:SetJustifyH("LEFT")
 lootColHeader:SetText("|cffb048f8LOOT|r")
 
+-- ── Key level dropdown (M+ only) ─────────────────────────────────────────────
+local selectedKeyLevel = 10  -- default to 10+
+
+local keyLevelButton = CreateFrame("Button", nil, contentArea)
+keyLevelButton:SetSize(50, 16)
+keyLevelButton:SetPoint("LEFT", lootColHeader, "RIGHT", 6, 0)
+keyLevelButton:Hide()
+
+local keyLevelText = keyLevelButton:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+keyLevelText:SetAllPoints(keyLevelButton)
+keyLevelText:SetJustifyH("LEFT")
+
+local function GetKeyLevelLabel(level)
+    return "+" .. level
+end
+
+local function GetRewardForKeyLevel(level)
+    return VCA.MythicPlusVaultRewards[math.min(level, 10)]
+end
+
+local function UpdateKeyLevelText()
+    local reward = GetRewardForKeyLevel(selectedKeyLevel)
+    local track = reward and reward.track or "?"
+    keyLevelText:SetText("|cffdddddd" .. GetKeyLevelLabel(selectedKeyLevel) .. "|r |cff888888(" .. track .. ")|r")
+    -- Resize button to fit text
+    keyLevelButton:SetWidth(keyLevelText:GetStringWidth() + 8)
+end
+
+local keyLevelMenu = CreateFrame("Frame", "VCAKeyLevelMenu", keyLevelButton, "BackdropTemplate")
+keyLevelMenu:SetFrameStrata("TOOLTIP")
+keyLevelMenu:SetBackdrop({
+    bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true, tileSize = 16, edgeSize = 12,
+    insets = { left = 3, right = 3, top = 3, bottom = 3 },
+})
+keyLevelMenu:SetBackdropColor(0.05, 0.02, 0.12, 0.95)
+keyLevelMenu:SetBackdropBorderColor(0.58, 0.0, 0.82, 1)
+keyLevelMenu:Hide()
+
+local keyLevelOptions = { 2, 3, 4, 5, 6, 7, 8, 9, 10 }
+local menuButtons = {}
+for i, level in ipairs(keyLevelOptions) do
+    local btn = CreateFrame("Button", nil, keyLevelMenu)
+    btn:SetSize(70, 16)
+    btn:SetPoint("TOPLEFT", keyLevelMenu, "TOPLEFT", 4, -(4 + (i - 1) * 16))
+    local label = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    label:SetAllPoints(btn)
+    label:SetJustifyH("LEFT")
+    btn.label = label
+    btn.level = level
+
+    local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetAllPoints(btn)
+    highlight:SetColorTexture(0.58, 0.0, 0.82, 0.3)
+
+    btn:SetScript("OnClick", function(self)
+        selectedKeyLevel = self.level
+        UpdateKeyLevelText()
+        keyLevelMenu:Hide()
+        Panel.Refresh()
+    end)
+    menuButtons[i] = btn
+end
+keyLevelMenu:SetSize(78, 8 + #keyLevelOptions * 16)
+
+local function ShowKeyLevelMenu()
+    for i, btn in ipairs(menuButtons) do
+        local level = btn.level
+        local reward = GetRewardForKeyLevel(level)
+        local track = reward and reward.track or "?"
+        local lbl = GetKeyLevelLabel(level) .. "  |cff888888" .. track .. "|r"
+        if level == selectedKeyLevel then
+            lbl = "|cffffff00" .. lbl .. "|r"
+        end
+        btn.label:SetText(lbl)
+    end
+    keyLevelMenu:ClearAllPoints()
+    keyLevelMenu:SetPoint("TOPLEFT", keyLevelButton, "BOTTOMLEFT", 0, -2)
+    keyLevelMenu:Show()
+end
+
+keyLevelButton:SetScript("OnClick", function()
+    if keyLevelMenu:IsShown() then
+        keyLevelMenu:Hide()
+    else
+        ShowKeyLevelMenu()
+    end
+end)
+
+-- Close menu when clicking elsewhere
+keyLevelMenu:SetScript("OnShow", function(self)
+    self:SetPropagateKeyboardInput(true)
+end)
+keyLevelMenu:SetScript("OnKeyDown", function(self, key)
+    if key == "ESCAPE" then
+        self:Hide()
+        self:SetPropagateKeyboardInput(false)
+    else
+        self:SetPropagateKeyboardInput(true)
+    end
+end)
+
 local specColHeader = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 specColHeader:SetJustifyH("LEFT")
 specColHeader:SetText("|cffb048f8SPEC RANKING|r")
+
+local lootSpecLabel = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+lootSpecLabel:SetJustifyH("RIGHT")
+lootSpecLabel:SetText("")
 
 -- Vertical separator between columns
 local colSep = contentArea:CreateTexture(nil, "ARTWORK")
@@ -157,10 +267,13 @@ local function QualityColor(quality)
 end
 
 -- ── Tooltip: M+ bonus ID injection ──────────────────────────────────────────
--- Builds a modified item hyperlink string with Myth 1/6 bonus IDs so the
--- tooltip renders at the correct Voidcore reward item level.
+-- Builds a modified item hyperlink string with bonus IDs matching the
+-- selected key level so the tooltip renders at the correct item level.
 
 local function BuildMythicPlusTooltipLink(itemLink)
+    local reward = GetRewardForKeyLevel(selectedKeyLevel)
+    if not reward then return nil end
+
     local itemString = itemLink:match("item[%-?%d:]+")
     if not itemString then return nil end
 
@@ -184,11 +297,11 @@ local function BuildMythicPlusTooltipLink(itemLink)
         end
     end
 
-    -- Append the M+ base bonus IDs and the Voidcore track bonus
+    -- Append the M+ base bonus IDs and the key-level-specific track bonus
     for _, b in ipairs(VCA.MythicPlusBonusIDs) do
         newBonuses[#newBonuses + 1] = tostring(b)
     end
-    newBonuses[#newBonuses + 1] = tostring(VCA.VoidcoreTrackBonusID)
+    newBonuses[#newBonuses + 1] = tostring(reward.bonusID)
 
     -- Remove old bonus entries from fields, insert new ones
     for _ = 1, numBonuses do
@@ -346,8 +459,15 @@ local function GetOrCreateSpecRow(pool, parent)
             return row
         end
     end
-    local rowFrame = CreateFrame("Frame", nil, parent)
+    local rowFrame = CreateFrame("Button", nil, parent)
     rowFrame:SetHeight(ROW_H)
+    rowFrame:RegisterForClicks("LeftButtonUp")
+
+    -- Selection highlight (purple tint when spec is selected)
+    local selHighlight = rowFrame:CreateTexture(nil, "BACKGROUND")
+    selHighlight:SetAllPoints(rowFrame)
+    selHighlight:SetColorTexture(0.69, 0.28, 0.97, 0)
+    selHighlight:Hide()
 
     local rankLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     rankLabel:SetJustifyH("RIGHT")
@@ -369,12 +489,46 @@ local function GetOrCreateSpecRow(pool, parent)
     statsLabel:SetJustifyH("RIGHT")
     statsLabel:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
 
+    -- Spec selection click
+    rowFrame:SetScript("OnClick", function(self, btn)
+        local specID = self.specID
+        if not specID then return end
+        if IsControlKeyDown() then
+            if selectedSpecIDs[specID] then
+                selectedSpecIDs[specID] = nil
+            else
+                selectedSpecIDs[specID] = true
+            end
+        else
+            if selectedSpecIDs[specID] and not next(selectedSpecIDs, next(selectedSpecIDs)) then
+                -- Clicking the only selected spec deselects it
+                wipe(selectedSpecIDs)
+            else
+                wipe(selectedSpecIDs)
+                selectedSpecIDs[specID] = true
+            end
+        end
+        -- Update spec highlight visuals
+        for _, r in ipairs(pool) do
+            if r.frame:IsShown() and r.frame.specID then
+                if selectedSpecIDs[r.frame.specID] then
+                    r.selHighlight:SetColorTexture(0.69, 0.28, 0.97, 0.18)
+                    r.selHighlight:Show()
+                else
+                    r.selHighlight:Hide()
+                end
+            end
+        end
+        RefreshItemColumn()
+    end)
+
     local row = {
-        frame      = rowFrame,
-        rankLabel  = rankLabel,
-        icon       = icon,
-        nameLabel  = nameLabel,
-        statsLabel = statsLabel,
+        frame        = rowFrame,
+        selHighlight = selHighlight,
+        rankLabel    = rankLabel,
+        icon         = icon,
+        nameLabel    = nameLabel,
+        statsLabel   = statsLabel,
     }
     pool[#pool + 1] = row
     return row
@@ -396,10 +550,69 @@ local itemScrollChild = CreateFrame("Frame", nil, contentArea)
 local itemScrollFrame = CreateFrame("ScrollFrame", nil, contentArea)
 itemScrollFrame:SetScrollChild(itemScrollChild)
 
+-- Mouse wheel scrolling
+itemScrollFrame:EnableMouseWheel(true)
+itemScrollFrame:SetScript("OnMouseWheel", function(self, delta)
+    local current = self:GetVerticalScroll()
+    local maxScroll = math.max(0, itemScrollChild:GetHeight() - self:GetHeight())
+    local step = ROW_H * 3
+    local newScroll = math.max(0, math.min(maxScroll, current - delta * step))
+    self:SetVerticalScroll(newScroll)
+end)
+
+-- Thin scrollbar track + thumb
+local scrollTrack = itemScrollFrame:CreateTexture(nil, "BACKGROUND")
+scrollTrack:SetWidth(4)
+scrollTrack:SetColorTexture(0.1, 0.1, 0.1, 0.4)
+scrollTrack:SetPoint("TOPRIGHT", itemScrollFrame, "TOPRIGHT", 0, 0)
+scrollTrack:SetPoint("BOTTOMRIGHT", itemScrollFrame, "BOTTOMRIGHT", 0, 0)
+scrollTrack:Hide()
+
+local scrollThumb = itemScrollFrame:CreateTexture(nil, "OVERLAY")
+scrollThumb:SetWidth(4)
+scrollThumb:SetColorTexture(0.6, 0.6, 0.6, 0.6)
+scrollThumb:Hide()
+
+local function UpdateScrollbar()
+    local childH = itemScrollChild:GetHeight()
+    local frameH = itemScrollFrame:GetHeight()
+    if childH <= frameH or frameH <= 0 then
+        scrollTrack:Hide()
+        scrollThumb:Hide()
+        return
+    end
+    scrollTrack:Show()
+    scrollThumb:Show()
+    local thumbRatio = frameH / childH
+    local thumbH = math.max(20, frameH * thumbRatio)
+    scrollThumb:SetHeight(thumbH)
+    local scrollRange = childH - frameH
+    local current = itemScrollFrame:GetVerticalScroll()
+    local trackSpace = frameH - thumbH
+    local offset = (current / scrollRange) * trackSpace
+    scrollThumb:ClearAllPoints()
+    scrollThumb:SetPoint("TOPRIGHT", itemScrollFrame, "TOPRIGHT", 0, -offset)
+end
+
+itemScrollFrame:HookScript("OnMouseWheel", function() UpdateScrollbar() end)
+
 local function PopulateItemColumn(sourceType, sourceID, difficultyID)
     HideAllItemRows()
 
     local classID = VCA.SpecInfo.GetPlayerClassID()
+
+    -- Build set of item IDs lootable by selected specs (if any).
+    local specFilterSet  -- nil when no spec filter is active
+    if next(selectedSpecIDs) then
+        specFilterSet = {}
+        for specID in pairs(selectedSpecIDs) do
+            local specItemIDs = VCA.LootPool.GetItemsForSpec(
+                sourceType, sourceID, difficultyID, classID, specID)
+            for _, id in ipairs(specItemIDs) do
+                specFilterSet[id] = true
+            end
+        end
+    end
     -- Fetch enriched item data with class filter so the EJ returns only items
     -- relevant to this class (all specs).  Using the class filter ensures the
     -- client has cached data (name, icon) for every item returned.
@@ -443,13 +656,16 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         -- Name with quality color and slot.
         -- GetItemInfo returns quality as the 3rd value; fall back to Uncommon
         -- if the item isn't in the cache yet (rare for EJ items).
-        -- Voidcore rewards from M+ dungeons are always Epic (4).
+        -- For M+ dungeons, quality depends on the selected key level's track.
         local itemName, _, quality = GetItemInfo(item.itemID)
         local ejName = (item.name ~= "" and item.name) or nil
         itemName = itemName or ejName or ("Item " .. item.itemID)
         quality  = quality  or 1
         if sourceType == VCA.ContentType.MYTHIC_PLUS then
-            quality = 4  -- Voidcore M+ rewards are Epic
+            local reward = GetRewardForKeyLevel(selectedKeyLevel)
+            if reward and reward.bonusID >= 12793 then
+                quality = 4  -- Hero/Myth track → Epic
+            end
         end
         local slotText = item.slot ~= "" and (" |cff888888[" .. item.slot .. "]|r") or ""
         row.nameLabel:SetText(QualityColor(quality) .. itemName .. "|r" .. slotText)
@@ -475,10 +691,11 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
             Panel.Refresh()
         end)
 
-        -- Dim row if obtained
-        if obtained then
-            row.nameLabel:SetAlpha(0.4)
-            row.iconButton:SetAlpha(0.4)
+        -- Dim row if obtained or filtered out by spec selection
+        local specFiltered = specFilterSet and not specFilterSet[item.itemID]
+        if obtained or specFiltered then
+            row.nameLabel:SetAlpha(specFiltered and 0.25 or 0.4)
+            row.iconButton:SetAlpha(specFiltered and 0.25 or 0.4)
         else
             row.nameLabel:SetAlpha(1)
             row.iconButton:SetAlpha(1)
@@ -504,6 +721,10 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         noRow.checkbox:Hide()
         itemScrollChild:SetHeight(ROW_H)
     end
+
+    -- Reset scroll position and update scrollbar
+    itemScrollFrame:SetVerticalScroll(0)
+    UpdateScrollbar()
 end
 
 -- ── Populate spec column ──────────────────────────────────────────────────────
@@ -531,6 +752,17 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
         row.frame:ClearAllPoints()
         row.frame:SetPoint("TOPLEFT", specScrollChild, "TOPLEFT", 0, -rowTop)
         row.frame:Show()
+
+        -- Store specID for click selection
+        row.frame.specID = entry.specID
+
+        -- Selection highlight
+        if selectedSpecIDs[entry.specID] then
+            row.selHighlight:SetColorTexture(0.69, 0.28, 0.97, 0.18)
+            row.selHighlight:Show()
+        else
+            row.selHighlight:Hide()
+        end
 
         -- Rank #
         local rankColor = entry.rank == 1 and "|cffffff00" or "|cffaaaaaa"
@@ -564,15 +796,24 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
         end
         row.statsLabel:SetText(statsText)
 
-        -- Indicate if this is the active loot spec
-        if VCA.SpecInfo.IsActiveLootSpec(entry.specID) then
-            row.nameLabel:SetText(nameColor .. "► " .. (entry.specName or "?") .. "|r")
-        end
-
         rowTop = rowTop + ROW_H + 2
     end
 
     specScrollChild:SetHeight(math.max(rowTop, 1))
+end
+-- ── Refresh item column ───────────────────────────────────────────────────────────
+-- Updates the item column when spec selection changes.
+-- Updates the loot header to indicate spec filtering.
+RefreshItemColumn = function()
+    PopulateItemColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
+    local count = 0
+    for _ in pairs(selectedSpecIDs) do count = count + 1 end
+    if count > 0 then
+        local label = count == 1 and "LOOT (filtered)" or ("LOOT (filtered " .. count .. " specs)")
+        lootColHeader:SetText("|cffb048f8" .. label .. "|r")
+    else
+        lootColHeader:SetText("|cffb048f8LOOT|r")
+    end
 end
 -- ── Refresh spec column ───────────────────────────────────────────────────────────
 -- Updates the spec column based on current item selection:
@@ -612,6 +853,10 @@ local function DoLayout()
     specColHeader:ClearAllPoints()
     specColHeader:SetPoint("TOPLEFT", contentArea, "TOPLEFT", splitX + PADDING, -6)
 
+    -- Loot spec label (right-aligned in the spec column header row)
+    lootSpecLabel:ClearAllPoints()
+    lootSpecLabel:SetPoint("RIGHT", contentArea, "TOPRIGHT", -PADDING, -6 - (COL_HEADER_H / 2) + 4)
+
     -- Item scroll frame
     itemScrollFrame:ClearAllPoints()
     itemScrollFrame:SetPoint("TOPLEFT",     contentArea, "TOPLEFT", PADDING, -(COL_HEADER_H + 8))
@@ -632,8 +877,9 @@ end
 -- ── Context update ────────────────────────────────────────────────────────────
 
 function Panel.SetContext(sourceType, sourceID, difficultyID, sourceName, isRaid)
-    -- Clear any item selection when switching to a new boss/dungeon.
+    -- Clear any item/spec selection when switching to a new boss/dungeon.
     wipe(selectedItemIDs)
+    wipe(selectedSpecIDs)
     HideAllItemRows()
     HideAllSpecRows()
 
@@ -649,6 +895,15 @@ function Panel.SetContext(sourceType, sourceID, difficultyID, sourceName, isRaid
     local coreWord   = cost == 1 and "Nebulous Voidcore" or "Nebulous Voidcores"
     infoLabel:SetText(contentTag .. "  •  " .. costColor .. cost .. " " .. coreWord .. "|r")
 
+    -- Show key level dropdown only for M+ dungeons
+    if sourceType == VCA.ContentType.MYTHIC_PLUS then
+        UpdateKeyLevelText()
+        keyLevelButton:Show()
+    else
+        keyLevelButton:Hide()
+        keyLevelMenu:Hide()
+    end
+
     Panel.Refresh()
 end
 
@@ -657,6 +912,19 @@ end
 function Panel.Refresh()
     if not frame:IsShown() then return end
     if not Panel.sourceID  then return end
+
+    -- Update loot spec label
+    local lootSpecID = VCA.SpecInfo.GetEffectiveLootSpecID()
+    if lootSpecID and lootSpecID > 0 then
+        local _, name, _, icon = GetSpecializationInfoByID(lootSpecID)
+        if name then
+            lootSpecLabel:SetText("|cff888888Loot:|r |cffdddddd" .. name .. "|r")
+        else
+            lootSpecLabel:SetText("")
+        end
+    else
+        lootSpecLabel:SetText("")
+    end
 
     DoLayout()
     PopulateItemColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
