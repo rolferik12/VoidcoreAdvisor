@@ -63,7 +63,8 @@ VCA.MythicPlusVaultRewards = {
     [9]  = { track = "Hero 4/6",  bonusID = 12796 },
     [10] = { track = "Myth 1/6",  bonusID = 12801 },
 }
-
+-- ── Nebulous Voidcore currency ─────────────────────────────────────────────
+VCA.VOIDCORE_CURRENCY_ID = 3418  -- Nebulous Voidcore (Season 1)
 -- ── Detection ─────────────────────────────────────────────────────────────────
 -- How long (seconds) after a successful encounter the addon watches for loot
 -- appearing in bags from a Voidcore bonus prompt.

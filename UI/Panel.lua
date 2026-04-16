@@ -964,12 +964,7 @@ function Panel.SetContext(sourceType, sourceID, difficultyID, sourceName, isRaid
     Panel.difficultyID = difficultyID
 
     sourceLabel:SetText(sourceName or "")
-
-    local cost       = VCA.Probability.GetVoidcoreCost(sourceType)
-    local contentTag = isRaid and L["CONTENT_RAID_BOSS"] or L["CONTENT_MP_DUNGEON"]
-    local costColor  = cost == 2 and "|cffffff00" or "|cff00ff00"
-    local coreWord   = cost == 1 and L["NEBULOUS_VOIDCORE"] or L["NEBULOUS_VOIDCORES"]
-    infoLabel:SetText(contentTag .. "  •  " .. costColor .. cost .. " " .. coreWord .. "|r")
+    Panel.isRaid = isRaid
 
     -- Show key level dropdown only for M+ dungeons
     if sourceType == VCA.ContentType.MYTHIC_PLUS then
@@ -1001,6 +996,22 @@ function Panel.Refresh()
     else
         lootSpecLabel:SetText("")
     end
+
+    -- Update info label with voidcore cost; turn red when the player cannot afford it.
+    local cost       = VCA.Probability.GetVoidcoreCost(Panel.sourceType)
+    local contentTag = Panel.isRaid and L["CONTENT_RAID_BOSS"] or L["CONTENT_MP_DUNGEON"]
+    local coreWord   = cost == 1 and L["NEBULOUS_VOIDCORE"] or L["NEBULOUS_VOIDCORES"]
+    local currInfo   = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(VCA.VOIDCORE_CURRENCY_ID)
+    local owned      = currInfo and currInfo.quantity or 0
+    local costColor
+    if owned < cost then
+        costColor = "|cffff3333"  -- red: cannot afford
+    elseif cost == 2 then
+        costColor = "|cffffff00"  -- yellow for raids
+    else
+        costColor = "|cff00ff00"  -- green for M+
+    end
+    infoLabel:SetText(contentTag .. "  •  " .. costColor .. cost .. " " .. coreWord .. "|r")
 
     DoLayout()
     PopulateItemColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
@@ -1069,6 +1080,7 @@ end
 local specChangeFrame = CreateFrame("Frame")
 specChangeFrame:RegisterEvent("PLAYER_LOOT_SPEC_UPDATED")
 specChangeFrame:RegisterEvent("EJ_LOOT_DATA_RECIEVED")
+specChangeFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
 specChangeFrame:SetScript("OnEvent", function()
     Panel.Refresh()
 end)
