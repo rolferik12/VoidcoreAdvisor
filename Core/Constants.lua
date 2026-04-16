@@ -43,6 +43,12 @@ VCA.EligibleRaidDifficulties = {
 -- The EJ difficulty used when reading M+ dungeon loot pools.
 VCA.MythicPlusEJDifficulty = VCA.Difficulty.DUNGEON_MYTHIC
 
+-- ── M+ tooltip bonus IDs (Myth 1/6 — Voidcore reward tier) ──────────────────
+-- These IDs are injected into item links so tooltips render at the correct
+-- item level for Nebulous Voidcore rewards from M+ dungeons.
+VCA.MythicPlusBonusIDs = { 13440, 6652, 12699 }  -- shared M+ base bonus IDs
+VCA.VoidcoreTrackBonusID = 12801                  -- Myth 1/6 track
+
 -- ── Detection ─────────────────────────────────────────────────────────────────
 -- How long (seconds) after a successful encounter the addon watches for loot
 -- appearing in bags from a Voidcore bonus prompt.

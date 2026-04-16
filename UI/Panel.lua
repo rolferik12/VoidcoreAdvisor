@@ -149,6 +149,59 @@ colHeaderRule:SetPoint("TOPLEFT",  contentArea, "TOPLEFT",  PADDING, -(COL_HEADE
 colHeaderRule:SetPoint("TOPRIGHT", contentArea, "TOPRIGHT", -PADDING, -(COL_HEADER_H + 2))
 colHeaderRule:SetHeight(1)
 
+-- ── Item quality color escape sequence ───────────────────────────────────────
+-- Uses |cnIQn: syntax (added in 11.1.5).
+
+local function QualityColor(quality)
+    return "|cnIQ" .. (quality or 1) .. ":"
+end
+
+-- ── Tooltip: M+ bonus ID injection ──────────────────────────────────────────
+-- Builds a modified item hyperlink string with Myth 1/6 bonus IDs so the
+-- tooltip renders at the correct Voidcore reward item level.
+
+local function BuildMythicPlusTooltipLink(itemLink)
+    local itemString = itemLink:match("item[%-?%d:]+")
+    if not itemString then return nil end
+
+    local fields = {}
+    for field in (itemString .. ":"):gmatch("([^:]*):" ) do
+        fields[#fields + 1] = field
+    end
+    -- Ensure at least 14 fields (up to numBonusIDs position)
+    while #fields < 14 do
+        fields[#fields + 1] = ""
+    end
+    -- Field 13 = context (35 = M+ context)
+    fields[13] = "35"
+
+    local numBonuses = tonumber(fields[14]) or 0
+    -- Collect existing bonus IDs, stripping 3524 if present
+    local newBonuses = {}
+    for bi = 15, 14 + numBonuses do
+        if fields[bi] ~= "3524" then
+            newBonuses[#newBonuses + 1] = fields[bi]
+        end
+    end
+
+    -- Append the M+ base bonus IDs and the Voidcore track bonus
+    for _, b in ipairs(VCA.MythicPlusBonusIDs) do
+        newBonuses[#newBonuses + 1] = tostring(b)
+    end
+    newBonuses[#newBonuses + 1] = tostring(VCA.VoidcoreTrackBonusID)
+
+    -- Remove old bonus entries from fields, insert new ones
+    for _ = 1, numBonuses do
+        table.remove(fields, 15)
+    end
+    fields[14] = tostring(#newBonuses)
+    for i, b in ipairs(newBonuses) do
+        table.insert(fields, 14 + i, b)
+    end
+
+    return table.concat(fields, ":")
+end
+
 -- ── Row pool helpers ──────────────────────────────────────────────────────────
 -- We maintain two pools of recycled row frames so we never create more widgets
 -- than necessary.
@@ -180,29 +233,76 @@ local function GetOrCreateItemRow(pool, parent)
     selHighlight:SetColorTexture(1, 0.75, 0, 0)
     selHighlight:Hide()
 
-    local icon = rowFrame:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(ICON_SIZE, ICON_SIZE)
-    icon:SetPoint("LEFT", rowFrame, "LEFT", 0, 0)
+    -- Icon housed in its own Button so the tooltip fires only on icon hover.
+    local iconButton = CreateFrame("Button", nil, rowFrame)
+    iconButton:SetSize(ICON_SIZE, ICON_SIZE)
+    iconButton:SetPoint("LEFT", rowFrame, "LEFT", 0, 0)
+
+    local icon = iconButton:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints(iconButton)
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)  -- trim default icon border
+
+    local iconBorder = iconButton:CreateTexture(nil, "OVERLAY")
+    iconBorder:SetTexture("Interface/Common/WhiteIconFrame")
+    iconBorder:SetAllPoints(iconButton)
+    iconBorder:Hide()
 
     local nameLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     nameLabel:SetJustifyH("LEFT")
-    nameLabel:SetPoint("LEFT",  icon, "RIGHT", 4, 0)
+    nameLabel:SetPoint("LEFT",  iconButton, "RIGHT", 4, 0)
     nameLabel:SetPoint("RIGHT", rowFrame, "RIGHT", -20, 0)
     nameLabel:SetWordWrap(false)
 
     local checkbox = CreateFrame("CheckButton", nil, rowFrame, "UICheckButtonTemplate")
     checkbox:SetSize(16, 16)
     checkbox:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
-    -- Prevent the checkbox click from also firing the row Button's OnClick.
-    -- In WoW, Button clicks do not bubble up through the frame hierarchy, so
-    -- this is already handled correctly by default — no extra work needed.
+
+    -- Tooltip on icon hover only
+    iconButton:SetScript("OnEnter", function(self)
+        local rf   = self:GetParent()
+        local link = rf.itemLink
+        local id   = rf.itemID
+        if not (link or id) then return end
+
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+
+        -- For M+ dungeons, inject Myth 1/6 bonus IDs so the tooltip shows
+        -- the correct Voidcore reward item level.
+        if Panel.sourceType == VCA.ContentType.MYTHIC_PLUS
+           and link and link ~= ""
+           and rf.itemSlot ~= ""
+        then
+            local modified = BuildMythicPlusTooltipLink(link)
+            if modified then
+                local ok = pcall(GameTooltip.SetHyperlink, GameTooltip, modified)
+                if ok and GameTooltip:NumLines() and GameTooltip:NumLines() > 0 then
+                    GameTooltip:Show()
+                    return
+                end
+                GameTooltip:ClearLines()
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            end
+        end
+
+        -- Default path: raids use the link as-is (already at the EJ difficulty).
+        if link and link ~= "" then
+            GameTooltip:SetHyperlink(link)
+        elseif id then
+            GameTooltip:SetItemByID(id)
+        end
+        GameTooltip:Show()
+    end)
+    iconButton:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
 
     local row = {
         frame        = rowFrame,
         flash        = flash,
         selHighlight = selHighlight,
+        iconButton   = iconButton,
         icon         = icon,
+        iconBorder   = iconBorder,
         nameLabel    = nameLabel,
         checkbox     = checkbox,
     }
@@ -290,13 +390,6 @@ local function HideAllSpecRows()
     for _, row in ipairs(specRows) do row.frame:Hide() end
 end
 
--- ── Item quality color escape sequence ───────────────────────────────────────
--- Uses |cnIQn: syntax (added in 11.1.5).
-
-local function QualityColor(quality)
-    return "|cnIQ" .. (quality or 1) .. ":"
-end
-
 -- ── Populate item column ──────────────────────────────────────────────────────
 
 local itemScrollChild = CreateFrame("Frame", nil, contentArea)
@@ -328,7 +421,9 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         row.frame:Show()
 
         -- Selection highlight
-        row.frame.itemID = item.itemID
+        row.frame.itemID   = item.itemID
+        row.frame.itemLink = item.link or ""
+        row.frame.itemSlot = item.slot or ""
         if selectedItemIDs[item.itemID] then
             row.selHighlight:SetColorTexture(1, 0.75, 0, 0.18)
             row.selHighlight:Show()
@@ -348,12 +443,25 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         -- Name with quality color and slot.
         -- GetItemInfo returns quality as the 3rd value; fall back to Uncommon
         -- if the item isn't in the cache yet (rare for EJ items).
+        -- Voidcore rewards from M+ dungeons are always Epic (4).
         local itemName, _, quality = GetItemInfo(item.itemID)
         local ejName = (item.name ~= "" and item.name) or nil
         itemName = itemName or ejName or ("Item " .. item.itemID)
         quality  = quality  or 1
+        if sourceType == VCA.ContentType.MYTHIC_PLUS then
+            quality = 4  -- Voidcore M+ rewards are Epic
+        end
         local slotText = item.slot ~= "" and (" |cff888888[" .. item.slot .. "]|r") or ""
         row.nameLabel:SetText(QualityColor(quality) .. itemName .. "|r" .. slotText)
+
+        -- Quality border on the icon
+        if ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality] then
+            local c = ITEM_QUALITY_COLORS[quality]
+            row.iconBorder:SetVertexColor(c.r, c.g, c.b)
+            row.iconBorder:Show()
+        else
+            row.iconBorder:Hide()
+        end
 
         -- Obtained checkbox
         row.checkbox:SetChecked(obtained)
@@ -370,10 +478,10 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         -- Dim row if obtained
         if obtained then
             row.nameLabel:SetAlpha(0.4)
-            row.icon:SetAlpha(0.4)
+            row.iconButton:SetAlpha(0.4)
         else
             row.nameLabel:SetAlpha(1)
-            row.icon:SetAlpha(1)
+            row.iconButton:SetAlpha(1)
         end
 
         rowTop = rowTop + ROW_H + 2
@@ -391,7 +499,8 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         noRow.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
         noRow.nameLabel:SetText("|cff888888No items for this spec|r")
         noRow.nameLabel:SetAlpha(1)
-        noRow.icon:SetAlpha(0.3)
+        noRow.iconButton:SetAlpha(0.3)
+        noRow.iconBorder:Hide()
         noRow.checkbox:Hide()
         itemScrollChild:SetHeight(ROW_H)
     end
