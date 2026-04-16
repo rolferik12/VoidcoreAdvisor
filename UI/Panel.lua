@@ -447,6 +447,7 @@ local function GetOrCreateItemRow(pool, parent)
             end
         end
         RefreshSpecColumn()
+        RefreshItemColumn()
     end)
 
     pool[#pool + 1] = row
@@ -613,6 +614,50 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
             end
         end
     end
+
+    -- When items are selected, find which specs can loot ALL of them,
+    -- then build a lootable set from those specs to grey out the rest.
+    local itemImpliedFilter  -- nil when no item selection filter is active
+    if next(selectedItemIDs) then
+        local specs = VCA.SpecInfo.GetPlayerSpecs()
+        -- Find specs that can loot every selected item
+        local qualifyingSpecs = {}
+        for _, spec in ipairs(specs) do
+            local specItemIDs = VCA.LootPool.GetItemsForSpec(
+                sourceType, sourceID, difficultyID, classID, spec.specID)
+            local idSet = {}
+            for _, id in ipairs(specItemIDs) do
+                idSet[id] = true
+            end
+            local coversAll = true
+            for selID in pairs(selectedItemIDs) do
+                if not idSet[selID] then
+                    coversAll = false
+                    break
+                end
+            end
+            if coversAll then
+                qualifyingSpecs[#qualifyingSpecs + 1] = spec.specID
+            end
+        end
+        -- Build the union of items lootable by qualifying specs
+        if #qualifyingSpecs > 0 then
+            itemImpliedFilter = {}
+            for _, specID in ipairs(qualifyingSpecs) do
+                local specItemIDs = VCA.LootPool.GetItemsForSpec(
+                    sourceType, sourceID, difficultyID, classID, specID)
+                for _, id in ipairs(specItemIDs) do
+                    itemImpliedFilter[id] = true
+                end
+            end
+        else
+            -- No single spec covers all selected items — only keep selected
+            itemImpliedFilter = {}
+            for id in pairs(selectedItemIDs) do
+                itemImpliedFilter[id] = true
+            end
+        end
+    end
     -- Fetch enriched item data with class filter so the EJ returns only items
     -- relevant to this class (all specs).  Using the class filter ensures the
     -- client has cached data (name, icon) for every item returned.
@@ -691,11 +736,14 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
             Panel.Refresh()
         end)
 
-        -- Dim row if obtained or filtered out by spec selection
+        -- Dim row if obtained, filtered out by spec selection, or
+        -- not lootable by the specs implied by the item selection.
         local specFiltered = specFilterSet and not specFilterSet[item.itemID]
-        if obtained or specFiltered then
-            row.nameLabel:SetAlpha(specFiltered and 0.25 or 0.4)
-            row.iconButton:SetAlpha(specFiltered and 0.25 or 0.4)
+        local itemFiltered = itemImpliedFilter and not itemImpliedFilter[item.itemID]
+        if obtained or specFiltered or itemFiltered then
+            local alpha = (specFiltered or itemFiltered) and 0.25 or 0.4
+            row.nameLabel:SetAlpha(alpha)
+            row.iconButton:SetAlpha(alpha)
         else
             row.nameLabel:SetAlpha(1)
             row.iconButton:SetAlpha(1)

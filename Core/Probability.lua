@@ -162,6 +162,7 @@ function Probability.RankCurrentPlayerSpecsForItems(itemIDs, sourceType, sourceI
             end
         end
 
+        local selectedCount = #itemIDs
         results[#results + 1] = {
             specID         = spec.specID,
             specName       = spec.name,
@@ -174,7 +175,7 @@ function Probability.RankCurrentPlayerSpecsForItems(itemIDs, sourceType, sourceI
             baseOdds       = baseCount > 0 and (1 / baseCount) or 0,
             remainingOdds  = remainingCount > 0 and (1 / remainingCount) or 0,
             allObtained    = baseCount > 0 and remainingCount == 0,
-            noItems        = matchCount == 0,  -- spec cannot loot any selected item
+            noItems        = matchCount < selectedCount,  -- spec cannot loot ALL selected items
         }
     end
 
