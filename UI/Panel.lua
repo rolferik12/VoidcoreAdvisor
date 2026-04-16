@@ -31,8 +31,8 @@ local PANEL_WIDTH   = 600
 local HEADER_H      = 76    -- title + source label + info label + divider
 local COL_HEADER_H  = 20    -- "LOOT" / "SPEC RANKING" label row
 local PADDING       = 12    -- inner horizontal padding
-local ROW_H         = 22    -- height of one item / spec row
-local ICON_SIZE     = 16    -- inline icon size in rows
+local ROW_H         = 26    -- height of one item / spec row
+local ICON_SIZE     = 20    -- inline icon size in rows
 local COL_SPLIT     = 0.52  -- left column fraction of content width
 
 -- ── Main frame ────────────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ sourceLabel:SetText("")
 Panel.sourceLabel = sourceLabel
 
 -- Content type + Voidcore cost
-local infoLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+local infoLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 infoLabel:SetPoint("TOPLEFT", 18, -60)
 infoLabel:SetJustifyH("LEFT")
 infoLabel:SetText("")
@@ -128,12 +128,12 @@ end
 
 -- ── Column header labels ──────────────────────────────────────────────────────
 
-local lootColHeader = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+local lootColHeader = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 lootColHeader:SetPoint("TOPLEFT", contentArea, "TOPLEFT", PADDING, -6)
 lootColHeader:SetJustifyH("LEFT")
 lootColHeader:SetText("|cffb048f8LOOT|r")
 
-local specColHeader = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+local specColHeader = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 specColHeader:SetJustifyH("LEFT")
 specColHeader:SetText("|cffb048f8SPEC RANKING|r")
 
@@ -247,7 +247,7 @@ local function GetOrCreateItemRow(pool, parent)
     iconBorder:SetAllPoints(iconButton)
     iconBorder:Hide()
 
-    local nameLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local nameLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     nameLabel:SetJustifyH("LEFT")
     nameLabel:SetPoint("LEFT",  iconButton, "RIGHT", 4, 0)
     nameLabel:SetPoint("RIGHT", rowFrame, "RIGHT", -20, 0)
@@ -349,9 +349,9 @@ local function GetOrCreateSpecRow(pool, parent)
     local rowFrame = CreateFrame("Frame", nil, parent)
     rowFrame:SetHeight(ROW_H)
 
-    local rankLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local rankLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     rankLabel:SetJustifyH("RIGHT")
-    rankLabel:SetWidth(16)
+    rankLabel:SetWidth(24)
     rankLabel:SetPoint("LEFT", rowFrame, "LEFT", 0, 0)
 
     local icon = rowFrame:CreateTexture(nil, "ARTWORK")
@@ -359,13 +359,13 @@ local function GetOrCreateSpecRow(pool, parent)
     icon:SetPoint("LEFT", rankLabel, "RIGHT", 3, 0)
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-    local nameLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local nameLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     nameLabel:SetJustifyH("LEFT")
     nameLabel:SetPoint("LEFT",  icon, "RIGHT", 4, 0)
     nameLabel:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
     nameLabel:SetWordWrap(false)
 
-    local statsLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local statsLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     statsLabel:SetJustifyH("RIGHT")
     statsLabel:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
 
