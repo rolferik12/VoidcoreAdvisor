@@ -4,6 +4,7 @@
 -- is available when this code runs.
 
 local addonName, VCA = ...
+local L = VCA.L
 
 -- ── SavedVariables defaults ───────────────────────────────────────────────────
 
@@ -75,39 +76,38 @@ SlashCmdList["VOIDCOREADVISOR"] = function(msg)
 
     if cmd == "reset" then
         VCA.ResetObtainedData()
-        print("|cff9370DBVoidcoreAdvisor:|r All obtained-item data has been reset.")
+        print("|cff9370DBVoidcoreAdvisor:|r " .. L["RESET_CONFIRM"])
 
     elseif cmd == "count" then
         local count = VCA.Data.GetTotalObtainedCount()
-        print("|cff9370DBVoidcoreAdvisor:|r " .. count .. " item(s) marked as obtained via Voidcore.")
+        print("|cff9370DBVoidcoreAdvisor:|r " .. string.format(L["COUNT_FORMAT"], count))
 
     elseif cmd == "spec" then
         -- Debug: print which spec will be used for loot.
         local specID   = VCA.SpecInfo.GetEffectiveLootSpecID()
         local rawID    = VCA.SpecInfo.GetRawLootSpecID()
-        local suffix   = rawID == 0 and " (follows active spec)" or ""
-        print("|cff9370DBVoidcoreAdvisor:|r Effective loot spec ID: " .. (specID or "unknown") .. suffix)
+        local suffix   = rawID == 0 and L["FOLLOWS_ACTIVE_SPEC"] or ""
+        print("|cff9370DBVoidcoreAdvisor:|r " .. string.format(L["SPEC_FORMAT"], specID or "unknown", suffix))
 
     elseif cmd == "source" then
         -- Debug: print the currently active detection source.
         local src = VCA.Detection.GetActiveSource()
         if src then
-            print("|cff9370DBVoidcoreAdvisor:|r Active source — type: " .. src.sourceType ..
-                  "  sourceID: " .. src.sourceID ..
-                  "  difficulty: " .. src.difficultyID)
+            print("|cff9370DBVoidcoreAdvisor:|r " .. string.format(L["SOURCE_FORMAT"],
+                  src.sourceType, src.sourceID, src.difficultyID))
         else
-            print("|cff9370DBVoidcoreAdvisor:|r No active source set.")
+            print("|cff9370DBVoidcoreAdvisor:|r " .. L["NO_ACTIVE_SOURCE"])
         end
 
     elseif cmd == "version" then
-        print("|cff9370DBVoidcoreAdvisor:|r Version " .. VCA.VERSION)
+        print("|cff9370DBVoidcoreAdvisor:|r " .. string.format(L["VERSION_FORMAT"], VCA.VERSION))
 
     else
-        print("|cff9370DBVoidcoreAdvisor:|r Commands:")
-        print("  /vca reset    – clear all obtained-item data")
-        print("  /vca count    – show total items marked as obtained")
-        print("  /vca spec     – show effective loot spec ID")
-        print("  /vca source   – show active detection source")
-        print("  /vca version  – show addon version")
+        print("|cff9370DBVoidcoreAdvisor:|r " .. L["HELP_HEADER"])
+        print(L["HELP_RESET"])
+        print(L["HELP_COUNT"])
+        print(L["HELP_SPEC"])
+        print(L["HELP_SOURCE"])
+        print(L["HELP_VERSION"])
     end
 end

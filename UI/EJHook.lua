@@ -155,6 +155,50 @@ syncFrame:SetScript("OnEvent", function(self, event)
         VCA.Panel.Hide()
     end)
 
+    -- When the EJ opens (or reopens), re-evaluate the current instance/encounter
+    -- so the panel shows even if EJ_SelectInstance / EJ_SelectEncounter didn't fire.
+    EncounterJournal:HookScript("OnShow", function()
+        VCA.Panel.AnchorToEJ()
+
+        local instanceID = EncounterJournal.instanceID
+        if not instanceID or instanceID == 0 then return end
+
+        local isRaid = EJ_InstanceIsRaid() == true
+
+        if isRaid then
+            local encounterID = EncounterJournal.encounterID
+            if not encounterID or encounterID == 0 then return end
+
+            local name, _, _, _, _, journalInstanceID = EJ_GetEncounterInfo(encounterID)
+            if not name then return end
+            if not VCA.LootPool.IsCurrentSeasonRaid(journalInstanceID) then return end
+
+            local difficultyID = EJ_GetDifficulty() or VCA.Difficulty.RAID_NORMAL
+            VCA.Panel.SetContext(
+                VCA.ContentType.RAID,
+                encounterID,
+                difficultyID,
+                name,
+                true
+            )
+            VCA.Panel.Show()
+        else
+            if not VCA.LootPool.IsCurrentSeasonDungeon(instanceID) then return end
+
+            local instanceName = EJ_GetInstanceInfo(instanceID)
+            if not instanceName then return end
+
+            VCA.Panel.SetContext(
+                VCA.ContentType.MYTHIC_PLUS,
+                instanceID,
+                VCA.MythicPlusEJDifficulty,
+                instanceName,
+                false
+            )
+            VCA.Panel.Show()
+        end
+    end)
+
     -- If the EJ is already open on login (rare), lock the anchor in now.
     if EncounterJournal:IsShown() then
         VCA.Panel.AnchorToEJ()

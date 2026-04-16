@@ -15,6 +15,7 @@
 --   └─────────────────────┴──────────────────────────────┘
 
 local _, VCA = ...
+local L = VCA.L
 
 VCA.Panel = {}
 local Panel = VCA.Panel
@@ -77,7 +78,7 @@ end
 -- Title
 local titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 titleText:SetPoint("TOPLEFT", 18, -16)
-titleText:SetText("|cffb048f8Voidcore|r|cffddddddAdvisor|r")
+titleText:SetText(L["PANEL_TITLE"])
 
 -- X close button (uses the standard Blizzard close button template)
 local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
@@ -247,7 +248,7 @@ end)
 
 local specColHeader = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 specColHeader:SetJustifyH("LEFT")
-specColHeader:SetText("|cffb048f8SPEC RANKING|r")
+specColHeader:SetText("|cffb048f8" .. L["COL_SPEC_RANKING"] .. "|r")
 
 local lootSpecLabel = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 lootSpecLabel:SetJustifyH("RIGHT")
@@ -774,7 +775,7 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         noRow.frame:SetPoint("TOPLEFT", itemScrollChild, "TOPLEFT", 0, 0)
         noRow.frame:Show()
         noRow.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-        noRow.nameLabel:SetText("|cff888888No items for this spec|r")
+        noRow.nameLabel:SetText("|cff888888" .. L["NO_ITEMS_FOR_SPEC"] .. "|r")
         noRow.nameLabel:SetAlpha(1)
         noRow.iconButton:SetAlpha(0.3)
         noRow.iconBorder:Hide()
@@ -847,7 +848,7 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
         if entry.noItems then
             statsText = "|cff888888—|r"
         elseif entry.allObtained then
-            statsText = "|cff44ff44✓ all|r"
+            statsText = "|cff44ff44" .. L["ALL_OBTAINED"] .. "|r"
         else
             local pct = math.floor(entry.remainingOdds * 100 + 0.5)
             statsText = "|cffaaaaaa" .. entry.remainingCount .. "/" ..
@@ -869,10 +870,10 @@ RefreshItemColumn = function()
     local count = 0
     for _ in pairs(selectedSpecIDs) do count = count + 1 end
     if count > 0 then
-        local label = count == 1 and "LOOT (filtered)" or ("LOOT (filtered " .. count .. " specs)")
+        local label = count == 1 and L["COL_LOOT_FILTERED"] or string.format(L["COL_LOOT_FILTERED_N"], count)
         lootColHeader:SetText("|cffb048f8" .. label .. "|r")
     else
-        lootColHeader:SetText("|cffb048f8LOOT|r")
+        lootColHeader:SetText("|cffb048f8" .. L["COL_LOOT"] .. "|r")
     end
 end
 -- ── Refresh spec column ───────────────────────────────────────────────────────────
@@ -886,11 +887,11 @@ RefreshSpecColumn = function()
     end
     if #selectedList > 0 then
         local count = #selectedList
-        local label = count == 1 and "SPEC FIT" or ("SPEC FIT  |cff888888(" .. count .. ")|r")
+        local label = count == 1 and L["COL_SPEC_FIT"] or (L["COL_SPEC_FIT"] .. "  |cff888888(" .. count .. ")|r")
         specColHeader:SetText("|cffb048f8" .. label .. "|r")
         PopulateSpecColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID, selectedList)
     else
-        specColHeader:SetText("|cffb048f8SPEC RANKING|r")
+        specColHeader:SetText("|cffb048f8" .. L["COL_SPEC_RANKING"] .. "|r")
         PopulateSpecColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
     end
 end
@@ -965,9 +966,9 @@ function Panel.SetContext(sourceType, sourceID, difficultyID, sourceName, isRaid
     sourceLabel:SetText(sourceName or "")
 
     local cost       = VCA.Probability.GetVoidcoreCost(sourceType)
-    local contentTag = isRaid and "Raid Boss" or "M+ Dungeon"
+    local contentTag = isRaid and L["CONTENT_RAID_BOSS"] or L["CONTENT_MP_DUNGEON"]
     local costColor  = cost == 2 and "|cffffff00" or "|cff00ff00"
-    local coreWord   = cost == 1 and "Nebulous Voidcore" or "Nebulous Voidcores"
+    local coreWord   = cost == 1 and L["NEBULOUS_VOIDCORE"] or L["NEBULOUS_VOIDCORES"]
     infoLabel:SetText(contentTag .. "  •  " .. costColor .. cost .. " " .. coreWord .. "|r")
 
     -- Show key level dropdown only for M+ dungeons
@@ -993,7 +994,7 @@ function Panel.Refresh()
     if lootSpecID and lootSpecID > 0 then
         local _, name, _, icon = GetSpecializationInfoByID(lootSpecID)
         if name then
-            lootSpecLabel:SetText("|cff888888Loot:|r |cffdddddd" .. name .. "|r")
+            lootSpecLabel:SetText("|cff888888" .. L["LOOT_SPEC_LABEL"] .. "|r |cffdddddd" .. name .. "|r")
         else
             lootSpecLabel:SetText("")
         end
@@ -1012,8 +1013,8 @@ end
 VCA.Detection.SetOnItemDetectedCallback(function(itemID, source)
     -- Chat message
     local itemName = C_Item.GetItemNameByID(itemID) or tostring(itemID)
-    print("|cffb048f8VoidcoreAdvisor:|r Auto-detected " ..
-          "|cnIQ4:" .. itemName .. "|r as obtained via Nebulous Voidcore.")
+    print("|cffb048f8VoidcoreAdvisor:|r " .. string.format(L["DETECTED_OBTAINED"],
+          "|cnIQ4:" .. itemName .. "|r"))
 
     -- Remove from saved selections now that it's obtained.
     VCA.Data.RemoveSelectedItem(source.sourceType, source.sourceID,
