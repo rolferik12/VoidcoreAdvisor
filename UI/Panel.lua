@@ -432,6 +432,7 @@ local function GetOrCreateItemRow(pool, parent)
     rowFrame:SetScript("OnClick", function(self, btn)
         local id = self.itemID
         if not id then return end
+        if self.dimmed then return end
         if IsControlKeyDown() then
             if selectedItemIDs[id] then
                 selectedItemIDs[id] = nil
@@ -753,7 +754,9 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         -- not lootable by the specs implied by the item selection.
         local specFiltered = specFilterSet and not specFilterSet[item.itemID]
         local itemFiltered = itemImpliedFilter and not itemImpliedFilter[item.itemID]
-        if obtained or specFiltered or itemFiltered then
+        local dimmed = obtained or specFiltered or itemFiltered
+        row.frame.dimmed = dimmed
+        if dimmed then
             local alpha = (specFiltered or itemFiltered) and 0.25 or 0.4
             row.nameLabel:SetAlpha(alpha)
             row.iconButton:SetAlpha(alpha)

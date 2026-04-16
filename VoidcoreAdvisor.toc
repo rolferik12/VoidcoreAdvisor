@@ -1,7 +1,7 @@
-## Interface: 120005
+## Interface: 120001, 120005
 ## Title: VoidcoreAdvisor
 ## Notes: Shows Nebulous Voidcore loot pools and spec probability rankings for Midnight Season 1 content.
-## Version: 0.1.0
+## Version: 1.0.0
 ## Author:
 ## SavedVariablesPerCharacter: VoidcoreAdvisorCharDB
 
