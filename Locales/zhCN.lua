@@ -25,6 +25,8 @@ L["ALL_OBTAINED"]            = "✓ 全部"
 
 L["DETECTED_OBTAINED"]       = "已自动检测到 %s 通过星云虚空核心获取。"
 
+L["CLEAR_SELECTED"]          = "清除选择"
+
 -- ── Slash commands ────────────────────────────────────────────────────────────
 
 L["RESET_CONFIRM"]           = "所有已获取物品数据已重置。"

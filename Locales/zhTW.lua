@@ -25,6 +25,8 @@ L["ALL_OBTAINED"]            = "✓ 全部"
 
 L["DETECTED_OBTAINED"]       = "已自動偵測到 %s 透過星雲虛無核心取得。"
 
+L["CLEAR_SELECTED"]          = "清除選擇"
+
 -- ── Slash commands ────────────────────────────────────────────────────────────
 
 L["RESET_CONFIRM"]           = "所有已取得物品資料已重設。"

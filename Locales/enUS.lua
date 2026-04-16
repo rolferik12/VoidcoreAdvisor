@@ -29,6 +29,8 @@ L["ALL_OBTAINED"]            = "✓ all"
 
 L["DETECTED_OBTAINED"]       = "Auto-detected %s as obtained via Nebulous Voidcore."
 
+L["CLEAR_SELECTED"]          = "Clear selected"
+
 -- ── Slash commands (Init.lua) ─────────────────────────────────────────────────
 
 L["RESET_CONFIRM"]           = "All obtained-item data has been reset."

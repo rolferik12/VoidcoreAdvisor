@@ -25,6 +25,8 @@ L["ALL_OBTAINED"]            = "✓ tous"
 
 L["DETECTED_OBTAINED"]       = "%s détecté automatiquement comme obtenu via un Noyau du Vide nébuleux."
 
+L["CLEAR_SELECTED"]          = "Effacer la sélection"
+
 -- ── Slash commands ────────────────────────────────────────────────────────────
 
 L["RESET_CONFIRM"]           = "Toutes les données d'objets obtenus ont été réinitialisées."

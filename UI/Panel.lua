@@ -143,6 +143,23 @@ lootColHeader:SetPoint("TOPLEFT", contentArea, "TOPLEFT", PADDING, -6)
 lootColHeader:SetJustifyH("LEFT")
 lootColHeader:SetText("|cffb048f8LOOT|r")
 
+-- X button to clear all spec selections (near the center divider in loot column header)
+local clearSpecBtn = CreateFrame("Button", nil, contentArea)
+clearSpecBtn:SetSize(14, 14)
+clearSpecBtn:SetNormalFontObject("GameFontNormal")
+clearSpecBtn:SetText("|cffff4444x|r")
+clearSpecBtn:SetScript("OnClick", function()
+    wipe(selectedSpecIDs)
+    RefreshItemColumn()
+end)
+clearSpecBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L["CLEAR_SELECTED"])
+    GameTooltip:Show()
+end)
+clearSpecBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+clearSpecBtn:Hide()
+
 -- ── Key level dropdown (M+ only) ─────────────────────────────────────────────
 local selectedKeyLevel = 10  -- default to 10+
 
@@ -249,6 +266,25 @@ end)
 local specColHeader = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 specColHeader:SetJustifyH("LEFT")
 specColHeader:SetText("|cffb048f8" .. L["COL_SPEC_RANKING"] .. "|r")
+
+-- X button to clear all item selections (near the center divider in spec column header)
+local clearItemBtn = CreateFrame("Button", nil, contentArea)
+clearItemBtn:SetSize(14, 14)
+clearItemBtn:SetNormalFontObject("GameFontNormal")
+clearItemBtn:SetText("|cffff4444x|r")
+clearItemBtn:SetScript("OnClick", function()
+    wipe(selectedItemIDs)
+    SaveItemSelections()
+    RefreshSpecColumn()
+    RefreshItemColumn()
+end)
+clearItemBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L["CLEAR_SELECTED"])
+    GameTooltip:Show()
+end)
+clearItemBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+clearItemBtn:Hide()
 
 local lootSpecLabel = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 lootSpecLabel:SetJustifyH("RIGHT")
@@ -433,20 +469,11 @@ local function GetOrCreateItemRow(pool, parent)
         local id = self.itemID
         if not id then return end
         if self.dimmed then return end
-        if IsControlKeyDown() then
-            if selectedItemIDs[id] then
-                selectedItemIDs[id] = nil
-            else
-                selectedItemIDs[id] = true
-            end
+        -- Toggle: click selects, click again deselects.
+        if selectedItemIDs[id] then
+            selectedItemIDs[id] = nil
         else
-            if selectedItemIDs[id] and not next(selectedItemIDs, next(selectedItemIDs)) then
-                -- Clicking the only selected item deselects it
-                wipe(selectedItemIDs)
-            else
-                wipe(selectedItemIDs)
-                selectedItemIDs[id] = true
-            end
+            selectedItemIDs[id] = true
         end
         -- Refresh highlight visuals on all visible rows immediately.
         for _, r in ipairs(pool) do
@@ -508,20 +535,11 @@ local function GetOrCreateSpecRow(pool, parent)
     rowFrame:SetScript("OnClick", function(self, btn)
         local specID = self.specID
         if not specID then return end
-        if IsControlKeyDown() then
-            if selectedSpecIDs[specID] then
-                selectedSpecIDs[specID] = nil
-            else
-                selectedSpecIDs[specID] = true
-            end
+        -- Toggle: click selects, click again deselects.
+        if selectedSpecIDs[specID] then
+            selectedSpecIDs[specID] = nil
         else
-            if selectedSpecIDs[specID] and not next(selectedSpecIDs, next(selectedSpecIDs)) then
-                -- Clicking the only selected spec deselects it
-                wipe(selectedSpecIDs)
-            else
-                wipe(selectedSpecIDs)
-                selectedSpecIDs[specID] = true
-            end
+            selectedSpecIDs[specID] = true
         end
         -- Update spec highlight visuals
         for _, r in ipairs(pool) do
@@ -852,16 +870,23 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
         row.nameLabel:SetText(nameColor .. (entry.specName or "?") .. "|r")
 
         -- Stats: remaining/total + percentage (right side)
+        -- When items are selected, show the chance to get any selected item
+        -- (selectedOdds).  When nothing is selected, show only the pool counts
+        -- with no percentage.
+        local hasSelection = filterItemIDs and #filterItemIDs > 0
         local statsText
         if entry.noItems then
             statsText = "|cff888888—|r"
         elseif entry.allObtained then
             statsText = "|cff44ff44" .. L["ALL_OBTAINED"] .. "|r"
-        else
-            local pct = math.floor(entry.remainingOdds * 100 + 0.5)
+        elseif hasSelection and entry.selectedOdds then
+            local pct = math.floor(entry.selectedOdds * 100 + 0.5)
             statsText = "|cffaaaaaa" .. entry.remainingCount .. "/" ..
                         entry.baseCount .. "|r  " ..
                         "|cffffff00" .. pct .. "%|r"
+        else
+            statsText = "|cffaaaaaa" .. entry.remainingCount .. "/" ..
+                        entry.baseCount .. "|r"
         end
         row.statsLabel:SetText(statsText)
 
@@ -880,8 +905,10 @@ RefreshItemColumn = function()
     if count > 0 then
         local label = count == 1 and L["COL_LOOT_FILTERED"] or string.format(L["COL_LOOT_FILTERED_N"], count)
         lootColHeader:SetText("|cffb048f8" .. label .. "|r")
+        clearSpecBtn:Show()
     else
         lootColHeader:SetText("|cffb048f8" .. L["COL_LOOT"] .. "|r")
+        clearSpecBtn:Hide()
     end
 end
 -- ── Refresh spec column ───────────────────────────────────────────────────────────
@@ -897,9 +924,11 @@ RefreshSpecColumn = function()
         local count = #selectedList
         local label = count == 1 and L["COL_SPEC_FIT"] or (L["COL_SPEC_FIT"] .. "  |cff888888(" .. count .. ")|r")
         specColHeader:SetText("|cffb048f8" .. label .. "|r")
+        clearItemBtn:Show()
         PopulateSpecColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID, selectedList)
     else
         specColHeader:SetText("|cffb048f8" .. L["COL_SPEC_RANKING"] .. "|r")
+        clearItemBtn:Hide()
         PopulateSpecColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
     end
 end
@@ -918,9 +947,17 @@ local function DoLayout()
     colSep:SetPoint("TOP",    contentArea, "TOPLEFT", splitX, -2)
     colSep:SetPoint("BOTTOM", contentArea, "BOTTOMLEFT", splitX, 2)
 
+    -- Clear-spec-selection button (near center divider, inside loot column)
+    clearSpecBtn:ClearAllPoints()
+    clearSpecBtn:SetPoint("RIGHT", contentArea, "TOPLEFT", splitX - 4, -6 - (COL_HEADER_H / 2) + 4)
+
     -- Spec column header position (left col header is already anchored)
     specColHeader:ClearAllPoints()
     specColHeader:SetPoint("TOPLEFT", contentArea, "TOPLEFT", splitX + PADDING, -6)
+
+    -- Clear-item-selection button (just left of center divider)
+    clearItemBtn:ClearAllPoints()
+    clearItemBtn:SetPoint("RIGHT", contentArea, "TOPLEFT", splitX - 22, -6 - (COL_HEADER_H / 2) + 4)
 
     -- Loot spec label (right-aligned in the spec column header row)
     lootSpecLabel:ClearAllPoints()

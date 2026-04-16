@@ -156,26 +156,32 @@ function Probability.RankCurrentPlayerSpecsForItems(itemIDs, sourceType, sourceI
         -- higher chance that any specific item (including the selected one) drops.
         local baseCount      = #allSpecItemIDs
         local remainingCount = 0
+        local matchRemainingCount = 0
         for _, itemID in ipairs(allSpecItemIDs) do
             if not VCA.Data.IsObtained(sourceType, sourceID, difficultyID, itemID) then
                 remainingCount = remainingCount + 1
+                if selectedSet[itemID] then
+                    matchRemainingCount = matchRemainingCount + 1
+                end
             end
         end
 
         local selectedCount = #itemIDs
         results[#results + 1] = {
-            specID         = spec.specID,
-            specName       = spec.name,
-            specIcon       = spec.icon,
-            specRole       = spec.role,
-            specIndex      = spec.specIndex,
-            baseCount      = baseCount,
-            remainingCount = remainingCount,
-            matchCount     = matchCount,
-            baseOdds       = baseCount > 0 and (1 / baseCount) or 0,
-            remainingOdds  = remainingCount > 0 and (1 / remainingCount) or 0,
-            allObtained    = baseCount > 0 and remainingCount == 0,
-            noItems        = matchCount < selectedCount,  -- spec cannot loot ALL selected items
+            specID              = spec.specID,
+            specName            = spec.name,
+            specIcon            = spec.icon,
+            specRole            = spec.role,
+            specIndex           = spec.specIndex,
+            baseCount           = baseCount,
+            remainingCount      = remainingCount,
+            matchCount          = matchCount,
+            matchRemainingCount = matchRemainingCount,
+            baseOdds            = baseCount > 0 and (1 / baseCount) or 0,
+            remainingOdds       = remainingCount > 0 and (1 / remainingCount) or 0,
+            selectedOdds        = remainingCount > 0 and (matchRemainingCount / remainingCount) or 0,
+            allObtained         = baseCount > 0 and remainingCount == 0,
+            noItems             = matchCount < selectedCount,  -- spec cannot loot ALL selected items
         }
     end
 

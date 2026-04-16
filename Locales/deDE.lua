@@ -25,6 +25,8 @@ L["ALL_OBTAINED"]            = "✓ alle"
 
 L["DETECTED_OBTAINED"]       = "%s automatisch als über Nebulösen Leerenkern erhalten erkannt."
 
+L["CLEAR_SELECTED"]          = "Auswahl aufheben"
+
 -- ── Slash commands ────────────────────────────────────────────────────────────
 
 L["RESET_CONFIRM"]           = "Alle erhaltenen Gegenstände wurden zurückgesetzt."
