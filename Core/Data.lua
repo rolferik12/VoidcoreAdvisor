@@ -64,6 +64,49 @@ function Data.GetRemainingItems(pool, sourceType, sourceID, difficultyID)
     return remaining
 end
 
+-- ── Selected items persistence ─────────────────────────────────────────────────
+
+local function SelectionKey(sourceType, sourceID, difficultyID)
+    return sourceType .. ":" .. sourceID .. ":" .. difficultyID
+end
+
+-- Returns a set { [itemID]=true } of selected items for the given source context.
+function Data.GetSelectedItems(sourceType, sourceID, difficultyID)
+    local db = _G[VCA.CHAR_DB_NAME]
+    if not db or not db.selectedItems then return {} end
+    local key = SelectionKey(sourceType, sourceID, difficultyID)
+    return db.selectedItems[key] or {}
+end
+
+-- Saves a set { [itemID]=true } (or nil/empty to clear) for the given source.
+function Data.SaveSelectedItems(sourceType, sourceID, difficultyID, selectionSet)
+    local db = _G[VCA.CHAR_DB_NAME]
+    if not db then return end
+    db.selectedItems = db.selectedItems or {}
+    local key = SelectionKey(sourceType, sourceID, difficultyID)
+    if not selectionSet or not next(selectionSet) then
+        db.selectedItems[key] = nil
+    else
+        -- Store a copy so the caller's table can be wiped without affecting the DB.
+        local copy = {}
+        for id in pairs(selectionSet) do copy[id] = true end
+        db.selectedItems[key] = copy
+    end
+end
+
+-- Removes a single item from the saved selection for the given source.
+function Data.RemoveSelectedItem(sourceType, sourceID, difficultyID, itemID)
+    local db = _G[VCA.CHAR_DB_NAME]
+    if not db or not db.selectedItems then return end
+    local key = SelectionKey(sourceType, sourceID, difficultyID)
+    local set = db.selectedItems[key]
+    if not set then return end
+    set[itemID] = nil
+    if not next(set) then
+        db.selectedItems[key] = nil
+    end
+end
+
 -- ── Bulk operations ───────────────────────────────────────────────────────────
 
 -- Returns all { sourceType, sourceID, difficultyID, itemID } tuples from the DB

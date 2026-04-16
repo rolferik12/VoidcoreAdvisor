@@ -27,6 +27,7 @@ local selectedItemIDs = {}  -- set: { [itemID] = true }
 local selectedSpecIDs = {}  -- set: { [specID] = true }
 local RefreshSpecColumn     -- forward declaration; defined after PopulateSpecColumn
 local RefreshItemColumn     -- forward declaration; defined after PopulateItemColumn
+local SaveItemSelections     -- forward declaration; defined after Panel.SetContext
 
 -- ── Sizing ────────────────────────────────────────────────────────────────────
 
@@ -82,6 +83,11 @@ titleText:SetText("|cffb048f8Voidcore|r|cffddddddAdvisor|r")
 local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 closeBtn:SetPoint("TOPRIGHT", -4, -4)
 closeBtn:SetScript("OnClick", function() frame:Hide() end)
+
+-- Persist item selections when the panel hides (close, navigate away, logout).
+frame:SetScript("OnHide", function()
+    SaveItemSelections()
+end)
 
 -- Source name (boss or dungeon)
 local sourceLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -448,6 +454,7 @@ local function GetOrCreateItemRow(pool, parent)
         end
         RefreshSpecColumn()
         RefreshItemColumn()
+        SaveItemSelections()
     end)
 
     pool[#pool + 1] = row
@@ -733,6 +740,11 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         row.checkbox:SetScript("OnClick", function(self)
             local now = self:GetChecked()
             VCA.Data.SetObtained(self.sourceType, self.sourceID, self.diffID, self.itemID, now)
+            -- If item was just marked obtained, deselect it.
+            if now and selectedItemIDs[self.itemID] then
+                selectedItemIDs[self.itemID] = nil
+                SaveItemSelections()
+            end
             Panel.Refresh()
         end)
 
@@ -924,10 +936,25 @@ end
 
 -- ── Context update ────────────────────────────────────────────────────────────
 
+-- Persist the current item selection to the char DB.
+SaveItemSelections = function()
+    if Panel.sourceType and Panel.sourceID and Panel.difficultyID then
+        VCA.Data.SaveSelectedItems(Panel.sourceType, Panel.sourceID,
+            Panel.difficultyID, selectedItemIDs)
+    end
+end
+
 function Panel.SetContext(sourceType, sourceID, difficultyID, sourceName, isRaid)
-    -- Clear any item/spec selection when switching to a new boss/dungeon.
+    -- Persist outgoing selections before switching context.
+    SaveItemSelections()
+
+    -- Restore saved item selection for this source (spec selection is transient).
     wipe(selectedItemIDs)
     wipe(selectedSpecIDs)
+    local saved = VCA.Data.GetSelectedItems(sourceType, sourceID, difficultyID)
+    for id in pairs(saved) do
+        selectedItemIDs[id] = true
+    end
     HideAllItemRows()
     HideAllSpecRows()
 
@@ -987,6 +1014,11 @@ VCA.Detection.SetOnItemDetectedCallback(function(itemID, source)
     local itemName = C_Item.GetItemNameByID(itemID) or tostring(itemID)
     print("|cffb048f8VoidcoreAdvisor:|r Auto-detected " ..
           "|cnIQ4:" .. itemName .. "|r as obtained via Nebulous Voidcore.")
+
+    -- Remove from saved selections now that it's obtained.
+    VCA.Data.RemoveSelectedItem(source.sourceType, source.sourceID,
+        source.difficultyID, itemID)
+    selectedItemIDs[itemID] = nil
 
     -- Flash the item row if panel is open for this source
     if Panel.sourceID == source.sourceID and

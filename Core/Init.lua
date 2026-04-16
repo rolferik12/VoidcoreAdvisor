@@ -11,6 +11,7 @@ local function GetDefaults()
     return {
         schemaVersion = VCA.SCHEMA_VERSION,
         obtained      = {},
+        selectedItems = {},   -- { ["TYPE:sourceID:diffID"] = { [itemID]=true, ... } }
     }
 end
 
@@ -30,7 +31,8 @@ local function InitDB()
     else
         MigrateDB(_G[VCA.CHAR_DB_NAME])
         -- Ensure required top-level keys are present (handles sparse old saves).
-        _G[VCA.CHAR_DB_NAME].obtained = _G[VCA.CHAR_DB_NAME].obtained or {}
+        _G[VCA.CHAR_DB_NAME].obtained      = _G[VCA.CHAR_DB_NAME].obtained or {}
+        _G[VCA.CHAR_DB_NAME].selectedItems  = _G[VCA.CHAR_DB_NAME].selectedItems or {}
     end
 end
 
