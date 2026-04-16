@@ -16,6 +16,115 @@ local LootPool = VCA.LootPool
 -- EJ_SelectEncounter / EJ_SelectInstance calls.
 LootPool._reentryGuard = false
 
+-- ── Result cache ──────────────────────────────────────────────────────────────
+-- Keyed by "fnTag:arg1:arg2:…" → cached return value.  Invalidated on season
+-- change (CHALLENGE_MODE_MAPS_UPDATE).
+
+local _cache = {}
+
+local function CacheKey(...)
+    local parts = {}
+    for i = 1, select("#", ...) do
+        parts[#parts + 1] = tostring(select(i, ...) or 0)
+    end
+    return table.concat(parts, ":")
+end
+
+function LootPool.InvalidateCache()
+    wipe(_cache)
+end
+
+-- ── Season filter ─────────────────────────────────────────────────────────────
+-- Determines which EJ instanceIDs belong to the current season.
+-- Shared across LootPool (for warmup) and EJHook (for panel gating).
+
+local _seasonDungeonIDs   = {}   -- set: { [instanceID] = true }
+local _seasonDungeonList  = {}   -- array of instanceIDs (for iteration)
+local _seasonRaidIDs      = {}   -- set: { [instanceID] = true }
+local _seasonFilterBuilt  = false
+
+function LootPool.BuildSeasonFilter()
+    wipe(_seasonDungeonIDs)
+    wipe(_seasonDungeonList)
+    wipe(_seasonRaidIDs)
+
+    if not EncounterJournal then
+        if EncounterJournal_LoadUI then
+            EncounterJournal_LoadUI()
+        end
+    end
+
+    -- M+ dungeons: match challenge-mode map names to EJ instanceIDs
+    local dungeonNameSet = {}
+    if C_ChallengeMode and C_ChallengeMode.GetMapTable then
+        local mapIDs = C_ChallengeMode.GetMapTable()
+        if mapIDs then
+            for _, mapID in ipairs(mapIDs) do
+                local name = C_ChallengeMode.GetMapUIInfo(mapID)
+                if name then
+                    dungeonNameSet[name] = true
+                end
+            end
+        end
+    end
+
+    -- Walk the latest EJ tier to find matching dungeon instanceIDs
+    local numTiers = EJ_GetNumTiers()
+    if numTiers and numTiers > 0 then
+        local savedTier = EJ_GetCurrentTier()
+        EJ_SelectTier(numTiers)
+
+        -- Dungeons (isRaid = false)
+        local idx = 1
+        while true do
+            local instanceID, name = EJ_GetInstanceByIndex(idx, false)
+            if not instanceID then break end
+            if name and dungeonNameSet[name] then
+                _seasonDungeonIDs[instanceID] = true
+                _seasonDungeonList[#_seasonDungeonList + 1] = instanceID
+            end
+            idx = idx + 1
+        end
+
+        -- Raids (isRaid = true)
+        idx = 1
+        while true do
+            local instanceID = EJ_GetInstanceByIndex(idx, true)
+            if not instanceID then break end
+            _seasonRaidIDs[instanceID] = true
+            idx = idx + 1
+        end
+
+        if savedTier and savedTier > 0 then
+            EJ_SelectTier(savedTier)
+        end
+    end
+
+    _seasonFilterBuilt = true
+end
+
+local function EnsureSeasonFilter()
+    if not _seasonFilterBuilt then
+        LootPool.BuildSeasonFilter()
+    end
+end
+
+function LootPool.IsCurrentSeasonDungeon(instanceID)
+    EnsureSeasonFilter()
+    return _seasonDungeonIDs[instanceID] == true
+end
+
+function LootPool.IsCurrentSeasonRaid(instanceID)
+    EnsureSeasonFilter()
+    return _seasonRaidIDs[instanceID] == true
+end
+
+-- Returns the ordered array of current-season dungeon EJ instanceIDs.
+function LootPool.GetSeasonDungeonInstanceIDs()
+    EnsureSeasonFilter()
+    return _seasonDungeonList
+end
+
 -- ── EJ state save/restore ─────────────────────────────────────────────────────
 
 -- Temporarily sets EJ difficulty + loot filter, runs fn(), then restores the
@@ -80,18 +189,25 @@ end
 
 -- ── Public: per-encounter reads ───────────────────────────────────────────────
 
--- Returns all loot items for a single raid boss encounter at a given difficulty,
--- with NO class/spec filter applied (shows every item that can drop).
+-- Returns all loot items for a single raid boss encounter at a given difficulty.
+-- Optional classID/specID filter the results (0 = no filter for that axis).
 --
 -- encounterID  : EJ journal encounter ID
 -- difficultyID : EJ difficulty ID (use VCA.Difficulty constants)
+-- classID      : (optional) numeric class ID, default 0 (all classes)
+-- specID       : (optional) numeric specialization ID, default 0 (all specs)
 -- Returns: array of item tables (see CollectLootForSelectedEncounter)
-function LootPool.GetEncounterItems(encounterID, difficultyID)
+function LootPool.GetEncounterItems(encounterID, difficultyID, classID, specID)
+    local key = CacheKey("ei", encounterID, difficultyID, classID or 0, specID or 0)
+    if _cache[key] then return _cache[key] end
+
     local items = {}
-    WithEJState(difficultyID, 0, 0, function()
+    WithEJState(difficultyID, classID or 0, specID or 0, function()
         EJ_SelectEncounter(encounterID)
         items = CollectLootForSelectedEncounter()
     end)
+
+    if #items > 0 then _cache[key] = items end
     return items
 end
 
@@ -104,6 +220,9 @@ end
 -- specID       : numeric specialization ID
 -- Returns: array of itemID numbers
 function LootPool.GetEncounterItemsForSpec(encounterID, difficultyID, classID, specID)
+    local key = CacheKey("eis", encounterID, difficultyID, classID, specID)
+    if _cache[key] then return _cache[key] end
+
     local itemIDs = {}
     WithEJState(difficultyID, classID, specID, function()
         EJ_SelectEncounter(encounterID)
@@ -115,27 +234,35 @@ function LootPool.GetEncounterItemsForSpec(encounterID, difficultyID, classID, s
             end
         end
     end)
+
+    _cache[key] = itemIDs
     return itemIDs
 end
 
 -- ── Public: per-instance reads (M+ dungeons) ─────────────────────────────────
 
--- Returns all loot items for an entire dungeon instance at a given difficulty,
--- with NO class/spec filter.  Items are deduplicated across encounters because
--- M+ can award any item from any boss in the dungeon.
+-- Returns all loot items for an entire dungeon instance at a given difficulty.
+-- Optional classID/specID filter the results (0 = no filter for that axis).
+-- Items are deduplicated across encounters because M+ can award any item from
+-- any boss in the dungeon.
 --
 -- instanceID   : EJ instance ID
 -- difficultyID : EJ difficulty ID (VCA.MythicPlusEJDifficulty for M+)
+-- classID      : (optional) numeric class ID, default 0 (all classes)
+-- specID       : (optional) numeric specialization ID, default 0 (all specs)
 -- Returns:
 --   {
 --     all         = item[]   -- flat deduplicated list
 --     byEncounter = { [encounterID] = item[] }
 --   }
-function LootPool.GetInstanceItems(instanceID, difficultyID)
+function LootPool.GetInstanceItems(instanceID, difficultyID, classID, specID)
+    local key = CacheKey("ii", instanceID, difficultyID, classID or 0, specID or 0)
+    if _cache[key] then return _cache[key] end
+
     local result = { all = {}, byEncounter = {} }
     local seen   = {}
 
-    WithEJState(difficultyID, 0, 0, function()
+    WithEJState(difficultyID, classID or 0, specID or 0, function()
         EJ_SelectInstance(instanceID)
         local idx = 1
         while true do
@@ -154,6 +281,19 @@ function LootPool.GetInstanceItems(instanceID, difficultyID)
         end
     end)
 
+    -- Only cache if item data looks complete (names + icons loaded).
+    local complete = true
+    for _, item in ipairs(result.all) do
+        if item.name == "" or item.icon == "" then
+            complete = false
+            -- Prime the client item cache so a retry succeeds.
+            if GetItemInfo then GetItemInfo(item.itemID) end
+        end
+    end
+    if #result.all > 0 and complete then
+        _cache[key] = result
+    end
+
     return result
 end
 
@@ -166,8 +306,71 @@ end
 -- specID       : numeric specialization ID
 -- Returns: array of itemID numbers (deduplicated)
 function LootPool.GetInstanceItemsForSpec(instanceID, difficultyID, classID, specID)
+    local key = CacheKey("iis", instanceID, difficultyID, classID, specID)
+    if _cache[key] then return _cache[key] end
+
     local itemIDSet = {}
     WithEJState(difficultyID, classID, specID, function()
+        EJ_SelectInstance(instanceID)
+        local idx = 1
+        while true do
+            local name, _, encounterID = EJ_GetEncounterInfoByIndex(idx)
+            if not name then break end
+            EJ_SelectEncounter(encounterID)
+            local numLoot = EJ_GetNumLoot()
+            for i = 1, numLoot do
+                local info = C_EncounterJournal.GetLootInfoByIndex(i)
+                if info and info.itemID and info.itemID > 0 and IsGearOrWeapon(info.itemID) then
+                    itemIDSet[info.itemID] = true
+                end
+            end
+            idx = idx + 1
+        end
+    end)
+
+    local itemIDs = {}
+    for id in pairs(itemIDSet) do
+        itemIDs[#itemIDs + 1] = id
+    end
+
+    _cache[key] = itemIDs
+    return itemIDs
+end
+
+-- ── Public: class-wide reads (all specs) ──────────────────────────────────────
+
+-- Returns item IDs visible to ANY spec of a class for a single encounter.
+-- Uses EJ_SetLootFilter(classID, 0) which the EJ treats as "all specializations".
+--
+-- encounterID  : EJ journal encounter ID
+-- difficultyID : EJ difficulty ID
+-- classID      : numeric class ID
+-- Returns: array of itemID numbers
+function LootPool.GetEncounterItemsForClass(encounterID, difficultyID, classID)
+    local itemIDs = {}
+    WithEJState(difficultyID, classID, 0, function()
+        EJ_SelectEncounter(encounterID)
+        local numLoot = EJ_GetNumLoot()
+        for i = 1, numLoot do
+            local info = C_EncounterJournal.GetLootInfoByIndex(i)
+            if info and info.itemID and info.itemID > 0 and IsGearOrWeapon(info.itemID) then
+                itemIDs[#itemIDs + 1] = info.itemID
+            end
+        end
+    end)
+    return itemIDs
+end
+
+-- Returns item IDs visible to ANY spec of a class across an entire instance.
+-- Deduplicated across encounters.
+--
+-- instanceID   : EJ instance ID
+-- difficultyID : EJ difficulty ID
+-- classID      : numeric class ID
+-- Returns: array of itemID numbers (deduplicated)
+function LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
+    local itemIDSet = {}
+    WithEJState(difficultyID, classID, 0, function()
         EJ_SelectInstance(instanceID)
         local idx = 1
         while true do
@@ -208,5 +411,70 @@ function LootPool.GetItemsForSpec(sourceType, sourceID, difficultyID, classID, s
         return LootPool.GetEncounterItemsForSpec(sourceID, difficultyID, classID, specID)
     else
         return LootPool.GetInstanceItemsForSpec(sourceID, difficultyID, classID, specID)
+    end
+end
+
+-- Dispatches to the correct Get*ItemsForClass function based on content type.
+--
+-- sourceType   : VCA.ContentType.RAID or VCA.ContentType.MYTHIC_PLUS
+-- sourceID     : encounterID (RAID) or instanceID (MYTHIC_PLUS)
+-- difficultyID : EJ difficulty ID
+-- classID      : numeric class ID
+-- Returns: array of itemID numbers
+function LootPool.GetItemsForClass(sourceType, sourceID, difficultyID, classID)
+    if sourceType == VCA.ContentType.RAID then
+        return LootPool.GetEncounterItemsForClass(sourceID, difficultyID, classID)
+    else
+        return LootPool.GetInstanceItemsForClass(sourceID, difficultyID, classID)
+    end
+end
+
+-- ── Cache warmup ──────────────────────────────────────────────────────────────
+-- Pre-scans all current-season dungeons × all player specs at login so that
+-- Panel.Show() is instant.  Retries up to _maxWarmRetries if item data is
+-- missing (client hasn't cached it yet from the server).
+
+local _warmRetries    = 0
+local _maxWarmRetries = 5
+
+function LootPool.WarmCache()
+    EnsureSeasonFilter()
+
+    if not EncounterJournal then
+        if EncounterJournal_LoadUI then
+            EncounterJournal_LoadUI()
+        end
+    end
+
+    local classID      = VCA.SpecInfo.GetPlayerClassID()
+    local specs        = VCA.SpecInfo.GetPlayerSpecs()
+    local dungeonIDs   = LootPool.GetSeasonDungeonInstanceIDs()
+    local difficultyID = VCA.MythicPlusEJDifficulty
+
+    for _, instanceID in ipairs(dungeonIDs) do
+        -- Class-wide read (used by PopulateItemColumn)
+        LootPool.GetInstanceItems(instanceID, difficultyID, classID)
+
+        -- Per-spec reads (used by Probability)
+        for _, spec in ipairs(specs) do
+            LootPool.GetInstanceItemsForSpec(instanceID, difficultyID, spec.classID, spec.specID)
+        end
+    end
+
+    -- Check if every dungeon class-wide read was cached (complete item data).
+    local allCached = true
+    for _, instanceID in ipairs(dungeonIDs) do
+        local key = CacheKey("ii", instanceID, difficultyID, classID, 0)
+        if not _cache[key] then
+            allCached = false
+            break
+        end
+    end
+
+    if not allCached and _warmRetries < _maxWarmRetries then
+        _warmRetries = _warmRetries + 1
+        C_Timer.After(_warmRetries * 2, function()
+            LootPool.WarmCache()
+        end)
     end
 end

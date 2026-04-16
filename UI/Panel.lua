@@ -307,35 +307,14 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
     HideAllItemRows()
 
     local classID = VCA.SpecInfo.GetPlayerClassID()
-    -- Use the effective loot spec so the list reflects exactly what the
-    -- Voidcore would roll from.
-    local specID  = VCA.SpecInfo.GetEffectiveLootSpecID()
-    local items   = VCA.LootPool.GetEncounterItemsForSpec and
-                        (sourceType == VCA.ContentType.RAID and
-                             VCA.LootPool.GetEncounterItemsForSpec(sourceID, difficultyID, classID, specID) or
-                             VCA.LootPool.GetInstanceItemsForSpec(sourceID, difficultyID, classID, specID))
-                    or {}
-
-    -- GetEncounterItemsForSpec returns itemID numbers; we need full item tables.
-    -- Use LootPool.GetEncounterItems / GetInstanceItems for enriched data and
-    -- filter to only items that are in the spec pool.
-    local allItems
+    -- Fetch enriched item data with class filter so the EJ returns only items
+    -- relevant to this class (all specs).  Using the class filter ensures the
+    -- client has cached data (name, icon) for every item returned.
+    local displayItems
     if sourceType == VCA.ContentType.RAID then
-        allItems = VCA.LootPool.GetEncounterItems(sourceID, difficultyID)
+        displayItems = VCA.LootPool.GetEncounterItems(sourceID, difficultyID, classID)
     else
-        allItems = VCA.LootPool.GetInstanceItems(sourceID, difficultyID).all
-    end
-
-    -- Build a lookup set from the spec-filtered IDs.
-    local specSet = {}
-    for _, id in ipairs(items) do specSet[id] = true end
-
-    -- Filter enriched items to spec pool only.
-    local displayItems = {}
-    for _, item in ipairs(allItems) do
-        if specSet[item.itemID] then
-            displayItems[#displayItems + 1] = item
-        end
+        displayItems = VCA.LootPool.GetInstanceItems(sourceID, difficultyID, classID).all
     end
 
     local colW      = LeftColWidth()
@@ -360,7 +339,7 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         -- (OnClick is wired once at row creation inside GetOrCreateItemRow.)
 
         -- Icon (info.icon is a fileID number in the current EJ API)
-        if item.icon and item.icon ~= 0 then
+        if item.icon and item.icon ~= 0 and item.icon ~= "" then
             row.icon:SetTexture(item.icon)
         else
             row.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
@@ -370,7 +349,8 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         -- GetItemInfo returns quality as the 3rd value; fall back to Uncommon
         -- if the item isn't in the cache yet (rare for EJ items).
         local itemName, _, quality = GetItemInfo(item.itemID)
-        itemName = itemName or item.name or "?"
+        local ejName = (item.name ~= "" and item.name) or nil
+        itemName = itemName or ejName or ("Item " .. item.itemID)
         quality  = quality  or 1
         local slotText = item.slot ~= "" and (" |cff888888[" .. item.slot .. "]|r") or ""
         row.nameLabel:SetText(QualityColor(quality) .. itemName .. "|r" .. slotText)
@@ -545,6 +525,8 @@ end
 function Panel.SetContext(sourceType, sourceID, difficultyID, sourceName, isRaid)
     -- Clear any item selection when switching to a new boss/dungeon.
     wipe(selectedItemIDs)
+    HideAllItemRows()
+    HideAllSpecRows()
 
     Panel.sourceType   = sourceType
     Panel.sourceID     = sourceID
@@ -622,11 +604,13 @@ function Panel.IsShown()
     return frame:IsShown()
 end
 
--- ── Live spec-change update ───────────────────────────────────────────────────
--- When the player changes their loot spec setting, refresh both columns.
+-- ── Live spec-change / loot-data update ───────────────────────────────────────
+-- When the player changes their loot spec setting, or when the EJ finishes
+-- loading loot data for a newly selected instance, refresh both columns.
 
 local specChangeFrame = CreateFrame("Frame")
 specChangeFrame:RegisterEvent("PLAYER_LOOT_SPEC_UPDATED")
+specChangeFrame:RegisterEvent("EJ_LOOT_DATA_RECIEVED")
 specChangeFrame:SetScript("OnEvent", function()
     Panel.Refresh()
 end)

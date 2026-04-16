@@ -9,6 +9,11 @@
 --
 -- The re-entry guard (LootPool._reentryGuard) is checked so that internal EJ
 -- calls made during pool reads do not retrigger panel updates.
+--
+-- Season filter:
+--   Only current-season M+ dungeons (from C_ChallengeMode rotation) and
+--   current-tier raids trigger the panel.  Old-expansion content is ignored.
+--   Filter logic lives in LootPool so the cache warmup can share it.
 
 local _, VCA = ...
 
@@ -20,18 +25,48 @@ hooksecurefunc("EJ_SelectEncounter", function(encounterID)
     if VCA.LootPool._reentryGuard then return end
     if not EncounterJournal or not EncounterJournal:IsShown() then return end
 
-    local name = EJ_GetEncounterInfo(encounterID)
-    if not name then return end
+    local isRaid = EJ_InstanceIsRaid() == true
 
-    local difficultyID = EJ_GetDifficulty() or VCA.Difficulty.RAID_NORMAL
-    VCA.Panel.SetContext(
-        VCA.ContentType.RAID,
-        encounterID,
-        difficultyID,
-        name,
-        true   -- is raid
-    )
-    VCA.Panel.Show()
+    if isRaid then
+        local name, _, _, _, _, journalInstanceID = EJ_GetEncounterInfo(encounterID)
+        if not name then return end
+
+        if not VCA.LootPool.IsCurrentSeasonRaid(journalInstanceID) then
+            VCA.Panel.Hide()
+            return
+        end
+
+        local difficultyID = EJ_GetDifficulty() or VCA.Difficulty.RAID_NORMAL
+        VCA.Panel.SetContext(
+            VCA.ContentType.RAID,
+            encounterID,
+            difficultyID,
+            name,
+            true   -- is raid
+        )
+        VCA.Panel.Show()
+    else
+        -- Dungeon boss clicked: show entire instance loot pool, not just this boss.
+        local _, _, _, _, _, journalInstanceID = EJ_GetEncounterInfo(encounterID)
+        if not journalInstanceID then return end
+
+        if not VCA.LootPool.IsCurrentSeasonDungeon(journalInstanceID) then
+            VCA.Panel.Hide()
+            return
+        end
+
+        local instanceName = EJ_GetInstanceInfo(journalInstanceID)
+        if not instanceName then return end
+
+        VCA.Panel.SetContext(
+            VCA.ContentType.MYTHIC_PLUS,
+            journalInstanceID,
+            VCA.MythicPlusEJDifficulty,
+            instanceName,
+            false  -- not a raid
+        )
+        VCA.Panel.Show()
+    end
 end)
 
 -- ── Hook: instance (dungeon / raid overview) selected ────────────────────────
@@ -48,6 +83,11 @@ hooksecurefunc("EJ_SelectInstance", function(instanceID)
     if isRaid then
         -- For a raid overview page no single encounter is selected yet.
         -- Hide the panel and wait for EJ_SelectEncounter to fire for a boss.
+        VCA.Panel.Hide()
+        return
+    end
+
+    if not VCA.LootPool.IsCurrentSeasonDungeon(instanceID) then
         VCA.Panel.Hide()
         return
     end
@@ -82,18 +122,31 @@ hooksecurefunc("EJ_SetDifficulty", function(difficultyID)
             name,
             true
         )
-        -- Full content refresh will be triggered here once content is wired up.
     end
 end)
 
 -- ── EJ open / close sync ──────────────────────────────────────────────────────
 -- Wait until PLAYER_LOGIN so EncounterJournal is guaranteed to exist before
--- we try to hook its scripts.
+-- we try to hook its scripts.  Also kicks off the loot cache warmup.
 
 local syncFrame = CreateFrame("Frame")
 syncFrame:RegisterEvent("PLAYER_LOGIN")
-syncFrame:SetScript("OnEvent", function(self)
+syncFrame:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE")
+syncFrame:SetScript("OnEvent", function(self, event)
+    if event == "CHALLENGE_MODE_MAPS_UPDATE" then
+        -- M+ rotation may have changed (new season); rebuild and re-warm.
+        VCA.LootPool.InvalidateCache()
+        VCA.LootPool.BuildSeasonFilter()
+        VCA.LootPool.WarmCache()
+        return
+    end
+
+    -- PLAYER_LOGIN
     self:UnregisterEvent("PLAYER_LOGIN")
+
+    -- Build season filter and pre-cache all dungeon loot pools.
+    VCA.LootPool.BuildSeasonFilter()
+    VCA.LootPool.WarmCache()
 
     if not EncounterJournal then return end
 
