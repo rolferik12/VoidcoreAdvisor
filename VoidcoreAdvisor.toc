@@ -1,8 +1,9 @@
 ## Interface: 120001, 120005
 ## Title: VoidcoreAdvisor
-## Notes: Shows Nebulous Voidcore loot pools and spec probability rankings for Midnight Season 1 content.
+## Notes: Attaches a panel to the Encounter Journal showing which loot specialization gives you the best chance of getting the items you want when spending Nebulous Voidcores.
 ## Version: 1.0.0
 ## Author:
+## IconTexture: Interface\AddOns\VoidcoreAdvisor\icon.tga
 ## SavedVariablesPerCharacter: VoidcoreAdvisorCharDB
 
 Locales\enUS.lua
