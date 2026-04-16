@@ -1,0 +1,49 @@
+-- VoidcoreAdvisor: Constants
+-- All shared constants for the addon. Loaded first so every subsequent file can reference them.
+
+local addonName, VCA = ...
+
+VCA.ADDON_NAME     = addonName
+VCA.VERSION        = "0.1.0"
+VCA.SCHEMA_VERSION = 1
+VCA.CHAR_DB_NAME   = "VoidcoreAdvisorCharDB"
+
+-- ── Content types ─────────────────────────────────────────────────────────────
+-- RAID:        A single raid boss encounter.  Uses encounterID as sourceID.
+-- MYTHIC_PLUS: An entire M+ dungeon.          Uses EJ instanceID as sourceID.
+VCA.ContentType = {
+    RAID        = "RAID",
+    MYTHIC_PLUS = "MYTHIC_PLUS",
+}
+
+-- ── Nebulous Voidcore costs ───────────────────────────────────────────────────
+VCA.VoidcoreCost = {
+    RAID        = 2,  -- raid bosses cost 2 Nebulous Voidcores
+    MYTHIC_PLUS = 1,  -- M+ / Bountiful Delves / Prey Hunts cost 1
+}
+
+-- ── Encounter Journal difficulty IDs ─────────────────────────────────────────
+VCA.Difficulty = {
+    RAID_LFR       = 17,  -- not eligible for Voidcores
+    RAID_NORMAL    = 14,
+    RAID_HEROIC    = 15,
+    RAID_MYTHIC    = 16,
+    DUNGEON_NORMAL = 1,
+    DUNGEON_HEROIC = 2,
+    DUNGEON_MYTHIC = 23,  -- covers both Mythic and Mythic+ in the EJ
+}
+
+-- Raid difficulties that are eligible for Nebulous Voidcores.
+VCA.EligibleRaidDifficulties = {
+    [VCA.Difficulty.RAID_NORMAL] = true,
+    [VCA.Difficulty.RAID_HEROIC] = true,
+    [VCA.Difficulty.RAID_MYTHIC] = true,
+}
+
+-- The EJ difficulty used when reading M+ dungeon loot pools.
+VCA.MythicPlusEJDifficulty = VCA.Difficulty.DUNGEON_MYTHIC
+
+-- ── Detection ─────────────────────────────────────────────────────────────────
+-- How long (seconds) after a successful encounter the addon watches for loot
+-- appearing in bags from a Voidcore bonus prompt.
+VCA.DETECTION_WINDOW_SECONDS = 45
