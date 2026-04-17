@@ -577,6 +577,44 @@ local function HideAllSpecRows()
     for _, row in ipairs(specRows) do row.frame:Hide() end
 end
 
+-- ── Slot sort order ───────────────────────────────────────────────────────────
+-- Maps INVTYPE_* equip-location strings to a numeric sort priority so the item
+-- list reads like the character sheet: head first, trinkets last.
+-- Finger/Ring and all weapon sub-types are collapsed into single categories.
+
+local SLOT_SORT_ORDER = {
+    INVTYPE_HEAD            = 1,
+    INVTYPE_NECK            = 2,
+    INVTYPE_SHOULDER        = 3,
+    INVTYPE_CLOAK           = 4,
+    INVTYPE_CHEST           = 5,
+    INVTYPE_ROBE            = 5,
+    INVTYPE_WRIST           = 6,
+    INVTYPE_HAND            = 7,
+    INVTYPE_WAIST           = 8,
+    INVTYPE_LEGS            = 9,
+    INVTYPE_FEET            = 10,
+    INVTYPE_FINGER          = 11,
+    -- All weapon / off-hand types grouped together
+    INVTYPE_WEAPON          = 12,
+    INVTYPE_2HWEAPON        = 12,
+    INVTYPE_WEAPONMAINHAND  = 12,
+    INVTYPE_WEAPONOFFHAND   = 12,
+    INVTYPE_HOLDABLE        = 12,
+    INVTYPE_SHIELD          = 12,
+    INVTYPE_RANGED          = 12,
+    INVTYPE_RANGEDRIGHT     = 12,
+    -- Trinkets last
+    INVTYPE_TRINKET         = 13,
+}
+
+local function GetSlotSortOrder(itemID)
+    if not itemID then return 99 end
+    local _, _, _, equipLoc = C_Item.GetItemInfoInstant(itemID)
+    if not equipLoc or equipLoc == "" then return 99 end
+    return SLOT_SORT_ORDER[equipLoc] or 99
+end
+
 -- ── Populate item column ──────────────────────────────────────────────────────
 
 local itemScrollChild = CreateFrame("Frame", nil, contentArea)
@@ -699,6 +737,14 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
     else
         displayItems = VCA.LootPool.GetInstanceItems(sourceID, difficultyID, classID).all
     end
+
+    -- Sort by equipment slot: head first, trinkets last.
+    table.sort(displayItems, function(a, b)
+        local oa = GetSlotSortOrder(a.itemID)
+        local ob = GetSlotSortOrder(b.itemID)
+        if oa ~= ob then return oa < ob end
+        return (a.name or "") < (b.name or "")
+    end)
 
     local colW      = LeftColWidth()
     local rowTop    = 0
