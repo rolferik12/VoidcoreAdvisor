@@ -130,7 +130,7 @@ end)
 -- we try to hook its scripts.  Also kicks off the loot cache warmup.
 
 local syncFrame = CreateFrame("Frame")
-syncFrame:RegisterEvent("PLAYER_LOGIN")
+syncFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 syncFrame:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE")
 syncFrame:SetScript("OnEvent", function(self, event)
     if event == "CHALLENGE_MODE_MAPS_UPDATE" then
@@ -141,8 +141,8 @@ syncFrame:SetScript("OnEvent", function(self, event)
         return
     end
 
-    -- PLAYER_LOGIN
-    self:UnregisterEvent("PLAYER_LOGIN")
+    -- PLAYER_ENTERING_WORLD
+    self:UnregisterEvent("PLAYER_ENTERING_WORLD")
 
     -- Build season filter and pre-cache all dungeon loot pools.
     VCA.LootPool.BuildSeasonFilter()
