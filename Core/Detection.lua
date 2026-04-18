@@ -251,6 +251,12 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "ENCOUNTER_END" then
         local encounterID, _, difficultyID, _, endStatus = ...
         if endStatus ~= 1 then return end  -- 1 = success / kill
+        -- Inside an active M+ key, individual boss kills are irrelevant —
+        -- detection is handled by CHALLENGE_MODE_COMPLETED instead.
+        if C_ChallengeMode and C_ChallengeMode.GetActiveChallengeMapID
+           and C_ChallengeMode.GetActiveChallengeMapID() then
+            return
+        end
         Detection.SetActiveSource(VCA.ContentType.RAID, encounterID, difficultyID)
         InvalidatePoolCache()
         bagSnapshot = SnapshotBags()
