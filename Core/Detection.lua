@@ -119,21 +119,18 @@ local function GetActivePoolSet()
         return cachedPoolSet
     end
 
-    -- Read pool for each of the player's specs and union them all.
-    -- This catches cases where the player switches loot spec mid-window.
-    local specs  = VCA.SpecInfo.GetPlayerSpecs()
+    -- Single class-wide query (specID 0 = all specs).  LootPool caches the
+    -- result so repeated calls within the detection window are free.
+    local classID = VCA.SpecInfo.GetPlayerClassID()
+    local itemIDs = VCA.LootPool.GetItemsForClass(
+        activeSource.sourceType,
+        activeSource.sourceID,
+        activeSource.difficultyID,
+        classID
+    )
     local poolSet = {}
-    for _, spec in ipairs(specs) do
-        local itemIDs = VCA.LootPool.GetItemsForSpec(
-            activeSource.sourceType,
-            activeSource.sourceID,
-            activeSource.difficultyID,
-            spec.classID,
-            spec.specID
-        )
-        for _, id in ipairs(itemIDs) do
-            poolSet[id] = true
-        end
+    for _, id in ipairs(itemIDs) do
+        poolSet[id] = true
     end
 
     cachedPoolSet    = poolSet

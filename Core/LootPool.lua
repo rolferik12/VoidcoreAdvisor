@@ -347,6 +347,9 @@ end
 -- classID      : numeric class ID
 -- Returns: array of itemID numbers
 function LootPool.GetEncounterItemsForClass(encounterID, difficultyID, classID)
+    local key = CacheKey("eic", encounterID, difficultyID, classID)
+    if _cache[key] then return _cache[key] end
+
     local itemIDs = {}
     WithEJState(difficultyID, classID, 0, function()
         EJ_SelectEncounter(encounterID)
@@ -358,6 +361,8 @@ function LootPool.GetEncounterItemsForClass(encounterID, difficultyID, classID)
             end
         end
     end)
+
+    _cache[key] = itemIDs
     return itemIDs
 end
 
@@ -369,6 +374,9 @@ end
 -- classID      : numeric class ID
 -- Returns: array of itemID numbers (deduplicated)
 function LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
+    local key = CacheKey("iic", instanceID, difficultyID, classID)
+    if _cache[key] then return _cache[key] end
+
     local itemIDSet = {}
     WithEJState(difficultyID, classID, 0, function()
         EJ_SelectInstance(instanceID)
@@ -392,6 +400,8 @@ function LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
     for id in pairs(itemIDSet) do
         itemIDs[#itemIDs + 1] = id
     end
+
+    _cache[key] = itemIDs
     return itemIDs
 end
 
@@ -436,6 +446,7 @@ end
 
 local _warmRetries    = 0
 local _maxWarmRetries = 5
+local _warmTicker     = nil  -- handle for in-progress warm ticker
 
 function LootPool.WarmCache()
     EnsureSeasonFilter()
@@ -446,14 +457,57 @@ function LootPool.WarmCache()
         end
     end
 
+    -- Cancel any in-progress warm ticker from a previous call.
+    if _warmTicker then
+        _warmTicker:Cancel()
+        _warmTicker = nil
+    end
+
     local classID      = VCA.SpecInfo.GetPlayerClassID()
     local specs        = VCA.SpecInfo.GetPlayerSpecs()
     local dungeonIDs   = LootPool.GetSeasonDungeonInstanceIDs()
     local difficultyID = VCA.MythicPlusEJDifficulty
 
+    -- Build a queue of work items — one per dungeon — so we can spread the
+    -- EJ reads across frames instead of doing them all synchronously.
+    local queue = {}
     for _, instanceID in ipairs(dungeonIDs) do
+        queue[#queue + 1] = instanceID
+    end
+
+    local idx = 0
+    local function ProcessNext()
+        idx = idx + 1
+        if idx > #queue then
+            _warmTicker:Cancel()
+            _warmTicker = nil
+
+            -- Check if every dungeon class-wide read was cached (complete data).
+            local allCached = true
+            for _, instanceID in ipairs(dungeonIDs) do
+                local key = CacheKey("ii", instanceID, difficultyID, classID, 0)
+                if not _cache[key] then
+                    allCached = false
+                    break
+                end
+            end
+
+            if not allCached and _warmRetries < _maxWarmRetries then
+                _warmRetries = _warmRetries + 1
+                C_Timer.After(_warmRetries * 2, function()
+                    LootPool.WarmCache()
+                end)
+            end
+            return
+        end
+
+        local instanceID = queue[idx]
+
         -- Class-wide read (used by PopulateItemColumn)
         LootPool.GetInstanceItems(instanceID, difficultyID, classID)
+
+        -- Class-wide itemID set (used by Detection.GetActivePoolSet)
+        LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
 
         -- Per-spec reads (used by Probability)
         for _, spec in ipairs(specs) do
@@ -461,20 +515,6 @@ function LootPool.WarmCache()
         end
     end
 
-    -- Check if every dungeon class-wide read was cached (complete item data).
-    local allCached = true
-    for _, instanceID in ipairs(dungeonIDs) do
-        local key = CacheKey("ii", instanceID, difficultyID, classID, 0)
-        if not _cache[key] then
-            allCached = false
-            break
-        end
-    end
-
-    if not allCached and _warmRetries < _maxWarmRetries then
-        _warmRetries = _warmRetries + 1
-        C_Timer.After(_warmRetries * 2, function()
-            LootPool.WarmCache()
-        end)
-    end
+    -- Process one dungeon per frame (ticker interval 0 = next frame).
+    _warmTicker = C_Timer.NewTicker(0, ProcessNext, #queue + 1)
 end
