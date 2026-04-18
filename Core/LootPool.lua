@@ -127,11 +127,44 @@ end
 
 -- ── EJ state save/restore ─────────────────────────────────────────────────────
 
+-- Active filter state — set during WithEJState so that SelectInstance /
+-- SelectEncounter can re-apply the filter after each EJ navigation call.
+-- EJ_SelectInstance / EJ_SelectEncounter can internally reset the difficulty
+-- and loot filter, so we must re-apply after every call.
+local _activeDifficultyID = nil
+local _activeClassID      = nil
+local _activeSpecID       = nil
+
+local function ReapplyEJFilter()
+    if _activeDifficultyID then
+        EJ_SetDifficulty(_activeDifficultyID)
+    end
+    EJ_SetLootFilter(_activeClassID or 0, _activeSpecID or 0)
+end
+
+-- Wrappers that re-apply the filter after each EJ navigation call.
+local function SelectInstance(instanceID)
+    EJ_SelectInstance(instanceID)
+    ReapplyEJFilter()
+end
+
+local function SelectEncounter(encounterID)
+    EJ_SelectEncounter(encounterID)
+    ReapplyEJFilter()
+end
+
 -- Temporarily sets EJ difficulty + loot filter, runs fn(), then restores the
--- original values.  fn() receives no arguments.
+-- original values.  fn() receives no arguments.  Inside fn(), use the module-
+-- local SelectInstance / SelectEncounter instead of the raw EJ_Select* APIs
+-- so the filter is automatically re-applied after each navigation call.
 local function WithEJState(difficultyID, classID, specID, fn)
     local origDifficulty           = EJ_GetDifficulty()
     local origClassID, origSpecID  = EJ_GetLootFilter()
+
+    -- Store active filter so SelectInstance / SelectEncounter can re-apply.
+    _activeDifficultyID = difficultyID
+    _activeClassID      = classID or 0
+    _activeSpecID       = specID or 0
 
     LootPool._reentryGuard = true
     EJ_SetDifficulty(difficultyID)
@@ -142,6 +175,10 @@ local function WithEJState(difficultyID, classID, specID, fn)
     end)
 
     -- Always restore regardless of error.
+    _activeDifficultyID = nil
+    _activeClassID      = nil
+    _activeSpecID       = nil
+
     EJ_SetDifficulty(origDifficulty or difficultyID)
     EJ_SetLootFilter(origClassID or 0, origSpecID or 0)
     LootPool._reentryGuard = false
@@ -203,7 +240,7 @@ function LootPool.GetEncounterItems(encounterID, difficultyID, classID, specID)
 
     local items = {}
     WithEJState(difficultyID, classID or 0, specID or 0, function()
-        EJ_SelectEncounter(encounterID)
+        SelectEncounter(encounterID)
         items = CollectLootForSelectedEncounter()
     end)
 
@@ -225,7 +262,7 @@ function LootPool.GetEncounterItemsForSpec(encounterID, difficultyID, classID, s
 
     local itemIDs = {}
     WithEJState(difficultyID, classID, specID, function()
-        EJ_SelectEncounter(encounterID)
+        SelectEncounter(encounterID)
         local numLoot = EJ_GetNumLoot()
         for i = 1, numLoot do
             local info = C_EncounterJournal.GetLootInfoByIndex(i)
@@ -235,7 +272,7 @@ function LootPool.GetEncounterItemsForSpec(encounterID, difficultyID, classID, s
         end
     end)
 
-    _cache[key] = itemIDs
+    if #itemIDs > 0 then _cache[key] = itemIDs end
     return itemIDs
 end
 
@@ -263,12 +300,12 @@ function LootPool.GetInstanceItems(instanceID, difficultyID, classID, specID)
     local seen   = {}
 
     WithEJState(difficultyID, classID or 0, specID or 0, function()
-        EJ_SelectInstance(instanceID)
+        SelectInstance(instanceID)
         local idx = 1
         while true do
             local name, _, encounterID = EJ_GetEncounterInfoByIndex(idx)
             if not name then break end
-            EJ_SelectEncounter(encounterID)
+            SelectEncounter(encounterID)
             local items = CollectLootForSelectedEncounter()
             result.byEncounter[encounterID] = items
             for _, item in ipairs(items) do
@@ -311,12 +348,12 @@ function LootPool.GetInstanceItemsForSpec(instanceID, difficultyID, classID, spe
 
     local itemIDSet = {}
     WithEJState(difficultyID, classID, specID, function()
-        EJ_SelectInstance(instanceID)
+        SelectInstance(instanceID)
         local idx = 1
         while true do
             local name, _, encounterID = EJ_GetEncounterInfoByIndex(idx)
             if not name then break end
-            EJ_SelectEncounter(encounterID)
+            SelectEncounter(encounterID)
             local numLoot = EJ_GetNumLoot()
             for i = 1, numLoot do
                 local info = C_EncounterJournal.GetLootInfoByIndex(i)
@@ -333,7 +370,7 @@ function LootPool.GetInstanceItemsForSpec(instanceID, difficultyID, classID, spe
         itemIDs[#itemIDs + 1] = id
     end
 
-    _cache[key] = itemIDs
+    if #itemIDs > 0 then _cache[key] = itemIDs end
     return itemIDs
 end
 
@@ -352,7 +389,7 @@ function LootPool.GetEncounterItemsForClass(encounterID, difficultyID, classID)
 
     local itemIDs = {}
     WithEJState(difficultyID, classID, 0, function()
-        EJ_SelectEncounter(encounterID)
+        SelectEncounter(encounterID)
         local numLoot = EJ_GetNumLoot()
         for i = 1, numLoot do
             local info = C_EncounterJournal.GetLootInfoByIndex(i)
@@ -362,7 +399,7 @@ function LootPool.GetEncounterItemsForClass(encounterID, difficultyID, classID)
         end
     end)
 
-    _cache[key] = itemIDs
+    if #itemIDs > 0 then _cache[key] = itemIDs end
     return itemIDs
 end
 
@@ -379,12 +416,12 @@ function LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
 
     local itemIDSet = {}
     WithEJState(difficultyID, classID, 0, function()
-        EJ_SelectInstance(instanceID)
+        SelectInstance(instanceID)
         local idx = 1
         while true do
             local name, _, encounterID = EJ_GetEncounterInfoByIndex(idx)
             if not name then break end
-            EJ_SelectEncounter(encounterID)
+            SelectEncounter(encounterID)
             local numLoot = EJ_GetNumLoot()
             for i = 1, numLoot do
                 local info = C_EncounterJournal.GetLootInfoByIndex(i)
@@ -401,7 +438,7 @@ function LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
         itemIDs[#itemIDs + 1] = id
     end
 
-    _cache[key] = itemIDs
+    if #itemIDs > 0 then _cache[key] = itemIDs end
     return itemIDs
 end
 
@@ -482,14 +519,24 @@ function LootPool.WarmCache()
             _warmTicker:Cancel()
             _warmTicker = nil
 
-            -- Check if every dungeon class-wide read was cached (complete data).
+            -- Check if every dungeon + spec combination was cached.
             local allCached = true
             for _, instanceID in ipairs(dungeonIDs) do
+                -- Class-wide display cache
                 local key = CacheKey("ii", instanceID, difficultyID, classID, 0)
                 if not _cache[key] then
                     allCached = false
                     break
                 end
+                -- Per-spec caches (the ones that drive the 24/24 counts)
+                for _, spec in ipairs(specs) do
+                    local skey = CacheKey("iis", instanceID, difficultyID, spec.classID, spec.specID)
+                    if not _cache[skey] then
+                        allCached = false
+                        break
+                    end
+                end
+                if not allCached then break end
             end
 
             if not allCached and _warmRetries < _maxWarmRetries then
