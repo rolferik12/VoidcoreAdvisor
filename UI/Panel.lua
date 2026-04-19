@@ -42,7 +42,7 @@ local COL_SPLIT     = 0.52  -- left column fraction of content width
 
 -- ── Main frame ────────────────────────────────────────────────────────────────
 
-local frame = CreateFrame("Frame", "VoidcoreAdvisorPanel", UIParent, "BackdropTemplate")
+local frame = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
 Panel.frame = frame
 
 frame:SetWidth(PANEL_WIDTH)
@@ -188,7 +188,7 @@ local function UpdateKeyLevelText()
     keyLevelButton:SetWidth(keyLevelText:GetStringWidth() + 8)
 end
 
-local keyLevelMenu = CreateFrame("Frame", "VCAKeyLevelMenu", keyLevelButton, "BackdropTemplate")
+local keyLevelMenu = CreateFrame("Frame", nil, keyLevelButton, "BackdropTemplate")
 keyLevelMenu:SetFrameStrata("TOOLTIP")
 keyLevelMenu:SetBackdrop({
     bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
