@@ -6,12 +6,15 @@ When you open the Encounter Journal and browse a boss or dungeon, VoidcoreAdviso
 
 The addon tracks which items you have already obtained, either through manual checkboxes or through automatic detection after boss kills and Mythic+ completions. Obtained items are excluded from the remaining pool calculations, so your probability numbers stay accurate as you gear up over the course of a season. Item selections and obtained status are saved per character.
 
+When you zone into a current-season Mythic or Mythic+ dungeon, VoidcoreAdvisor checks whether your active loot specialization is the best match for the items you have selected from that dungeon. If a different spec would give you better odds and you have at least one Nebulous Voidcore to spend, a dialog popup appears showing your current spec, the recommended spec with its probability stats, and offers to switch your loot specialization with a single click. The reminder only triggers once per dungeon and can be disabled in the addon settings.
+
 Key features:
 
 - Side panel anchored to the Encounter Journal with loot and spec ranking columns.
 - Per-spec probability calculation based on remaining loot pool size.
 - Item selection to compare which spec gives the best odds for specific pieces.
 - Automatic detection of items received via Nebulous Voidcores after encounters.
+- Loot spec reminder popup when entering a Mythic+ dungeon on a suboptimal spec for your selected items.
 - Support for both raid bosses (Normal, Heroic, Mythic) and Mythic+ dungeons.
 - Adjustable key level selector for M+ that updates tooltip item levels to match the Voidcore reward track.
 - Spec and item filtering with cross-column highlighting.
