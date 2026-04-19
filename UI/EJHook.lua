@@ -259,6 +259,23 @@ syncFrame:SetScript("OnEvent", function(self, event)
         ReevaluateAndShow()
     end)
 
+    -- When the user navigates back to the instance list, hide the toggle
+    -- (no encounter/dungeon is selected on that screen).
+    if EncounterJournal.instanceSelect then
+        EncounterJournal.instanceSelect:HookScript("OnShow", function()
+            VCA.Panel.Hide()
+            if VCA.EJHook.toggleBtn then VCA.EJHook.toggleBtn:Hide() end
+        end)
+    end
+
+    -- When the user switches EJ tabs (Dungeons & Raids, Loot, Journeys, etc.),
+    -- hide the panel and button directly. EJ state (instanceID) is still stale
+    -- when this fires, so UpdateToggleVisibility would immediately re-show it.
+    EventRegistry:RegisterCallback("EncounterJournal.TabSet", function()
+        VCA.Panel.Hide()
+        if VCA.EJHook.toggleBtn then VCA.EJHook.toggleBtn:Hide() end
+    end, "VoidcoreAdvisor")
+
     -- ── Toggle button (BonusLoot-Chest) ──────────────────────────────────────
     -- Small chest icon in the top-right of the Encounter Journal that lets
     -- the user show/hide the VoidcoreAdvisor panel.
