@@ -13,6 +13,7 @@ local function GetDefaults()
         schemaVersion = VCA.SCHEMA_VERSION,
         obtained      = {},
         selectedItems = {},   -- { ["TYPE:sourceID:diffID"] = { [itemID]=true, ... } }
+        minimized     = false,
     }
 end
 
@@ -34,6 +35,9 @@ local function InitDB()
         -- Ensure required top-level keys are present (handles sparse old saves).
         _G[VCA.CHAR_DB_NAME].obtained      = _G[VCA.CHAR_DB_NAME].obtained or {}
         _G[VCA.CHAR_DB_NAME].selectedItems  = _G[VCA.CHAR_DB_NAME].selectedItems or {}
+        if _G[VCA.CHAR_DB_NAME].minimized == nil then
+            _G[VCA.CHAR_DB_NAME].minimized = false
+        end
     end
 end
 

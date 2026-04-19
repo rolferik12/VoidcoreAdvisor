@@ -31,6 +31,9 @@ L["DETECTED_OBTAINED"]       = "Auto-detected %s as obtained via Nebulous Voidco
 
 L["CLEAR_SELECTED"]          = "Clear selected"
 
+L["TOGGLE_SHOW"]             = "Click to show the advisor panel."
+L["TOGGLE_HIDE"]             = "Click to hide the advisor panel."
+
 -- ── Slash commands (Init.lua) ─────────────────────────────────────────────────
 
 L["RESET_CONFIRM"]           = "All obtained-item data has been reset."

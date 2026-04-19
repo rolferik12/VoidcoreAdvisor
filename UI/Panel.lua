@@ -83,7 +83,10 @@ titleText:SetText(L["PANEL_TITLE"])
 -- X close button (uses the standard Blizzard close button template)
 local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 closeBtn:SetPoint("TOPRIGHT", -4, -4)
-closeBtn:SetScript("OnClick", function() frame:Hide() end)
+closeBtn:SetScript("OnClick", function()
+    Panel.SetMinimized(true)
+    frame:Hide()
+end)
 
 -- Persist item selections when the panel hides (close, navigate away, logout).
 frame:SetScript("OnHide", function()
@@ -1162,6 +1165,18 @@ end
 
 function Panel.IsShown()
     return frame:IsShown()
+end
+
+function Panel.IsMinimized()
+    local db = _G[VCA.CHAR_DB_NAME]
+    return db and db.minimized or false
+end
+
+function Panel.SetMinimized(val)
+    local db = _G[VCA.CHAR_DB_NAME]
+    if db then
+        db.minimized = val and true or false
+    end
 end
 
 -- ── Live spec-change / loot-data update ───────────────────────────────────────
