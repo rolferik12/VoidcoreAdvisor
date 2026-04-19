@@ -129,13 +129,17 @@ end
 
 -- Active filter state — set during WithEJState so that SelectInstance /
 -- SelectEncounter can re-apply the filter after each EJ navigation call.
--- EJ_SelectInstance / EJ_SelectEncounter can internally reset the difficulty
--- and loot filter, so we must re-apply after every call.
+-- EJ_SelectInstance / EJ_SelectEncounter can internally reset the difficulty,
+-- tier, and loot filter, so we must re-apply after every call.
 local _activeDifficultyID = nil
+local _activeTierID       = nil
 local _activeClassID      = nil
 local _activeSpecID       = nil
 
 local function ReapplyEJFilter()
+    if _activeTierID then
+        EJ_SelectTier(_activeTierID)
+    end
     if _activeDifficultyID then
         EJ_SetDifficulty(_activeDifficultyID)
     end
@@ -160,25 +164,48 @@ end
 local function WithEJState(difficultyID, classID, specID, fn)
     local origDifficulty           = EJ_GetDifficulty()
     local origClassID, origSpecID  = EJ_GetLootFilter()
+    local origTier                 = EJ_GetCurrentTier()
+
+    -- Always select the latest tier before setting filters.  On first load
+    -- the EJ may default to tier 1 which can cause EJ_SetLootFilter to
+    -- silently fail, returning unfiltered (all-class) results.
+    local latestTier = EJ_GetNumTiers()
 
     -- Store active filter so SelectInstance / SelectEncounter can re-apply.
     _activeDifficultyID = difficultyID
+    _activeTierID       = latestTier
     _activeClassID      = classID or 0
     _activeSpecID       = specID or 0
 
     LootPool._reentryGuard = true
+    if latestTier and latestTier > 0 then
+        EJ_SelectTier(latestTier)
+    end
     EJ_SetDifficulty(difficultyID)
     EJ_SetLootFilter(classID or 0, specID or 0)
 
-    local ok, err = xpcall(fn, function(e)
-        return e .. "\n" .. debugstack()
-    end)
+    -- Verify the loot filter actually took effect.  If the EJ hasn't fully
+    -- initialised yet the filter can silently fail, causing all-class items
+    -- to be returned and cached as if they were class-filtered.
+    local actualClass, actualSpec = EJ_GetLootFilter()
+    local filterOK = (actualClass == (classID or 0)) and (actualSpec == (specID or 0))
+
+    local ok, err = true, nil
+    if filterOK then
+        ok, err = xpcall(fn, function(e)
+            return e .. "\n" .. debugstack()
+        end)
+    end
 
     -- Always restore regardless of error.
     _activeDifficultyID = nil
+    _activeTierID       = nil
     _activeClassID      = nil
     _activeSpecID       = nil
 
+    if origTier and origTier > 0 then
+        EJ_SelectTier(origTier)
+    end
     EJ_SetDifficulty(origDifficulty or difficultyID)
     EJ_SetLootFilter(origClassID or 0, origSpecID or 0)
     LootPool._reentryGuard = false
@@ -272,7 +299,26 @@ function LootPool.GetEncounterItemsForSpec(encounterID, difficultyID, classID, s
         end
     end)
 
-    if #itemIDs > 0 then _cache[key] = itemIDs end
+    -- Cross-validate: per-spec items must be a subset of the class-wide pool.
+    -- If the spec filter silently failed, the result will contain items from
+    -- other specs.  Do not cache in that case so the retry picks it up.
+    if #itemIDs > 0 then
+        local classItems = LootPool.GetEncounterItemsForClass(encounterID, difficultyID, classID)
+        if #classItems > 0 then
+            local classSet = {}
+            for _, id in ipairs(classItems) do classSet[id] = true end
+            local isSubset = true
+            for _, id in ipairs(itemIDs) do
+                if not classSet[id] then
+                    isSubset = false
+                    break
+                end
+            end
+            if isSubset then
+                _cache[key] = itemIDs
+            end
+        end
+    end
     return itemIDs
 end
 
@@ -370,7 +416,26 @@ function LootPool.GetInstanceItemsForSpec(instanceID, difficultyID, classID, spe
         itemIDs[#itemIDs + 1] = id
     end
 
-    if #itemIDs > 0 then _cache[key] = itemIDs end
+    -- Cross-validate: per-spec items must be a subset of the class-wide pool.
+    -- If the spec filter silently failed, the result will match the class-wide
+    -- count rather than a proper subset.  Do not cache so the retry fixes it.
+    if #itemIDs > 0 then
+        local classItems = LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
+        if #classItems > 0 then
+            local classSet = {}
+            for _, id in ipairs(classItems) do classSet[id] = true end
+            local isSubset = true
+            for _, id in ipairs(itemIDs) do
+                if not classSet[id] then
+                    isSubset = false
+                    break
+                end
+            end
+            if isSubset then
+                _cache[key] = itemIDs
+            end
+        end
+    end
     return itemIDs
 end
 
@@ -550,8 +615,15 @@ function LootPool.WarmCache()
 
         local instanceID = queue[idx]
 
-        -- Class-wide read (used by PopulateItemColumn)
+        -- Class-wide read (used by PopulateItemColumn).
+        -- This call has a completeness check (name + icon must be loaded) and
+        -- will skip caching if the EJ hasn't fully initialised yet.  Use its
+        -- cache status as a gate: if the enriched data isn't trustworthy, the
+        -- ID-only functions below will also return unreliable (unfiltered)
+        -- results — so skip them entirely and let the retry handle it.
         LootPool.GetInstanceItems(instanceID, difficultyID, classID)
+        local iiKey = CacheKey("ii", instanceID, difficultyID, classID, 0)
+        if not _cache[iiKey] then return end
 
         -- Class-wide itemID set (used by Detection.GetActivePoolSet)
         LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
