@@ -161,6 +161,33 @@ function Reminder.Hide()
     frame:Hide()
 end
 
+function Reminder.ShowExample()
+    local currentSpecID = VCA.SpecInfo.GetEffectiveLootSpecID()
+    if not currentSpecID then return end
+
+    -- Pick a different spec for the recommendation to make the preview realistic.
+    local recSpecID = currentSpecID
+    for i = 1, GetNumSpecializations() do
+        local specID = GetSpecializationInfo(i)
+        if specID and specID ~= currentSpecID then
+            recSpecID = specID
+            break
+        end
+    end
+
+    local _, recSpecName, _, recSpecIcon = GetSpecializationInfoByID(recSpecID)
+
+    Reminder.Show(currentSpecID, {
+        specID       = recSpecID,
+        specName     = recSpecName or "Unknown",
+        specIcon     = recSpecIcon,
+        selectedOdds = 0.42,
+    }, 5)
+
+    -- Prevent the "Yes" button from actually changing the loot spec.
+    pendingSpecID = nil
+end
+
 -- ── Evaluation ────────────────────────────────────────────────────────────────
 
 function Reminder.Evaluate()
@@ -220,6 +247,14 @@ function Reminder.Evaluate()
     -- Already on the best spec — no reminder needed.
     local currentLootSpecID = VCA.SpecInfo.GetEffectiveLootSpecID()
     if currentLootSpecID == bestSpec.specID then return end
+
+    -- Suppress if the current spec is tied with the best spec (same odds).
+    for _, r in ipairs(rankings) do
+        if r.specID == currentLootSpecID then
+            if r.remainingCount <= bestSpec.remainingCount then return end
+            break
+        end
+    end
 
     lastShownInstanceID = ejInstanceID
     Reminder.Show(currentLootSpecID, bestSpec, #selectedList)

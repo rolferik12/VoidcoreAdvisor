@@ -27,7 +27,30 @@ frame:SetScript("OnEvent", function(self, event, loadedAddon)
 
         local setting = Settings.RegisterAddOnSetting(category, variable, variableKey, variableTbl, type(default), name, default)
 
-        Settings.CreateCheckbox(category, setting, L["OPTIONS_REMINDER_TOOLTIP"])
+        local initializer = Settings.CreateCheckbox(category, setting, L["OPTIONS_REMINDER_TOOLTIP"])
+
+        -- Add a "Preview" button on the same row as the checkbox.
+        hooksecurefunc(SettingsCheckboxControlMixin, "Init", function(self, init)
+            if init == initializer then
+                if not self.VCAPreviewButton then
+                    local btn = CreateFrame("Button", nil, self, "UIPanelButtonTemplate")
+                    btn:SetSize(100, 22)
+                    btn:SetPoint("RIGHT", self, "RIGHT", -16, 0)
+                    btn:SetText(L["OPTIONS_PREVIEW_REMINDER"])
+                    btn:SetScript("OnClick", function()
+                        if VoidcoreAdvisorReminder:IsShown() then
+                            VCA.Reminder.Hide()
+                        else
+                            VCA.Reminder.ShowExample()
+                        end
+                    end)
+                    self.VCAPreviewButton = btn
+                end
+                self.VCAPreviewButton:Show()
+            elseif self.VCAPreviewButton then
+                self.VCAPreviewButton:Hide()
+            end
+        end)
     end
 
     -- ── Finish ────────────────────────────────────────────────────────────

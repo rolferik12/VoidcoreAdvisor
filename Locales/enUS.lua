@@ -67,3 +67,4 @@ L["REMINDER_NO"]             = "No Thanks"
 
 L["OPTIONS_REMINDER_ENABLE"]      = "Loot spec reminder"
 L["OPTIONS_REMINDER_TOOLTIP"]     = "Show a popup when entering a current-season mythic dungeon if a different loot specialization would give better odds for your selected items."
+L["OPTIONS_PREVIEW_REMINDER"]     = "Preview"
