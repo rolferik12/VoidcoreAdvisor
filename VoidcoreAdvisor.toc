@@ -4,6 +4,7 @@
 ## Version: 1.1.1
 ## Author:
 ## IconTexture: Interface\AddOns\VoidcoreAdvisor\icon.tga
+## SavedVariables: VoidcoreAdvisorDB
 ## SavedVariablesPerCharacter: VoidcoreAdvisorCharDB
 
 Locales\enUS.lua
@@ -27,4 +28,6 @@ Core\Detection.lua
 Core\Init.lua
 
 UI\Panel.lua
+UI\Reminder.lua
+UI\Options.lua
 UI\EJHook.lua

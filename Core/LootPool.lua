@@ -38,14 +38,16 @@ end
 -- Determines which EJ instanceIDs belong to the current season.
 -- Shared across LootPool (for warmup) and EJHook (for panel gating).
 
-local _seasonDungeonIDs   = {}   -- set: { [instanceID] = true }
-local _seasonDungeonList  = {}   -- array of instanceIDs (for iteration)
-local _seasonRaidIDs      = {}   -- set: { [instanceID] = true }
-local _seasonFilterBuilt  = false
+local _seasonDungeonIDs     = {}   -- set: { [instanceID] = true }
+local _seasonDungeonList    = {}   -- array of instanceIDs (for iteration)
+local _seasonDungeonByName  = {}   -- { [localizedName] = ejInstanceID }
+local _seasonRaidIDs        = {}   -- set: { [instanceID] = true }
+local _seasonFilterBuilt    = false
 
 function LootPool.BuildSeasonFilter()
     wipe(_seasonDungeonIDs)
     wipe(_seasonDungeonList)
+    wipe(_seasonDungeonByName)
     wipe(_seasonRaidIDs)
 
     if not EncounterJournal then
@@ -82,6 +84,7 @@ function LootPool.BuildSeasonFilter()
             if name and dungeonNameSet[name] then
                 _seasonDungeonIDs[instanceID] = true
                 _seasonDungeonList[#_seasonDungeonList + 1] = instanceID
+                _seasonDungeonByName[name] = instanceID
             end
             idx = idx + 1
         end
@@ -100,7 +103,12 @@ function LootPool.BuildSeasonFilter()
         end
     end
 
-    _seasonFilterBuilt = true
+    -- Only mark as built if we actually found dungeon data.  If the
+    -- C_ChallengeMode tables weren't ready yet (common during early login
+    -- or zone transitions), EnsureSeasonFilter() will retry on next access.
+    if #_seasonDungeonList > 0 or next(_seasonRaidIDs) then
+        _seasonFilterBuilt = true
+    end
 end
 
 local function EnsureSeasonFilter()
@@ -112,6 +120,13 @@ end
 function LootPool.IsCurrentSeasonDungeon(instanceID)
     EnsureSeasonFilter()
     return _seasonDungeonIDs[instanceID] == true
+end
+
+-- Returns the EJ instanceID for a season dungeon given its localized name,
+-- or nil if the name does not match any current-season dungeon.
+function LootPool.GetSeasonDungeonByName(name)
+    EnsureSeasonFilter()
+    return _seasonDungeonByName[name]
 end
 
 function LootPool.IsCurrentSeasonRaid(instanceID)

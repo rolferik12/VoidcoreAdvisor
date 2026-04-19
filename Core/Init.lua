@@ -17,6 +17,12 @@ local function GetDefaults()
     }
 end
 
+local function GetGlobalDefaults()
+    return {
+        reminderEnabled = true,
+    }
+end
+
 -- Apply any future schema migrations here.
 local function MigrateDB(db)
     if db.schemaVersion == VCA.SCHEMA_VERSION then return end
@@ -28,6 +34,15 @@ local function MigrateDB(db)
 end
 
 local function InitDB()
+    -- Account-wide settings DB
+    if type(_G[VCA.GLOBAL_DB_NAME]) ~= "table" then
+        _G[VCA.GLOBAL_DB_NAME] = GetGlobalDefaults()
+    else
+        local gdb = _G[VCA.GLOBAL_DB_NAME]
+        if gdb.reminderEnabled == nil then gdb.reminderEnabled = true end
+    end
+
+    -- Per-character DB
     if type(_G[VCA.CHAR_DB_NAME]) ~= "table" then
         _G[VCA.CHAR_DB_NAME] = GetDefaults()
     else

@@ -7,6 +7,7 @@ VCA.ADDON_NAME     = addonName
 VCA.VERSION        = "0.1.0"
 VCA.SCHEMA_VERSION = 1
 VCA.CHAR_DB_NAME   = "VoidcoreAdvisorCharDB"
+VCA.GLOBAL_DB_NAME = "VoidcoreAdvisorDB"
 
 -- ── Content types ─────────────────────────────────────────────────────────────
 -- RAID:        A single raid boss encounter.  Uses encounterID as sourceID.
