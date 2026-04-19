@@ -153,6 +153,9 @@ clearSpecBtn:SetNormalFontObject("GameFontNormal")
 clearSpecBtn:SetText("|cffff4444x|r")
 clearSpecBtn:SetScript("OnClick", function()
     wipe(selectedSpecIDs)
+    wipe(selectedItemIDs)
+    SaveItemSelections()
+    RefreshSpecColumn()
     RefreshItemColumn()
 end)
 clearSpecBtn:SetScript("OnEnter", function(self)
@@ -944,6 +947,14 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
 
     specScrollChild:SetHeight(math.max(rowTop, 1))
 end
+-- ── Unified clear-filter button visibility ───────────────────────────────────────
+local function UpdateClearFilterButton()
+    if next(selectedSpecIDs) or next(selectedItemIDs) then
+        clearSpecBtn:Show()
+    else
+        clearSpecBtn:Hide()
+    end
+end
 -- ── Refresh item column ───────────────────────────────────────────────────────────
 -- Updates the item column when spec selection changes.
 -- Updates the loot header to indicate spec filtering.
@@ -954,11 +965,10 @@ RefreshItemColumn = function()
     if count > 0 then
         local label = count == 1 and L["COL_LOOT_FILTERED"] or string.format(L["COL_LOOT_FILTERED_N"], count)
         lootColHeader:SetText("|cffb048f8" .. label .. "|r")
-        clearSpecBtn:Show()
     else
         lootColHeader:SetText("|cffb048f8" .. L["COL_LOOT"] .. "|r")
-        clearSpecBtn:Hide()
     end
+    UpdateClearFilterButton()
 end
 -- ── Refresh spec column ───────────────────────────────────────────────────────────
 -- Updates the spec column based on current item selection:
@@ -973,13 +983,12 @@ RefreshSpecColumn = function()
         local count = #selectedList
         local label = count == 1 and L["COL_SPEC_FIT"] or (L["COL_SPEC_FIT"] .. "  |cff888888(" .. count .. ")|r")
         specColHeader:SetText("|cffb048f8" .. label .. "|r")
-        clearItemBtn:Show()
         PopulateSpecColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID, selectedList)
     else
         specColHeader:SetText("|cffb048f8" .. L["COL_SPEC_RANKING"] .. "|r")
-        clearItemBtn:Hide()
         PopulateSpecColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
     end
+    UpdateClearFilterButton()
 end
 -- ── Layout pass ───────────────────────────────────────────────────────────────
 -- Recalculates all column/scroll frame positions.  Called on Refresh and on
