@@ -625,6 +625,14 @@ function LootPool.WarmCache()
                     LootPool.WarmCache()
                 end)
             end
+
+            -- If the EJ is open and showing content, poke EJHook so the panel
+            -- can appear now that the season filter / cache may have become ready.
+            -- This handles the case where the player opened EJ during the warm
+            -- window (e.g. first 2 s after login before item data was available).
+            if _seasonFilterBuilt and VCA.EJHook and VCA.EJHook.TryReevaluate then
+                VCA.EJHook.TryReevaluate()
+            end
             return
         end
 

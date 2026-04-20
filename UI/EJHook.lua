@@ -218,7 +218,13 @@ local function ReevaluateAndShow()
         VCA.Panel.Show()
     end
 end
-
+-- Exposed so LootPool.WarmCache can nudge the EJ after the cache / season
+-- filter becomes ready (e.g. data was unavailable at login and warmed later).
+function VCA.EJHook.TryReevaluate()
+    if not EncounterJournal or not EncounterJournal:IsShown() then return end
+    if VCA.Panel.IsMinimized() then return end
+    ReevaluateAndShow()
+end
 -- ── EJ open / close sync ──────────────────────────────────────────────────────
 -- Wait until PLAYER_LOGIN so EncounterJournal is guaranteed to exist before
 -- we try to hook its scripts.  Also kicks off the loot cache warmup.
