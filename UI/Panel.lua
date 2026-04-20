@@ -537,14 +537,13 @@ local function GetOrCreateSpecRow(pool, parent)
     statsLabel:SetJustifyH("RIGHT")
     statsLabel:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
 
-    -- Spec selection click
+    -- Spec selection click (single-select: selecting a new spec deselects the previous one)
     rowFrame:SetScript("OnClick", function(self, btn)
         local specID = self.specID
         if not specID then return end
-        -- Toggle: click selects, click again deselects.
-        if selectedSpecIDs[specID] then
-            selectedSpecIDs[specID] = nil
-        else
+        local wasSelected = selectedSpecIDs[specID]
+        wipe(selectedSpecIDs)
+        if not wasSelected then
             selectedSpecIDs[specID] = true
         end
         -- Update spec highlight visuals
