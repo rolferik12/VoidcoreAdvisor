@@ -248,6 +248,11 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "ENCOUNTER_END" then
         local encounterID, _, difficultyID, _, endStatus = ...
         if endStatus ~= 1 then return end  -- 1 = success / kill
+        -- Delves (and other scenarios) fire ENCOUNTER_END with IDs that are
+        -- not valid Encounter Journal entries.  Only raid instances produce
+        -- valid EJ encounterIDs that can be passed to EJ_SelectEncounter.
+        local _, instanceType = GetInstanceInfo()
+        if instanceType ~= "raid" then return end
         -- Inside an active M+ key, individual boss kills are irrelevant —
         -- detection is handled by CHALLENGE_MODE_COMPLETED instead.
         if C_ChallengeMode and C_ChallengeMode.GetActiveChallengeMapID
