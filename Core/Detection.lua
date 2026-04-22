@@ -372,3 +372,21 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         wipe(pendingChatLoot)
     end
 end)
+
+-- ── DEBUG: Loot.BonusRollResult ───────────────────────────────────────────────
+-- TEMPORARY — remove once confirmed.
+do
+    local _dbgFrame = CreateFrame("Frame")
+    local _dbgLabels = {
+        "typeIdentifier", "itemLink", "quantity", "specID",
+        "sex", "personalLootToast", "currencyID", "isSecondaryResult", "corrupted",
+    }
+    _dbgFrame:RegisterEventCallback("Loot.BonusRollResult", function(...)
+        print("|cffff9900[VCA DEBUG] Loot.BonusRollResult fired:|r")
+        for i = 1, select("#", ...) do
+            local label = _dbgLabels[i] or ("[" .. i .. "]")
+            print("  " .. label .. " = " .. tostring(select(i, ...)))
+        end
+    end)
+end
+-- ── END DEBUG ─────────────────────────────────────────────────────────────────
