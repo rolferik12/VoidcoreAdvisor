@@ -381,8 +381,9 @@ do
         "typeIdentifier", "itemLink", "quantity", "specID",
         "sex", "personalLootToast", "currencyID", "isSecondaryResult", "corrupted",
     }
-    _dbgFrame:RegisterEventCallback("Loot.BonusRollResult", function(...)
-        print("|cffff9900[VCA DEBUG] Loot.BonusRollResult fired:|r")
+    _dbgFrame:RegisterEvent("BONUS_ROLL_RESULT")
+    _dbgFrame:SetScript("OnEvent", function(_, _, ...)
+        print("|cffff9900[VCA DEBUG] BONUS_ROLL_RESULT fired:|r")
         for i = 1, select("#", ...) do
             local label = _dbgLabels[i] or ("[" .. i .. "]")
             print("  " .. label .. " = " .. tostring(select(i, ...)))
