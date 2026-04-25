@@ -4,14 +4,16 @@
 -- How it works:
 --   1. ENCOUNTER_END (success) or CHALLENGE_MODE_COMPLETED opens a short
 --      detection window and captures a bag snapshot.
---   2. CURRENCY_DISPLAY_UPDATE is monitored to confirm a Voidcore was spent.
---   3. For M+, CHAT_MSG_LOOT is parsed and the item link's bonus IDs are
---      checked against the expected upgrade-track bonus ID for the completed
---      key level (looked up from VCA.MythicPlusVaultRewards).
---   4. For raids, the first pool-matching CHAT_MSG_LOOT that arrives after
---      the confirmed currency spend is accepted as the Voidcore item.
---   5. Only ONE item per Voidcore spend is ever detected (one-shot).
---   6. BAG_UPDATE_DELAYED serves as a fallback detector.
+--   2. BONUS_ROLL_RESULT (primary) fires with the exact item link when a
+--      bonus roll resolves; the itemID is extracted and checked against the
+--      active source pool.  The roll result itself confirms Voidcore spend.
+--   3. CURRENCY_DISPLAY_UPDATE is monitored as a secondary confirmation that
+--      a Voidcore was spent (used by the CHAT_MSG_LOOT and bag fallback paths).
+--   4. CHAT_MSG_LOOT (secondary fallback) parses the loot message and checks
+--      bonus IDs for M+, or waits for currency confirmation for raids.
+--   5. BAG_UPDATE_DELAYED (tertiary fallback) diffs the bag snapshot after a
+--      confirmed currency spend.
+--   6. Only ONE item per Voidcore spend is ever detected (one-shot).
 --   7. Zone transitions immediately close the window to avoid false positives.
 --
 -- These are heuristics.  The UI layer provides manual overrides.
@@ -235,6 +237,7 @@ end
 -- ── Event frame ───────────────────────────────────────────────────────────────
 
 local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("BONUS_ROLL_RESULT")
 eventFrame:RegisterEvent("ENCOUNTER_END")
 eventFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 eventFrame:RegisterEvent("BAG_UPDATE_DELAYED")
@@ -332,7 +335,26 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         -- Update snapshot so repeated BAG_UPDATE_DELAYED don't re-fire.
         bagSnapshot = currentSnap
 
-    -- ── Chat loot message (primary detector) ──────────────────────────────
+    -- ── Bonus roll result (primary detector) ──────────────────────────────
+    -- BONUS_ROLL_RESULT fires with the exact item link when the roll resolves.
+    -- typeIdentifier == "item" means an item was granted (not currency/nothing).
+    -- The roll itself is proof of Voidcore spend, so no currency gate needed.
+    elseif event == "BONUS_ROLL_RESULT" then
+        local typeIdentifier, itemLink = ...
+        if typeIdentifier ~= "item" or not itemLink then return end
+        if not IsWindowOpen() or not activeSource then return end
+        if voidcoreItemFound then return end
+        local idStr = itemLink:match("|Hitem:(%d+):")
+        if not idStr then return end
+        local itemID = tonumber(idStr)
+        if not itemID then return end
+        voidcoreSpent = true  -- roll is definitive confirmation of spend
+        local poolSet = GetActivePoolSet()
+        if poolSet[itemID] then
+            OnCandidateItemDetected(itemID)
+        end
+
+    -- ── Chat loot message (secondary fallback) ────────────────────────────
     elseif event == "CHAT_MSG_LOOT" then
         if not IsWindowOpen() or not activeSource then return end
         if voidcoreItemFound then return end
@@ -373,21 +395,4 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     end
 end)
 
--- ── DEBUG: Loot.BonusRollResult ───────────────────────────────────────────────
--- TEMPORARY — remove once confirmed.
-do
-    local _dbgFrame = CreateFrame("Frame")
-    local _dbgLabels = {
-        "typeIdentifier", "itemLink", "quantity", "specID",
-        "sex", "personalLootToast", "currencyID", "isSecondaryResult", "corrupted",
-    }
-    _dbgFrame:RegisterEvent("BONUS_ROLL_RESULT")
-    _dbgFrame:SetScript("OnEvent", function(_, _, ...)
-        print("|cffff9900[VCA DEBUG] BONUS_ROLL_RESULT fired:|r")
-        for i = 1, select("#", ...) do
-            local label = _dbgLabels[i] or ("[" .. i .. "]")
-            print("  " .. label .. " = " .. tostring(select(i, ...)))
-        end
-    end)
-end
--- ── END DEBUG ─────────────────────────────────────────────────────────────────
+
