@@ -32,6 +32,7 @@ local onDetectedCallback = nil   -- function(itemID, source) | nil
 local voidcoreSpent      = false -- true once CURRENCY_DISPLAY_UPDATE confirms spend
 local voidcoreItemFound  = false -- one-shot: true once Voidcore item is identified
 local pendingChatLoot    = {}    -- { {itemID, link, time}, ... } buffered before spend
+local InvalidatePoolCache
 
 -- ── Public: source management ─────────────────────────────────────────────────
 
@@ -50,8 +51,10 @@ end
 function Detection.ClearActiveSource()
     activeSource      = nil
     windowEndTime     = 0
+    bagSnapshot       = {}
     voidcoreSpent     = false
     voidcoreItemFound = false
+    InvalidatePoolCache()
     wipe(pendingChatLoot)
 end
 
@@ -140,7 +143,7 @@ local function GetActivePoolSet()
     return poolSet
 end
 
-local function InvalidatePoolCache()
+InvalidatePoolCache = function()
     cachedPoolSet    = nil
     cachedPoolSource = nil
 end
@@ -392,11 +395,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 
     -- ── Zone transition: close window to prevent cross-zone false positives ─
     elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
-        windowEndTime     = 0
-        bagSnapshot       = {}
-        voidcoreSpent     = false
-        voidcoreItemFound = false
-        wipe(pendingChatLoot)
+        Detection.ClearActiveSource()
     end
 end)
 

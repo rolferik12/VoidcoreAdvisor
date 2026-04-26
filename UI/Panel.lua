@@ -1080,6 +1080,29 @@ function Panel.SetContext(sourceType, sourceID, difficultyID, sourceName, isRaid
     Panel.Refresh()
 end
 
+function Panel.ClearContext()
+    SaveItemSelections()
+
+    wipe(selectedItemIDs)
+    wipe(selectedSpecIDs)
+    HideAllItemRows()
+    HideAllSpecRows()
+
+    Panel.sourceType   = nil
+    Panel.sourceID     = nil
+    Panel.difficultyID = nil
+    Panel.isRaid       = nil
+
+    sourceLabel:SetText("")
+    infoLabel:SetText("")
+    lootSpecLabel:SetText("")
+    lootColHeader:SetText("|cffb048f8" .. L["COL_LOOT"] .. "|r")
+    specColHeader:SetText("|cffb048f8" .. L["COL_SPEC_RANKING"] .. "|r")
+    clearSpecBtn:Hide()
+    clearItemBtn:Hide()
+    keyLevelMenu:Hide()
+end
+
 -- ── Refresh ───────────────────────────────────────────────────────────────────
 
 function Panel.Refresh()
@@ -1197,4 +1220,12 @@ specChangeFrame:RegisterEvent("EJ_LOOT_DATA_RECIEVED")
 specChangeFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
 specChangeFrame:SetScript("OnEvent", function()
     Panel.Refresh()
+end)
+
+local zoneResetFrame = CreateFrame("Frame")
+zoneResetFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+zoneResetFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+zoneResetFrame:SetScript("OnEvent", function()
+    Panel.ClearContext()
+    Panel.Hide()
 end)
