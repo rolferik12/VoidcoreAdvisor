@@ -289,10 +289,15 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         end
 
     -- ── Voidcore currency spent ────────────────────────────────────────────
+    -- NOTE: In 12.0.0 currencyType and quantityChange may be secret values.
+    -- Comparisons against secrets throw Lua errors, so guard with pcall.
     elseif event == "CURRENCY_DISPLAY_UPDATE" then
         if not IsWindowOpen() or not activeSource then return end
         local currencyType, _, quantityChange = ...
-        if currencyType == VCA.VOIDCORE_CURRENCY_ID and quantityChange and quantityChange < 0 then
+        local ok, isMatch = pcall(function()
+            return currencyType == VCA.VOIDCORE_CURRENCY_ID and quantityChange and quantityChange < 0
+        end)
+        if ok and isMatch then
             voidcoreSpent = true
             -- Replay any pool-matching loot buffered in the same frame (edge
             -- case where CHAT_MSG_LOOT fired just before this event).
@@ -336,23 +341,23 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         bagSnapshot = currentSnap
 
     -- ── Bonus roll result (primary detector) ──────────────────────────────
-    -- BONUS_ROLL_RESULT fires with the exact item link when the roll resolves.
-    -- typeIdentifier == "item" means an item was granted (not currency/nothing).
-    -- The roll itself is proof of Voidcore spend, so no currency gate needed.
+    -- BONUS_ROLL_RESULT fires when the roll resolves.  In 12.0.0, Nebulous
+    -- Voidcores are the ONLY bonus-roll mechanic, so typeIdentifier == "item"
+    -- is 100% proof that a Voidcore was spent and the item was received.
+    -- No pool check is needed — the event itself is authoritative.
     elseif event == "BONUS_ROLL_RESULT" then
         local typeIdentifier, itemLink = ...
         if typeIdentifier ~= "item" or not itemLink then return end
-        if not IsWindowOpen() or not activeSource then return end
+        if not activeSource then return end
         if voidcoreItemFound then return end
-        local idStr = itemLink:match("|Hitem:(%d+):")
-        if not idStr then return end
-        local itemID = tonumber(idStr)
-        if not itemID then return end
         voidcoreSpent = true  -- roll is definitive confirmation of spend
-        local poolSet = GetActivePoolSet()
-        if poolSet[itemID] then
+        local idStr = type(itemLink) == "string" and itemLink:match("|Hitem:(%d+):")
+        local itemID = idStr and tonumber(idStr)
+        if itemID then
             OnCandidateItemDetected(itemID)
         end
+        -- If no itemID could be parsed the spend is still confirmed above;
+        -- BAG_UPDATE_DELAYED will identify the item from the bag diff.
 
     -- ── Chat loot message (secondary fallback) ────────────────────────────
     elseif event == "CHAT_MSG_LOOT" then
