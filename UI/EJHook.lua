@@ -22,6 +22,12 @@ VCA.EJHook = {}
 local UpdateToggleVisibility  -- forward declaration; defined after toggle button section
 local pendingReevaluate = false
 
+local function IsEJOnInstanceListView()
+    return EncounterJournal
+        and EncounterJournal.instanceSelect
+        and EncounterJournal.instanceSelect:IsShown()
+end
+
 -- ── Hook: boss encounter selected ────────────────────────────────────────────
 
 hooksecurefunc("EJ_SelectEncounter", function(encounterID)
@@ -147,6 +153,7 @@ end)
 
 local function IsEJShowingRelevantContent()
     if not EncounterJournal or not EncounterJournal:IsShown() then return false end
+    if IsEJOnInstanceListView() then return false end
 
     local instanceID = EncounterJournal.instanceID
     if not instanceID or instanceID == 0 then return false end
@@ -179,6 +186,10 @@ end
 
 local function ReevaluateAndShow()
     if not EncounterJournal or not EncounterJournal:IsShown() then return end
+    if IsEJOnInstanceListView() then
+        VCA.Panel.Hide()
+        return
+    end
     VCA.Panel.AnchorToEJ()
 
     local instanceID = EncounterJournal.instanceID
