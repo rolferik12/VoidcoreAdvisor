@@ -33,6 +33,8 @@ L["CLEAR_SELECTED"]          = "Clear selected"
 
 L["TOGGLE_SHOW"]             = "Click to show the advisor panel."
 L["TOGGLE_HIDE"]             = "Click to hide the advisor panel."
+L["TOGGLE_OVERVIEW_SHOW"]    = "Click to show the dungeon overview."
+L["TOGGLE_OVERVIEW_HIDE"]    = "Click to hide the dungeon overview."
 
 -- ── Slash commands (Init.lua) ─────────────────────────────────────────────────
 
@@ -68,3 +70,17 @@ L["REMINDER_NO"]             = "No Thanks"
 L["OPTIONS_REMINDER_ENABLE"]      = "Loot spec reminder"
 L["OPTIONS_REMINDER_TOOLTIP"]     = "Show a popup when entering a current-season mythic dungeon if a different loot specialization would give better odds for your selected items."
 L["OPTIONS_PREVIEW_REMINDER"]     = "Preview"
+
+-- ── Dungeon Overview panel (DungeonOverview.lua) ─────────────────────────────
+
+L["DUNGEON_OVERVIEW_SUBTITLE"]    = "M+ Dungeons — Loot Chance"
+L["DUNGEON_OVERVIEW_COL_DUNGEON"] = "DUNGEON"
+L["DUNGEON_OVERVIEW_COL_SPEC"]    = "SPEC"
+L["DUNGEON_OVERVIEW_COL_LOOTED"]  = "LOOTED"
+L["DUNGEON_OVERVIEW_COL_CHANCE"]  = "CHANCE"
+L["DUNGEON_OVERVIEW_ALL_DONE"]    = "All dungeon items obtained!"
+L["DUNGEON_OVERVIEW_NO_DATA"]     = "Season dungeon data not yet available."
+
+L["RAID_OVERVIEW_SUBTITLE"]       = "Raid Bosses — Loot Chance"
+L["RAID_OVERVIEW_COL_BOSS"]       = "BOSS"
+L["RAID_OVERVIEW_NO_DATA"]        = "No raid encounter data available."

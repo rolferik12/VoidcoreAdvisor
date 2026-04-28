@@ -1,0 +1,435 @@
+-- VoidcoreAdvisor: RaidOverview
+-- Shown when the Encounter Journal is on a raid instance overview page
+-- (raid selected, no boss selected). Displays bosses in Encounter Journal order.
+
+local _, VCA = ...
+local L = VCA.L
+
+VCA.RaidOverview = {}
+local Overview = VCA.RaidOverview
+
+local PANEL_WIDTH  = 480
+local HEADER_H     = 56
+local COL_HEADER_H = 20
+local PADDING      = 12
+local ROW_H        = 26
+local ICON_SIZE    = 20
+
+local COL_BOSS_X      = 0
+local COL_BOSS_W      = 200
+local COL_SPEC_ICON_X = 204
+local COL_SPEC_NAME_X = 228
+local COL_SPEC_NAME_W = 100
+local COL_LOOTED_R    = -(50 + 4)
+local COL_LOOTED_W    = 53
+local COL_PCT_R       = 0
+local COL_PCT_W       = 50
+
+local frame = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+Overview.frame = frame
+
+frame:SetWidth(PANEL_WIDTH)
+frame:SetFrameStrata("HIGH")
+frame:SetClampedToScreen(true)
+frame:Hide()
+
+frame:SetBackdrop({
+    bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+    tile     = true,
+    tileSize = 32,
+    edgeSize = 32,
+    insets   = { left = 11, right = 12, top = 12, bottom = 11 },
+})
+frame:SetBackdropColor(0.05, 0.02, 0.12, 0.95)
+frame:SetBackdropBorderColor(0.58, 0.0, 0.82, 1)
+
+function Overview.AnchorToEJ()
+    local ej = EncounterJournal
+    if not ej then return end
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT",    ej, "TOPRIGHT",    52, 0)
+    frame:SetPoint("BOTTOMLEFT", ej, "BOTTOMRIGHT", 52, 0)
+end
+
+local titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+titleText:SetPoint("TOPLEFT", 18, -16)
+titleText:SetText(L["PANEL_TITLE"])
+
+local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+closeBtn:SetPoint("TOPRIGHT", -4, -4)
+closeBtn:SetScript("OnClick", function() frame:Hide() end)
+
+local subtitleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+subtitleText:SetPoint("TOPLEFT", 18, -40)
+subtitleText:SetText("|cff888888" .. L["RAID_OVERVIEW_SUBTITLE"] .. "|r")
+
+local loadingText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+loadingText:SetPoint("TOPRIGHT", -26, -40)
+loadingText:SetJustifyH("RIGHT")
+loadingText:Hide()
+
+local loadingAnimFrame = CreateFrame("Frame")
+local loadingBaseText = ""
+local loadingDots = 0
+local loadingElapsed = 0
+
+local function UpdateLoadingText()
+    local dots = string.rep(".", loadingDots)
+    loadingText:SetText("|cffffff00" .. loadingBaseText .. dots .. "|r")
+end
+
+local function SetLoadingState(isLoading, pausedByEJ)
+    if not isLoading then
+        loadingAnimFrame:SetScript("OnUpdate", nil)
+        loadingText:Hide()
+        loadingBaseText = ""
+        loadingDots = 0
+        loadingElapsed = 0
+        return
+    end
+
+    if pausedByEJ then
+        loadingBaseText = L["RAID_OVERVIEW_LOADING_PAUSED"] or "Warming cache (paused while EJ is open)"
+    else
+        loadingBaseText = L["RAID_OVERVIEW_LOADING"] or "Warming cache"
+    end
+
+    if not loadingText:IsShown() then
+        loadingText:Show()
+    end
+    UpdateLoadingText()
+
+    loadingAnimFrame:SetScript("OnUpdate", function(_, elapsed)
+        loadingElapsed = loadingElapsed + elapsed
+        if loadingElapsed < 0.45 then return end
+        loadingElapsed = 0
+        loadingDots = (loadingDots + 1) % 4
+        UpdateLoadingText()
+    end)
+end
+
+local divider = frame:CreateTexture(nil, "ARTWORK")
+divider:SetColorTexture(0.58, 0.0, 0.82, 0.4)
+divider:SetPoint("TOPLEFT",  frame, "TOPLEFT",  16, -HEADER_H)
+divider:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -HEADER_H)
+divider:SetHeight(1)
+
+local contentArea = CreateFrame("Frame", nil, frame)
+contentArea:SetPoint("TOPLEFT",     frame, "TOPLEFT",     0, -(HEADER_H + 1))
+contentArea:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 11)
+
+local hdrBoss = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+hdrBoss:SetPoint("TOPLEFT", contentArea, "TOPLEFT", PADDING + COL_BOSS_X, -6)
+hdrBoss:SetText("|cffb048f8" .. L["RAID_OVERVIEW_COL_BOSS"] .. "|r")
+
+local hdrSpec = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+hdrSpec:SetPoint("TOPLEFT", contentArea, "TOPLEFT", PADDING + COL_SPEC_NAME_X, -6)
+hdrSpec:SetText("|cffb048f8" .. L["DUNGEON_OVERVIEW_COL_SPEC"] .. "|r")
+
+local hdrLooted = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+hdrLooted:SetJustifyH("RIGHT")
+hdrLooted:SetWidth(COL_LOOTED_W)
+hdrLooted:SetPoint("TOPRIGHT", contentArea, "TOPRIGHT", -PADDING + COL_LOOTED_R, -6)
+hdrLooted:SetText("|cffb048f8" .. L["DUNGEON_OVERVIEW_COL_LOOTED"] .. "|r")
+
+local hdrChance = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+hdrChance:SetJustifyH("RIGHT")
+hdrChance:SetWidth(COL_PCT_W)
+hdrChance:SetPoint("TOPRIGHT", contentArea, "TOPRIGHT", -PADDING + COL_PCT_R, -6)
+hdrChance:SetText("|cffb048f8" .. L["DUNGEON_OVERVIEW_COL_CHANCE"] .. "|r")
+
+local colHeaderRule = contentArea:CreateTexture(nil, "ARTWORK")
+colHeaderRule:SetColorTexture(0.4, 0.4, 0.4, 0.3)
+colHeaderRule:SetPoint("TOPLEFT",  contentArea, "TOPLEFT",  PADDING, -(COL_HEADER_H + 2))
+colHeaderRule:SetPoint("TOPRIGHT", contentArea, "TOPRIGHT", -PADDING, -(COL_HEADER_H + 2))
+colHeaderRule:SetHeight(1)
+
+local rows = {}
+
+local function GetOrCreateRow(parent)
+    for _, row in ipairs(rows) do
+        if not row.frame:IsShown() then
+            return row
+        end
+    end
+
+    local rowFrame = CreateFrame("Frame", nil, parent)
+    rowFrame:SetHeight(ROW_H)
+
+    local bossLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    bossLabel:SetJustifyH("LEFT")
+    bossLabel:SetPoint("LEFT", rowFrame, "LEFT", COL_BOSS_X, 0)
+    bossLabel:SetWidth(COL_BOSS_W)
+    bossLabel:SetWordWrap(false)
+
+    local specIcon = rowFrame:CreateTexture(nil, "ARTWORK")
+    specIcon:SetSize(ICON_SIZE, ICON_SIZE)
+    specIcon:SetPoint("LEFT", rowFrame, "LEFT", COL_SPEC_ICON_X, 0)
+    specIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+    local specLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    specLabel:SetJustifyH("LEFT")
+    specLabel:SetPoint("LEFT", rowFrame, "LEFT", COL_SPEC_NAME_X, 0)
+    specLabel:SetWidth(COL_SPEC_NAME_W)
+    specLabel:SetWordWrap(false)
+
+    local lootedLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    lootedLabel:SetJustifyH("RIGHT")
+    lootedLabel:SetWidth(COL_LOOTED_W)
+    lootedLabel:SetPoint("RIGHT", rowFrame, "RIGHT", COL_LOOTED_R, 0)
+
+    local pctLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    pctLabel:SetJustifyH("RIGHT")
+    pctLabel:SetWidth(COL_PCT_W)
+    pctLabel:SetPoint("RIGHT", rowFrame, "RIGHT", COL_PCT_R, 0)
+
+    local hoverHighlight = rowFrame:CreateTexture(nil, "HIGHLIGHT")
+    hoverHighlight:SetAllPoints(rowFrame)
+    hoverHighlight:SetColorTexture(0.58, 0.0, 0.82, 0.12)
+
+    local row = {
+        frame = rowFrame,
+        bossLabel = bossLabel,
+        specIcon = specIcon,
+        specLabel = specLabel,
+        lootedLabel = lootedLabel,
+        pctLabel = pctLabel,
+    }
+    rows[#rows + 1] = row
+    return row
+end
+
+local function HideAllRows()
+    for _, row in ipairs(rows) do row.frame:Hide() end
+end
+
+local scrollChild = CreateFrame("Frame", nil, contentArea)
+local scrollFrame = CreateFrame("ScrollFrame", nil, contentArea)
+scrollFrame:SetScrollChild(scrollChild)
+
+scrollFrame:EnableMouseWheel(true)
+scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+    local current   = self:GetVerticalScroll()
+    local maxScroll = math.max(0, scrollChild:GetHeight() - self:GetHeight())
+    self:SetVerticalScroll(math.max(0, math.min(maxScroll, current - delta * ROW_H * 3)))
+end)
+
+local function RankCurrentPlayerSpecsForItemsCached(itemIDs, sourceType, sourceID, difficultyID)
+    local specs = VCA.SpecInfo.GetPlayerSpecs()
+    local selectedSet = {}
+    for _, id in ipairs(itemIDs) do selectedSet[id] = true end
+
+    local results = {}
+    for _, spec in ipairs(specs) do
+        local allSpecItemIDs = VCA.LootPool.GetCachedItemsForSpec(
+            sourceType, sourceID, difficultyID, spec.classID, spec.specID)
+        if not allSpecItemIDs then
+            return nil
+        end
+
+        local matchCount = 0
+        local remainingCount = 0
+        local matchRemainingCount = 0
+        for _, itemID in ipairs(allSpecItemIDs) do
+            if selectedSet[itemID] then
+                matchCount = matchCount + 1
+            end
+            if not VCA.Data.IsObtained(sourceType, sourceID, difficultyID, itemID) then
+                remainingCount = remainingCount + 1
+                if selectedSet[itemID] then
+                    matchRemainingCount = matchRemainingCount + 1
+                end
+            end
+        end
+
+        local baseCount = #allSpecItemIDs
+        local selectedCount = #itemIDs
+        results[#results + 1] = {
+            specID              = spec.specID,
+            specName            = spec.name,
+            specIcon            = spec.icon,
+            specRole            = spec.role,
+            specIndex           = spec.specIndex,
+            baseCount           = baseCount,
+            remainingCount      = remainingCount,
+            matchCount          = matchCount,
+            matchRemainingCount = matchRemainingCount,
+            selectedOdds        = remainingCount > 0 and (matchRemainingCount / remainingCount) or 0,
+            allObtained         = baseCount > 0 and remainingCount == 0,
+            noItems             = matchCount < selectedCount,
+        }
+    end
+
+    table.sort(results, function(a, b)
+        if a.noItems ~= b.noItems then return not a.noItems end
+        if a.allObtained ~= b.allObtained then return not a.allObtained end
+        if a.remainingCount ~= b.remainingCount then return a.remainingCount < b.remainingCount end
+        if a.baseCount ~= b.baseCount then return a.baseCount < b.baseCount end
+        return a.specID < b.specID
+    end)
+
+    for i, r in ipairs(results) do r.rank = i end
+    return results
+end
+
+local function Populate()
+    HideAllRows()
+
+    local contentW = frame:GetWidth() - PADDING * 2
+    scrollFrame:ClearAllPoints()
+    scrollFrame:SetPoint("TOPLEFT",     contentArea, "TOPLEFT",     PADDING, -(COL_HEADER_H + 8))
+    scrollFrame:SetPoint("BOTTOMRIGHT", contentArea, "BOTTOMRIGHT", -PADDING, 4)
+    scrollChild:SetWidth(contentW)
+
+    local instanceID = Overview.instanceID
+    local difficultyID = Overview.difficultyID or (EJ_GetDifficulty() or VCA.Difficulty.RAID_NORMAL)
+    if not instanceID or instanceID == 0 then
+        SetLoadingState(false, false)
+        scrollChild:SetHeight(1)
+        return
+    end
+
+    local entries = {}
+    local selectedBossCount = 0
+    local cacheReadyBossCount = 0
+    local idx = 1
+    while true do
+        local bossName, _, encounterID = EJ_GetEncounterInfoByIndex(idx)
+        if not bossName then break end
+        local selectedSet = VCA.Data.GetSelectedItems(VCA.ContentType.RAID, encounterID, difficultyID)
+        local selectedList = {}
+        for itemID in pairs(selectedSet) do selectedList[#selectedList + 1] = itemID end
+
+        local hasSelected = #selectedList > 0
+        if hasSelected then
+            selectedBossCount = selectedBossCount + 1
+            local rankings = RankCurrentPlayerSpecsForItemsCached(selectedList, VCA.ContentType.RAID, encounterID, difficultyID)
+            local best = rankings and rankings[1] or nil
+            local selectedOdds = best and best.selectedOdds or nil
+            local baseCount = best and best.baseCount or 0
+            local remainingCount = best and best.remainingCount or 0
+            if best then
+                cacheReadyBossCount = cacheReadyBossCount + 1
+            end
+
+            entries[#entries + 1] = {
+                order = idx,
+                name = bossName,
+                hasSelected = true,
+                hasRanking = best ~= nil,
+                specName = best and best.specName or nil,
+                specIcon = best and best.specIcon or nil,
+                baseCount = baseCount,
+                remainingCount = remainingCount,
+                selectedOdds = selectedOdds,
+            }
+        else
+            entries[#entries + 1] = {
+                order = idx,
+                name = bossName,
+                hasSelected = false,
+                hasRanking = false,
+                specName = nil,
+                specIcon = nil,
+                baseCount = 0,
+                remainingCount = 0,
+                selectedOdds = nil,
+            }
+        end
+
+        idx = idx + 1
+    end
+
+    local waitingForCache = selectedBossCount > 0 and cacheReadyBossCount < selectedBossCount
+    local pausedByEJ = waitingForCache and VCA.LootPool.IsWarmPausedByEJ and VCA.LootPool.IsWarmPausedByEJ() or false
+    SetLoadingState(waitingForCache, pausedByEJ)
+
+    if #entries == 0 then
+        local row = GetOrCreateRow(scrollChild)
+        row.frame:SetWidth(contentW)
+        row.frame:ClearAllPoints()
+        row.frame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, 0)
+        row.frame:Show()
+        row.bossLabel:SetText("|cff888888" .. L["RAID_OVERVIEW_NO_DATA"] .. "|r")
+        row.specIcon:Hide()
+        row.specLabel:SetText("")
+        row.lootedLabel:SetText("")
+        row.pctLabel:SetText("")
+        scrollChild:SetHeight(ROW_H)
+        return
+    end
+
+    table.sort(entries, function(a, b)
+        return a.order < b.order
+    end)
+
+    local rowTop = 0
+    for _, entry in ipairs(entries) do
+        local row = GetOrCreateRow(scrollChild)
+        row.frame:SetWidth(contentW)
+        row.frame:ClearAllPoints()
+        row.frame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -rowTop)
+        row.frame:Show()
+
+        row.bossLabel:SetText("|cffdddddd" .. entry.name .. "|r")
+
+        if entry.hasSelected and entry.hasRanking then
+            if entry.specIcon then
+                row.specIcon:SetTexture(entry.specIcon)
+                row.specIcon:Show()
+            else
+                row.specIcon:Hide()
+            end
+            row.specLabel:SetText("|cffaaaaaa" .. (entry.specName or "?") .. "|r")
+
+            if entry.baseCount > 0 then
+                local obtained = entry.baseCount - entry.remainingCount
+                row.lootedLabel:SetText("|cff888888" .. obtained .. "/" .. entry.baseCount .. "|r")
+
+                local pct = math.floor((entry.selectedOdds or 0) * 100 + 0.5)
+                local pctColor = pct >= 20 and "|cffffff00" or "|cffdddddd"
+                row.pctLabel:SetText(pctColor .. pct .. "%|r")
+            else
+                row.lootedLabel:SetText("|cff888888-|r")
+                row.pctLabel:SetText("|cff888888-|r")
+            end
+        else
+            row.specIcon:Hide()
+            row.specLabel:SetText("|cff888888-|r")
+            row.lootedLabel:SetText("|cff888888-|r")
+            row.pctLabel:SetText("|cff888888-|r")
+        end
+
+        rowTop = rowTop + ROW_H + 2
+    end
+
+    scrollChild:SetHeight(math.max(rowTop, 1))
+    scrollFrame:SetVerticalScroll(0)
+end
+
+function Overview.Show(instanceID, difficultyID)
+    Overview.instanceID = instanceID
+    Overview.difficultyID = difficultyID
+    Overview.AnchorToEJ()
+    frame:Show()
+    Populate()
+end
+
+function Overview.Hide()
+    SetLoadingState(false, false)
+    frame:Hide()
+end
+
+function Overview.IsShown()
+    return frame:IsShown()
+end
+
+local refreshFrame = CreateFrame("Frame")
+refreshFrame:RegisterEvent("PLAYER_LOOT_SPEC_UPDATED")
+refreshFrame:RegisterEvent("EJ_LOOT_DATA_RECIEVED")
+refreshFrame:SetScript("OnEvent", function()
+    if frame:IsShown() then
+        Populate()
+    end
+end)

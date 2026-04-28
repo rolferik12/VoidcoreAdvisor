@@ -14,6 +14,7 @@ local function GetDefaults()
         obtained      = {},
         selectedItems = {},   -- { ["TYPE:sourceID:diffID"] = { [itemID]=true, ... } }
         minimized     = false,
+        overviewMinimized = false,
     }
 end
 
@@ -52,6 +53,9 @@ local function InitDB()
         _G[VCA.CHAR_DB_NAME].selectedItems  = _G[VCA.CHAR_DB_NAME].selectedItems or {}
         if _G[VCA.CHAR_DB_NAME].minimized == nil then
             _G[VCA.CHAR_DB_NAME].minimized = false
+        end
+        if _G[VCA.CHAR_DB_NAME].overviewMinimized == nil then
+            _G[VCA.CHAR_DB_NAME].overviewMinimized = false
         end
     end
 end

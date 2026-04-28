@@ -75,7 +75,35 @@ function Data.GetSelectedItems(sourceType, sourceID, difficultyID)
     local db = _G[VCA.CHAR_DB_NAME]
     if not db or not db.selectedItems then return {} end
     local key = SelectionKey(sourceType, sourceID, difficultyID)
-    return db.selectedItems[key] or {}
+    local raw = db.selectedItems[key]
+    if type(raw) ~= "table" then
+        return {}
+    end
+
+    -- Normalize to the canonical set format: { [itemID] = true }.
+    -- This also migrates legacy array/string-keyed data and drops invalid entries.
+    local normalized = {}
+    for k, v in pairs(raw) do
+        if v == true then
+            local id = tonumber(k)
+            if id and id > 0 then
+                normalized[id] = true
+            end
+        else
+            local id = tonumber(v)
+            if id and id > 0 then
+                normalized[id] = true
+            end
+        end
+    end
+
+    if not next(normalized) then
+        db.selectedItems[key] = nil
+        return {}
+    end
+
+    db.selectedItems[key] = normalized
+    return normalized
 end
 
 -- Saves a set { [itemID]=true } (or nil/empty to clear) for the given source.
