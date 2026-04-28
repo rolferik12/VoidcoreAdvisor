@@ -70,6 +70,9 @@ initFrame:SetScript("OnEvent", function(self, event, ...)
 
     elseif event == "PLAYER_LOGIN" then
         -- Game data (class, specs, etc.) is now available.
+        VCA.LootPool.BuildSeasonFilter()
+        VCA.LootPool.WarmCache()
+
         -- Notify any future UI layer that the backend is ready.
         if VCA.OnBackendReady then
             VCA.OnBackendReady()

@@ -161,6 +161,19 @@ local function ReapplyEJFilter()
     EJ_SetLootFilter(_activeClassID or 0, _activeSpecID or 0)
 end
 
+local function RestorePlayerLootFilter()
+    local classID = VCA.SpecInfo and VCA.SpecInfo.GetPlayerClassID and VCA.SpecInfo.GetPlayerClassID() or 0
+    local specID = VCA.SpecInfo and VCA.SpecInfo.GetEffectiveLootSpecID and VCA.SpecInfo.GetEffectiveLootSpecID() or 0
+    local latestTier = EJ_GetNumTiers()
+
+    LootPool._reentryGuard = true
+    if latestTier and latestTier > 0 then
+        EJ_SelectTier(latestTier)
+    end
+    EJ_SetLootFilter(classID or 0, specID or 0)
+    LootPool._reentryGuard = false
+end
+
 -- Wrappers that re-apply the filter after each EJ navigation call.
 local function SelectInstance(instanceID)
     EJ_SelectInstance(instanceID)
@@ -556,10 +569,21 @@ function LootPool.GetItemsForClass(sourceType, sourceID, difficultyID, classID)
     end
 end
 
+function LootPool.GetCachedItemsForClass(sourceType, sourceID, difficultyID, classID)
+    local key
+    if sourceType == VCA.ContentType.RAID then
+        key = CacheKey("eic", sourceID, difficultyID, classID)
+    else
+        key = CacheKey("iic", sourceID, difficultyID, classID)
+    end
+    return _cache[key]
+end
+
 -- ── Cache warmup ──────────────────────────────────────────────────────────────
 -- Pre-scans all current-season dungeons × all player specs at login so that
--- Panel.Show() is instant.  Retries up to _maxWarmRetries if item data is
--- missing (client hasn't cached it yet from the server).
+-- Panel.Show() is instant, and also warms current-season raid encounter item
+-- ID pools for detection. Retries up to _maxWarmRetries if season or item
+-- data is missing (client / EJ data not ready yet).
 
 local _warmRetries    = 0
 local _maxWarmRetries = 5
@@ -584,12 +608,65 @@ function LootPool.WarmCache()
     local specs        = VCA.SpecInfo.GetPlayerSpecs()
     local dungeonIDs   = LootPool.GetSeasonDungeonInstanceIDs()
     local difficultyID = VCA.MythicPlusEJDifficulty
+    local raidQueue    = {}
 
-    -- Build a queue of work items — one per dungeon — so we can spread the
-    -- EJ reads across frames instead of doing them all synchronously.
+    WithEJState(VCA.Difficulty.RAID_NORMAL, 0, 0, function()
+        for instanceID in pairs(_seasonRaidIDs) do
+            SelectInstance(instanceID)
+            local idx = 1
+            while true do
+                local name, _, encounterID = EJ_GetEncounterInfoByIndex(idx)
+                if not name then break end
+                for raidDifficultyID in pairs(VCA.EligibleRaidDifficulties) do
+                    raidQueue[#raidQueue + 1] = {
+                        kind = "raid",
+                        encounterID = encounterID,
+                        difficultyID = raidDifficultyID,
+                    }
+                end
+                idx = idx + 1
+            end
+        end
+    end)
+
+    -- Build a queue of work items so we can spread the EJ reads across frames
+    -- instead of doing them all synchronously.
     local queue = {}
     for _, instanceID in ipairs(dungeonIDs) do
-        queue[#queue + 1] = instanceID
+        queue[#queue + 1] = {
+            kind = "dungeon",
+            instanceID = instanceID,
+        }
+    end
+    for _, entry in ipairs(raidQueue) do
+        queue[#queue + 1] = entry
+    end
+
+    local function IsWarmEntryCached(entry)
+        if entry.kind == "raid" then
+            local key = CacheKey("eic", entry.encounterID, entry.difficultyID, classID)
+            return _cache[key] ~= nil
+        end
+
+        local instanceID = entry.instanceID
+        local iiKey = CacheKey("ii", instanceID, difficultyID, classID, 0)
+        if not _cache[iiKey] then
+            return false
+        end
+
+        local iicKey = CacheKey("iic", instanceID, difficultyID, classID)
+        if not _cache[iicKey] then
+            return false
+        end
+
+        for _, spec in ipairs(specs) do
+            local specKey = CacheKey("iis", instanceID, difficultyID, spec.classID, spec.specID)
+            if not _cache[specKey] then
+                return false
+            end
+        end
+
+        return true
     end
 
     local idx = 0
@@ -600,23 +677,12 @@ function LootPool.WarmCache()
             _warmTicker = nil
 
             -- Check if every dungeon + spec combination was cached.
-            local allCached = true
-            for _, instanceID in ipairs(dungeonIDs) do
-                -- Class-wide display cache
-                local key = CacheKey("ii", instanceID, difficultyID, classID, 0)
-                if not _cache[key] then
+            local allCached = _seasonFilterBuilt == true
+            for _, entry in ipairs(queue) do
+                if not IsWarmEntryCached(entry) then
                     allCached = false
                     break
                 end
-                -- Per-spec caches (the ones that drive the 24/24 counts)
-                for _, spec in ipairs(specs) do
-                    local skey = CacheKey("iis", instanceID, difficultyID, spec.classID, spec.specID)
-                    if not _cache[skey] then
-                        allCached = false
-                        break
-                    end
-                end
-                if not allCached then break end
             end
 
             if not allCached and _warmRetries < _maxWarmRetries then
@@ -624,7 +690,11 @@ function LootPool.WarmCache()
                 C_Timer.After(_warmRetries * 2, function()
                     LootPool.WarmCache()
                 end)
+            elseif allCached then
+                _warmRetries = 0
             end
+
+            RestorePlayerLootFilter()
 
             -- If the EJ is open and showing content, poke EJHook so the panel
             -- can appear now that the season filter / cache may have become ready.
@@ -636,7 +706,14 @@ function LootPool.WarmCache()
             return
         end
 
-        local instanceID = queue[idx]
+        local entry = queue[idx]
+
+        if entry.kind == "raid" then
+            LootPool.GetEncounterItemsForClass(entry.encounterID, entry.difficultyID, classID)
+            return
+        end
+
+        local instanceID = entry.instanceID
 
         -- Class-wide read (used by PopulateItemColumn).
         -- This call has a completeness check (name + icon must be loaded) and

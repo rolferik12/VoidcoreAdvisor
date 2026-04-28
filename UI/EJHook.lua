@@ -20,6 +20,7 @@ local _, VCA = ...
 VCA.EJHook = {}
 
 local UpdateToggleVisibility  -- forward declaration; defined after toggle button section
+local pendingReevaluate = false
 
 -- ── Hook: boss encounter selected ────────────────────────────────────────────
 
@@ -218,19 +219,30 @@ local function ReevaluateAndShow()
         VCA.Panel.Show()
     end
 end
+
+local function QueueReevaluateAndShow()
+    if pendingReevaluate then return end
+    pendingReevaluate = true
+    C_Timer.After(0, function()
+        pendingReevaluate = false
+        if VCA.Panel.IsMinimized() then return end
+        ReevaluateAndShow()
+        UpdateToggleVisibility()
+    end)
+end
 -- Exposed so LootPool.WarmCache can nudge the EJ after the cache / season
 -- filter becomes ready (e.g. data was unavailable at login and warmed later).
 function VCA.EJHook.TryReevaluate()
     if not EncounterJournal or not EncounterJournal:IsShown() then return end
     if VCA.Panel.IsMinimized() then return end
-    ReevaluateAndShow()
+    QueueReevaluateAndShow()
 end
 -- ── EJ open / close sync ──────────────────────────────────────────────────────
--- Wait until PLAYER_LOGIN so EncounterJournal is guaranteed to exist before
--- we try to hook its scripts.  Also kicks off the loot cache warmup.
+-- Wait until PLAYER_LOGIN so EncounterJournal can be loaded before we try to
+-- hook its scripts.
 
 local syncFrame = CreateFrame("Frame")
-syncFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+syncFrame:RegisterEvent("PLAYER_LOGIN")
 syncFrame:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE")
 syncFrame:SetScript("OnEvent", function(self, event)
     if event == "CHALLENGE_MODE_MAPS_UPDATE" then
@@ -241,12 +253,12 @@ syncFrame:SetScript("OnEvent", function(self, event)
         return
     end
 
-    -- PLAYER_ENTERING_WORLD
-    self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    -- PLAYER_LOGIN
+    self:UnregisterEvent("PLAYER_LOGIN")
 
-    -- Build season filter and pre-cache all dungeon loot pools.
-    VCA.LootPool.BuildSeasonFilter()
-    VCA.LootPool.WarmCache()
+    if not EncounterJournal and EncounterJournal_LoadUI then
+        EncounterJournal_LoadUI()
+    end
 
     if not EncounterJournal then return end
 
@@ -262,8 +274,17 @@ syncFrame:SetScript("OnEvent", function(self, event)
         VCA.Panel.AnchorToEJ()
         UpdateToggleVisibility()
         if VCA.Panel.IsMinimized() then return end
-        ReevaluateAndShow()
+        QueueReevaluateAndShow()
     end)
+
+    -- Initial open / navigation can update instance state one frame later.
+    -- Hook this to keep the panel in sync on the first EJ open in instances.
+    if type(EncounterJournal_DisplayInstance) == "function" then
+        hooksecurefunc("EncounterJournal_DisplayInstance", function()
+            if not EncounterJournal or not EncounterJournal:IsShown() then return end
+            QueueReevaluateAndShow()
+        end)
+    end
 
     -- When the user navigates back to the instance list, hide the toggle
     -- (no encounter/dungeon is selected on that screen).

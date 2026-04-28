@@ -11,6 +11,30 @@ local Detection = VCA.Detection
 local activeSource = nil      -- { sourceType, sourceID, difficultyID, keyLevel } | nil
 local onDetectedCallback = nil -- function(itemID, source) | nil
 
+local function FindDetectedItemInCache(itemID)
+    if not activeSource or not itemID then return nil end
+
+    local classID = VCA.SpecInfo and VCA.SpecInfo.GetPlayerClassID and VCA.SpecInfo.GetPlayerClassID()
+    if not classID then return nil end
+
+    local cachedItemIDs = VCA.LootPool and VCA.LootPool.GetCachedItemsForClass and
+        VCA.LootPool.GetCachedItemsForClass(
+            activeSource.sourceType,
+            activeSource.sourceID,
+            activeSource.difficultyID,
+            classID)
+
+    if not cachedItemIDs then return nil end
+
+    for _, cachedItemID in ipairs(cachedItemIDs) do
+        if cachedItemID == itemID then
+            return cachedItemID
+        end
+    end
+
+    return nil
+end
+
 -- -- Public: source management ------------------------------------------------
 
 -- Explicitly sets the active source. The UI should call this whenever context
@@ -69,7 +93,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 
     local idStr = itemLink:match("|Hitem:(%d+):")
     local itemID = idStr and tonumber(idStr)
-    if itemID then
-        OnCandidateItemDetected(itemID)
+    local matchedItemID = itemID and FindDetectedItemInCache(itemID)
+    if matchedItemID then
+        OnCandidateItemDetected(matchedItemID)
     end
 end)
