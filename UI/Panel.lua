@@ -1065,6 +1065,8 @@ function Panel.SetContext(sourceType, sourceID, difficultyID, sourceName, isRaid
     Panel.sourceID     = sourceID
     Panel.difficultyID = difficultyID
 
+    VCA.Detection.SetActiveSource(sourceType, sourceID, difficultyID)
+
     sourceLabel:SetText(sourceName or "")
     Panel.isRaid = isRaid
 
@@ -1082,6 +1084,8 @@ end
 
 function Panel.ClearContext()
     SaveItemSelections()
+
+    VCA.Detection.ClearActiveSource()
 
     wipe(selectedItemIDs)
     wipe(selectedSpecIDs)
