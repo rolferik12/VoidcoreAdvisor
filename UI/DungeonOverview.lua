@@ -30,10 +30,10 @@ local COL_SPEC_ICON_X = 204          -- COL_DUNGEON_W + 4px gap
 local COL_SPEC_NAME_X = 228          -- COL_SPEC_ICON_X + ICON_SIZE + 4
 local COL_SPEC_NAME_W = 100
 -- Right-side columns (offsets from row RIGHT edge):
-local COL_LOOTED_R = -(50 + 4)       -- pct width + gap; RIGHT edge of obtained label
+local COL_LOOTED_R = -(64 + 4)       -- pct width + gap; RIGHT edge of obtained label
 local COL_LOOTED_W = 53
 local COL_PCT_R    = 0               -- RIGHT edge of pct label flush with row right
-local COL_PCT_W    = 50
+local COL_PCT_W    = 64
 
 -- ── Main frame ────────────────────────────────────────────────────────────────
 
@@ -113,12 +113,14 @@ hdrSpec:SetText("|cffb048f8" .. L["DUNGEON_OVERVIEW_COL_SPEC"] .. "|r")
 local hdrLooted = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 hdrLooted:SetJustifyH("RIGHT")
 hdrLooted:SetWidth(COL_LOOTED_W)
+hdrLooted:SetWordWrap(false)
 hdrLooted:SetPoint("TOPRIGHT", contentArea, "TOPRIGHT", -PADDING + COL_LOOTED_R, -6)
 hdrLooted:SetText("|cffb048f8" .. L["DUNGEON_OVERVIEW_COL_LOOTED"] .. "|r")
 
 local hdrChance = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 hdrChance:SetJustifyH("RIGHT")
 hdrChance:SetWidth(COL_PCT_W)
+hdrChance:SetWordWrap(false)
 hdrChance:SetPoint("TOPRIGHT", contentArea, "TOPRIGHT", -PADDING + COL_PCT_R, -6)
 hdrChance:SetText("|cffb048f8" .. L["DUNGEON_OVERVIEW_COL_CHANCE"] .. "|r")
 
@@ -167,12 +169,14 @@ local function GetOrCreateDungeonRow(parent)
     local obtainedLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     obtainedLabel:SetJustifyH("RIGHT")
     obtainedLabel:SetWidth(COL_LOOTED_W)
+    obtainedLabel:SetWordWrap(false)
     obtainedLabel:SetPoint("RIGHT", rowFrame, "RIGHT", COL_LOOTED_R, 0)
 
     -- Chance percentage (rightmost)
     local pctLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     pctLabel:SetJustifyH("RIGHT")
     pctLabel:SetWidth(COL_PCT_W)
+    pctLabel:SetWordWrap(false)
     pctLabel:SetPoint("RIGHT", rowFrame, "RIGHT", COL_PCT_R, 0)
 
     -- Hover highlight texture

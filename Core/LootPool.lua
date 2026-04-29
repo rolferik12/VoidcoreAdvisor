@@ -22,7 +22,7 @@ LootPool._reentryGuard = false
 
 local _cache = {}
 local GetSeasonFingerprint
-local PERSISTED_CACHE_VERSION = 15
+local PERSISTED_CACHE_VERSION = 16
 local _itemSpecCache = {}
 
 local HUNTER_CLASS_ID = 3
@@ -564,13 +564,38 @@ local function IsFallbackItemEligibleForClass(itemID, classID)
     return false
 end
 
-local function IsItemEligibleForSpec(itemID, specID)
-    local specSet, metadataReady = GetItemEligibleSpecSet(itemID)
-    if specSet ~= nil then
-        return specSet[specID] == true, metadataReady
+local function SpecSetHasAnyPlayerSpecForClass(specSet, classID)
+    if not specSet or not classID or not VCA.SpecInfo or not VCA.SpecInfo.GetPlayerSpecs then
+        return false
     end
 
+    for _, spec in ipairs(VCA.SpecInfo.GetPlayerSpecs()) do
+        if spec.classID == classID and specSet[spec.specID] then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function IsItemEligibleForSpec(itemID, specID)
+    local specSet, metadataReady = GetItemEligibleSpecSet(itemID)
     local classID = GetClassIDForSpecID(specID)
+
+    if specSet ~= nil then
+        if specSet[specID] == true then
+            return true, metadataReady
+        end
+
+        -- Some items can report a spec mapping that does not correspond to
+        -- player spec IDs. In that case, use class-level fallback eligibility.
+        if classID and not SpecSetHasAnyPlayerSpecForClass(specSet, classID) then
+            return IsFallbackItemEligibleForClass(itemID, classID), metadataReady
+        end
+
+        return false, metadataReady
+    end
+
     return IsFallbackItemEligibleForClass(itemID, classID), metadataReady
 end
 
@@ -588,6 +613,12 @@ local function IsItemEligibleForClass(itemID, classID)
         if spec.classID == classID and specSet[spec.specID] then
             return true, metadataReady
         end
+    end
+
+    -- If metadata exists but has no overlap with this class's player specs,
+    -- treat it as an incompatible mapping and use class-level fallback.
+    if not SpecSetHasAnyPlayerSpecForClass(specSet, classID) then
+        return IsFallbackItemEligibleForClass(itemID, classID), metadataReady
     end
 
     return false, metadataReady

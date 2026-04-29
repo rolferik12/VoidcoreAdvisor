@@ -20,10 +20,10 @@ local COL_BOSS_W      = 200
 local COL_SPEC_ICON_X = 204
 local COL_SPEC_NAME_X = 228
 local COL_SPEC_NAME_W = 100
-local COL_LOOTED_R    = -(50 + 4)
+local COL_LOOTED_R    = -(64 + 4)
 local COL_LOOTED_W    = 53
 local COL_PCT_R       = 0
-local COL_PCT_W       = 50
+local COL_PCT_W       = 64
 
 local frame = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
 Overview.frame = frame
@@ -130,12 +130,14 @@ hdrSpec:SetText("|cffb048f8" .. L["DUNGEON_OVERVIEW_COL_SPEC"] .. "|r")
 local hdrLooted = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 hdrLooted:SetJustifyH("RIGHT")
 hdrLooted:SetWidth(COL_LOOTED_W)
+hdrLooted:SetWordWrap(false)
 hdrLooted:SetPoint("TOPRIGHT", contentArea, "TOPRIGHT", -PADDING + COL_LOOTED_R, -6)
 hdrLooted:SetText("|cffb048f8" .. L["DUNGEON_OVERVIEW_COL_LOOTED"] .. "|r")
 
 local hdrChance = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 hdrChance:SetJustifyH("RIGHT")
 hdrChance:SetWidth(COL_PCT_W)
+hdrChance:SetWordWrap(false)
 hdrChance:SetPoint("TOPRIGHT", contentArea, "TOPRIGHT", -PADDING + COL_PCT_R, -6)
 hdrChance:SetText("|cffb048f8" .. L["DUNGEON_OVERVIEW_COL_CHANCE"] .. "|r")
 
@@ -177,11 +179,13 @@ local function GetOrCreateRow(parent)
     local lootedLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     lootedLabel:SetJustifyH("RIGHT")
     lootedLabel:SetWidth(COL_LOOTED_W)
+    lootedLabel:SetWordWrap(false)
     lootedLabel:SetPoint("RIGHT", rowFrame, "RIGHT", COL_LOOTED_R, 0)
 
     local pctLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     pctLabel:SetJustifyH("RIGHT")
     pctLabel:SetWidth(COL_PCT_W)
+    pctLabel:SetWordWrap(false)
     pctLabel:SetPoint("RIGHT", rowFrame, "RIGHT", COL_PCT_R, 0)
 
     local hoverHighlight = rowFrame:CreateTexture(nil, "HIGHLIGHT")

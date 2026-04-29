@@ -109,6 +109,13 @@ local _warmPausedByEJ = false
 local _warmStartRetries = 0
 local _maxWarmStartRetries = 3
 
+-- Keep warm-cache work chunks small to avoid startup hitching.
+local WARM_TICK_INTERVAL = 0.08
+local WARM_BATCH_BUDGET_MS = 1.5
+local WARM_BATCH_BUDGET_MS_POST_EJ = 1.0
+local WARM_MIN_BATCH_ITEMS = 1
+local WARM_MAX_BATCH_ITEMS = 2
+
 function LootPool.IsWarmInProgress()
     return _warmInProgress
 end
@@ -266,12 +273,30 @@ function LootPool.WarmCache()
         end
     end
 
-    -- Then warm dungeons as before.
+    -- Then warm dungeons in smaller units to avoid bursty EJ work.
     for _, instanceID in ipairs(dungeonIDs) do
         queue[#queue + 1] = {
-            kind = "dungeon",
+            kind = "dungeon-enriched",
             instanceID = instanceID,
+            difficultyID = difficultyID,
+            classID = classID,
+            done = false,
         }
+        queue[#queue + 1] = {
+            kind = "dungeon-class",
+            instanceID = instanceID,
+            difficultyID = difficultyID,
+            classID = classID,
+        }
+        for _, spec in ipairs(specs) do
+            queue[#queue + 1] = {
+                kind = "dungeon-spec",
+                instanceID = instanceID,
+                difficultyID = difficultyID,
+                classID = spec.classID,
+                specID = spec.specID,
+            }
+        end
     end
 
     -- Finally warm non-priority raid entries.
@@ -304,6 +329,27 @@ function LootPool.WarmCache()
         if entry.kind == "raid-spec" then
             local specKey = CacheKey("eis", entry.encounterID, entry.difficultyID, entry.classID, entry.specID)
             if warmSpecSkipTable and warmSpecSkipTable[specKey] then
+                return true
+            end
+            return _cache[specKey] ~= nil
+        end
+
+        if entry.kind == "dungeon-enriched" then
+            -- Optional warm-only data; don't block completion on async item details.
+            return entry.done == true
+        end
+
+        if entry.kind == "dungeon-class" then
+            local classKey = CacheKey("iic", entry.instanceID, entry.difficultyID, entry.classID)
+            if warmDungeonSkipTable and warmDungeonSkipTable[classKey] then
+                return true
+            end
+            return _cache[classKey] ~= nil
+        end
+
+        if entry.kind == "dungeon-spec" then
+            local specKey = CacheKey("iis", entry.instanceID, entry.difficultyID, entry.classID, entry.specID)
+            if warmDungeonSkipTable and warmDungeonSkipTable[specKey] then
                 return true
             end
             return _cache[specKey] ~= nil
@@ -346,8 +392,10 @@ function LootPool.WarmCache()
         for _, entry in ipairs(queue) do
             if not IsWarmEntryCached(entry, warmSpecSkip, warmRaidClassSkip, warmDungeonSkip) then
                 allCached = false
-                if entry.kind == "dungeon" then
-                    uncachedEntries[#uncachedEntries + 1] = string.format("dungeon:%d", entry.instanceID)
+                if entry.kind == "dungeon-class" then
+                    uncachedEntries[#uncachedEntries + 1] = string.format("dungeon-class:I%d", entry.instanceID)
+                elseif entry.kind == "dungeon-spec" then
+                    uncachedEntries[#uncachedEntries + 1] = string.format("dungeon-spec:I%d:S%d", entry.instanceID, entry.specID)
                 elseif entry.kind == "raid-spec" then
                     uncachedEntries[#uncachedEntries + 1] = string.format("raid-spec:E%d:D%d:S%d", entry.encounterID, entry.difficultyID, entry.specID)
                 end
@@ -461,9 +509,13 @@ function LootPool.WarmCache()
         local entry = queue[idx]
 
         if entry.kind == "raid-class" then
+            local classKey = CacheKey("eic", entry.encounterID, entry.difficultyID, classID)
+            if _cache[classKey] ~= nil or warmRaidClassSkip[classKey] then
+                return
+            end
+
             LootPool.GetEncounterItemsForClass(entry.encounterID, entry.difficultyID, classID, entry.instanceID)
 
-            local classKey = CacheKey("eic", entry.encounterID, entry.difficultyID, classID)
             if _cache[classKey] == nil then
                 local missCount = (warmRaidClassMissCount[classKey] or 0) + 1
                 warmRaidClassMissCount[classKey] = missCount
@@ -475,6 +527,11 @@ function LootPool.WarmCache()
         end
 
         if entry.kind == "raid-spec" then
+            local specKey = CacheKey("eis", entry.encounterID, entry.difficultyID, entry.classID, entry.specID)
+            if _cache[specKey] ~= nil or warmSpecSkip[specKey] then
+                return
+            end
+
             -- Per-spec reads power both the raid boss panel and raid overview rankings.
             LootPool.GetEncounterItemsForSpec(
                 entry.encounterID,
@@ -484,7 +541,6 @@ function LootPool.WarmCache()
                 entry.instanceID
             )
 
-            local specKey = CacheKey("eis", entry.encounterID, entry.difficultyID, entry.classID, entry.specID)
             if _cache[specKey] == nil then
                 local missCount = (warmSpecMissCount[specKey] or 0) + 1
                 warmSpecMissCount[specKey] = missCount
@@ -495,67 +551,76 @@ function LootPool.WarmCache()
             return
         end
 
-        local instanceID = entry.instanceID
+        if entry.kind == "dungeon-enriched" then
+            if entry.done then
+                return
+            end
 
-        -- Attempt to cache enriched item data (names + icons). This has a completeness
-        -- check and may not cache if item data isn't loaded from the server yet. That is
-        -- OK — it will be fetched on demand when the panel opens. Don't gate the
-        -- class/spec reads on its success.
-        LootPool.GetInstanceItems(instanceID, difficultyID, classID)
-
-        -- Class-wide itemID set (used by Detection.GetActivePoolSet)
-        LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
-
-        -- Per-spec reads (used by Probability)
-        for _, spec in ipairs(specs) do
-            LootPool.GetInstanceItemsForSpec(instanceID, difficultyID, spec.classID, spec.specID)
+            -- Optional warm-only pass for names/icons. Never blocks completion.
+            LootPool.GetInstanceItems(entry.instanceID, entry.difficultyID, entry.classID)
+            entry.done = true
+            return
         end
 
-        local iicKey = CacheKey("iic", instanceID, difficultyID, classID)
-        local cacheReady = _cache[iicKey] ~= nil
-        if cacheReady then
-            for _, spec in ipairs(specs) do
-                local specKey = CacheKey("iis", instanceID, difficultyID, spec.classID, spec.specID)
-                if _cache[specKey] == nil then
-                    cacheReady = false
-                    break
+        if entry.kind == "dungeon-class" then
+            local classKey = CacheKey("iic", entry.instanceID, entry.difficultyID, entry.classID)
+            if _cache[classKey] ~= nil or warmDungeonSkip[classKey] then
+                return
+            end
+
+            LootPool.GetInstanceItemsForClass(entry.instanceID, entry.difficultyID, entry.classID)
+
+            if _cache[classKey] == nil then
+                local missCount = (warmDungeonMissCount[classKey] or 0) + 1
+                warmDungeonMissCount[classKey] = missCount
+                if missCount >= 2 and not warmDungeonSkip[classKey] then
+                    warmDungeonSkip[classKey] = true
                 end
             end
+            return
         end
 
-        if not cacheReady then
-            local missCount = (warmDungeonMissCount[instanceID] or 0) + 1
-            warmDungeonMissCount[instanceID] = missCount
-            -- If metadata is still incomplete after multiple passes, treat this
-            -- dungeon as optional for warm completion and let on-demand reads
-            -- fill it later once item data is fully available.
-            if missCount >= 2 and not warmDungeonSkip[instanceID] then
-                warmDungeonSkip[instanceID] = true
+        if entry.kind == "dungeon-spec" then
+            local specKey = CacheKey("iis", entry.instanceID, entry.difficultyID, entry.classID, entry.specID)
+            if _cache[specKey] ~= nil or warmDungeonSkip[specKey] then
+                return
             end
+
+            LootPool.GetInstanceItemsForSpec(entry.instanceID, entry.difficultyID, entry.classID, entry.specID)
+
+            if _cache[specKey] == nil then
+                local missCount = (warmDungeonMissCount[specKey] or 0) + 1
+                warmDungeonMissCount[specKey] = missCount
+                -- Treat repeatedly missing spec caches as optional warm entries.
+                if missCount >= 2 and not warmDungeonSkip[specKey] then
+                    warmDungeonSkip[specKey] = true
+                end
+            end
+            return
         end
     end
 
-    -- Process multiple items per tick at a short interval to keep total warm time low
-    -- without hammering every frame. Use a startup ramp so first-login warming
-    -- does not spike FPS, then gradually increase throughput.
-    local ITEMS_PER_TICK = 3
+    -- Process in a small time budget per tick to avoid frame spikes.
     local function ProcessBatch()
-        local itemsThisTick = ITEMS_PER_TICK
         local elapsedSinceStart = GetTime() - warmStartTime
+        local maxItems = WARM_MAX_BATCH_ITEMS
+        local budgetMs = WARM_BATCH_BUDGET_MS
 
         -- First-load ramp: start gently, then scale up.
         if elapsedSinceStart < 3.0 then
-            itemsThisTick = 1
-        elseif elapsedSinceStart < 8.0 then
-            itemsThisTick = 2
+            maxItems = WARM_MIN_BATCH_ITEMS
         end
 
         if GetTime() < resumeRampUntil then
-            itemsThisTick = 1
+            maxItems = WARM_MIN_BATCH_ITEMS
+            budgetMs = WARM_BATCH_BUDGET_MS_POST_EJ
         end
 
-        for _ = 1, itemsThisTick do
+        local processed = 0
+        local batchStartMs = debugprofilestop and debugprofilestop() or 0
+        while processed < maxItems do
             ProcessNext()
+            processed = processed + 1
 
             -- During post-EJ ramp, force a gap between heavy EJ reads to avoid
             -- frame spikes from back-to-back instance/encounter/filter changes.
@@ -565,7 +630,14 @@ function LootPool.WarmCache()
 
             -- Stop the batch early if ticker was cancelled inside ProcessNext
             if not _warmTicker then return end
+
+            if debugprofilestop then
+                local nowMs = debugprofilestop()
+                if (nowMs - batchStartMs) >= budgetMs then
+                    break
+                end
+            end
         end
     end
-    _warmTicker = C_Timer.NewTicker(0.08, ProcessBatch)
+    _warmTicker = C_Timer.NewTicker(WARM_TICK_INTERVAL, ProcessBatch)
 end

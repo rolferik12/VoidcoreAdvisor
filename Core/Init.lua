@@ -71,6 +71,35 @@ local function IsSafeWarmupContext()
     return inInstance ~= true
 end
 
+local _deferredWarmAttempts = 0
+local _maxDeferredWarmAttempts = 8
+
+local function StartDeferredWarmup()
+    if not IsSafeWarmupContext() then
+        return
+    end
+
+    -- Build season data just-in-time for warmup. Persisted cache is already
+    -- loaded on ADDON_LOADED, so this can run later without blocking login.
+    VCA.LootPool.BuildSeasonFilter()
+    VCA.LootPool.WarmCache()
+end
+
+local function ScheduleDeferredWarmup(delay)
+    C_Timer.After(delay, function()
+        if IsSafeWarmupContext() then
+            StartDeferredWarmup()
+            return
+        end
+
+        _deferredWarmAttempts = _deferredWarmAttempts + 1
+        if _deferredWarmAttempts < _maxDeferredWarmAttempts then
+            -- Keep retrying gently so we eventually warm after leaving instances.
+            ScheduleDeferredWarmup(5)
+        end
+    end)
+end
+
 -- Guard so zone transitions after the first world-enter do not re-run startup
 -- season validation.
 local _hasInitializedWorld = false
@@ -88,11 +117,9 @@ initFrame:SetScript("OnEvent", function(self, event, ...)
         if _hasInitializedWorld then return end
         _hasInitializedWorld = true
 
-        if IsSafeWarmupContext() then
-            VCA.LootPool.BuildSeasonFilter()
-            VCA.LootPool.LoadPersistedCache()
-            VCA.LootPool.WarmCache()
-        end
+        -- Defer warmup so login/zone-load work is not competing with EJ reads.
+        -- Persisted cache remains available immediately from ADDON_LOADED.
+        ScheduleDeferredWarmup(4)
 
         -- Notify any future UI layer that the backend is ready.
         if VCA.OnBackendReady then

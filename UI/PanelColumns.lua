@@ -131,6 +131,28 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
     end
     displayItems = filteredItems
 
+    -- Fallback: if EJ enriched reads are temporarily empty but trusted pools
+    -- are already available, build a minimal display list from trusted IDs.
+    -- This keeps the loot column usable without weakening the trust gate.
+    if #displayItems == 0 and next(trustedItemSet) then
+        for itemID in pairs(trustedItemSet) do
+            local itemName, itemLink, _, _, _, _, _, _, equipLoc, itemIcon = GetItemInfo(itemID)
+            if (not itemIcon or itemIcon == 0 or itemIcon == "") and C_Item and C_Item.GetItemInfoInstant then
+                local _, _, _, instantEquipLoc, instantIcon = C_Item.GetItemInfoInstant(itemID)
+                equipLoc = equipLoc or instantEquipLoc
+                itemIcon = itemIcon or instantIcon
+            end
+
+            displayItems[#displayItems + 1] = {
+                itemID = itemID,
+                name = itemName or "",
+                link = itemLink or "",
+                icon = itemIcon or 0,
+                slot = (equipLoc and _G[equipLoc]) or "",
+            }
+        end
+    end
+
     -- Sort by equipment slot: head first, trinkets last.
     table.sort(displayItems, function(a, b)
         local oa = _s.GetSlotSortOrder(a.itemID)
