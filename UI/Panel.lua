@@ -405,21 +405,55 @@ end
 
 _s.BuildMythicPlusTooltipLink = BuildMythicPlusTooltipLink
 
--- Returns the item link for a raid item directly from EJ_GetLootInfo, which
--- already contains the correct difficulty/track bonus IDs (matching exactly
--- what the EJ tooltip shows). Returns nil if the item is not found.
+-- Tracks the current EJ loot filter so it can be temporarily cleared and
+-- restored without depending on a non-existent getter API.
+local _ejFilterClassID = 0
+local _ejFilterSpecID = 0
+hooksecurefunc("EJ_SetLootFilter", function(classID, specID)
+    if VCA.LootPool._reentryGuard then
+        return
+    end
+    _ejFilterClassID = classID or 0
+    _ejFilterSpecID = specID or 0
+end)
+
+-- Returns the item link for a raid item directly from the EJ so the tooltip
+-- shows the correct difficulty item level. Temporarily clears the loot filter
+-- so all items are visible regardless of the current spec filter, then restores
+-- the filter to the player's loot spec.
+--
+-- _ejFilterClassID/_ejFilterSpecID track explicit EJ_SetLootFilter calls.
+-- Blizzard sets the EJ filter internally when the journal opens without calling
+-- EJ_SetLootFilter, so those values start at 0/0. When they are 0/0 we seed
+-- the restore target from the player's actual class and loot spec so we don't
+-- accidentally leave the EJ showing "All Specializations".
 local function GetRaidEJItemLink(itemID)
     if not C_EncounterJournal or not C_EncounterJournal.GetLootInfoByIndex then
         return nil
     end
+    local savedClass = _ejFilterClassID
+    local savedSpec = _ejFilterSpecID
+    if savedClass == 0 and savedSpec == 0 then
+        savedClass = VCA.SpecInfo.GetPlayerClassID() or 0
+        savedSpec = VCA.SpecInfo.GetEffectiveLootSpecID() or 0
+    end
+    VCA.LootPool._reentryGuard = true
+    EJ_SetLootFilter(0, 0)
     local numLoot = EJ_GetNumLoot and EJ_GetNumLoot() or 0
+    local result = nil
     for i = 1, numLoot do
         local info = C_EncounterJournal.GetLootInfoByIndex(i)
         if info and info.itemID == itemID and info.link and info.link ~= "" then
-            return info.link
+            result = info.link
+            break
         end
     end
-    return nil
+    -- Update tracking before restoring so the next call remembers the spec.
+    _ejFilterClassID = savedClass
+    _ejFilterSpecID = savedSpec
+    EJ_SetLootFilter(savedClass, savedSpec)
+    VCA.LootPool._reentryGuard = false
+    return result
 end
 
 -- ── Row pool helpers ──────────────────────────────────────────────────────────
