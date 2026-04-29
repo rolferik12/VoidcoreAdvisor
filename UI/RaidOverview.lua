@@ -1,29 +1,28 @@
 -- VoidcoreAdvisor: RaidOverview
 -- Shown when the Encounter Journal is on a raid instance overview page
 -- (raid selected, no boss selected). Displays bosses in Encounter Journal order.
-
 local _, VCA = ...
 local L = VCA.L
 
 VCA.RaidOverview = {}
 local Overview = VCA.RaidOverview
 
-local PANEL_WIDTH  = 480
-local HEADER_H     = 56
+local PANEL_WIDTH = 480
+local HEADER_H = 56
 local COL_HEADER_H = 20
-local PADDING      = 12
-local ROW_H        = 26
-local ICON_SIZE    = 20
+local PADDING = 12
+local ROW_H = 26
+local ICON_SIZE = 20
 
-local COL_BOSS_X      = 0
-local COL_BOSS_W      = 200
+local COL_BOSS_X = 0
+local COL_BOSS_W = 200
 local COL_SPEC_ICON_X = 204
 local COL_SPEC_NAME_X = 228
 local COL_SPEC_NAME_W = 100
-local COL_LOOTED_R    = -(64 + 4)
-local COL_LOOTED_W    = 53
-local COL_PCT_R       = 0
-local COL_PCT_W       = 64
+local COL_LOOTED_R = -(64 + 4)
+local COL_LOOTED_W = 53
+local COL_PCT_R = 0
+local COL_PCT_W = 64
 
 local frame = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
 Overview.frame = frame
@@ -34,21 +33,28 @@ frame:SetClampedToScreen(true)
 frame:Hide()
 
 frame:SetBackdrop({
-    bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
     edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile     = true,
+    tile = true,
     tileSize = 32,
     edgeSize = 32,
-    insets   = { left = 11, right = 12, top = 12, bottom = 11 },
+    insets = {
+        left = 11,
+        right = 12,
+        top = 12,
+        bottom = 11
+    }
 })
 frame:SetBackdropColor(0.05, 0.02, 0.12, 0.95)
 frame:SetBackdropBorderColor(0.58, 0.0, 0.82, 1)
 
 function Overview.AnchorToEJ()
     local ej = EncounterJournal
-    if not ej then return end
+    if not ej then
+        return
+    end
     frame:ClearAllPoints()
-    frame:SetPoint("TOPLEFT",    ej, "TOPRIGHT",    52, 0)
+    frame:SetPoint("TOPLEFT", ej, "TOPRIGHT", 52, 0)
     frame:SetPoint("BOTTOMLEFT", ej, "BOTTOMRIGHT", 52, 0)
 end
 
@@ -58,7 +64,9 @@ titleText:SetText(L["PANEL_TITLE"])
 
 local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 closeBtn:SetPoint("TOPRIGHT", -4, -4)
-closeBtn:SetScript("OnClick", function() frame:Hide() end)
+closeBtn:SetScript("OnClick", function()
+    frame:Hide()
+end)
 
 local subtitleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 subtitleText:SetPoint("TOPLEFT", 18, -40)
@@ -102,7 +110,9 @@ local function SetLoadingState(isLoading, pausedByEJ)
 
     loadingAnimFrame:SetScript("OnUpdate", function(_, elapsed)
         loadingElapsed = loadingElapsed + elapsed
-        if loadingElapsed < 0.45 then return end
+        if loadingElapsed < 0.45 then
+            return
+        end
         loadingElapsed = 0
         loadingDots = (loadingDots + 1) % 4
         UpdateLoadingText()
@@ -111,12 +121,12 @@ end
 
 local divider = frame:CreateTexture(nil, "ARTWORK")
 divider:SetColorTexture(0.58, 0.0, 0.82, 0.4)
-divider:SetPoint("TOPLEFT",  frame, "TOPLEFT",  16, -HEADER_H)
+divider:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -HEADER_H)
 divider:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -HEADER_H)
 divider:SetHeight(1)
 
 local contentArea = CreateFrame("Frame", nil, frame)
-contentArea:SetPoint("TOPLEFT",     frame, "TOPLEFT",     0, -(HEADER_H + 1))
+contentArea:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -(HEADER_H + 1))
 contentArea:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 11)
 
 local hdrBoss = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -143,7 +153,7 @@ hdrChance:SetText("|cffb048f8" .. L["DUNGEON_OVERVIEW_COL_CHANCE"] .. "|r")
 
 local colHeaderRule = contentArea:CreateTexture(nil, "ARTWORK")
 colHeaderRule:SetColorTexture(0.4, 0.4, 0.4, 0.3)
-colHeaderRule:SetPoint("TOPLEFT",  contentArea, "TOPLEFT",  PADDING, -(COL_HEADER_H + 2))
+colHeaderRule:SetPoint("TOPLEFT", contentArea, "TOPLEFT", PADDING, -(COL_HEADER_H + 2))
 colHeaderRule:SetPoint("TOPRIGHT", contentArea, "TOPRIGHT", -PADDING, -(COL_HEADER_H + 2))
 colHeaderRule:SetHeight(1)
 
@@ -198,14 +208,16 @@ local function GetOrCreateRow(parent)
         specIcon = specIcon,
         specLabel = specLabel,
         lootedLabel = lootedLabel,
-        pctLabel = pctLabel,
+        pctLabel = pctLabel
     }
     rows[#rows + 1] = row
     return row
 end
 
 local function HideAllRows()
-    for _, row in ipairs(rows) do row.frame:Hide() end
+    for _, row in ipairs(rows) do
+        row.frame:Hide()
+    end
 end
 
 local scrollChild = CreateFrame("Frame", nil, contentArea)
@@ -214,7 +226,7 @@ scrollFrame:SetScrollChild(scrollChild)
 
 scrollFrame:EnableMouseWheel(true)
 scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-    local current   = self:GetVerticalScroll()
+    local current = self:GetVerticalScroll()
     local maxScroll = math.max(0, scrollChild:GetHeight() - self:GetHeight())
     self:SetVerticalScroll(math.max(0, math.min(maxScroll, current - delta * ROW_H * 3)))
 end)
@@ -222,15 +234,16 @@ end)
 local function RankCurrentPlayerSpecsForItemsCached(itemIDs, sourceType, sourceID, difficultyID)
     local specs = VCA.SpecInfo.GetPlayerSpecs()
     local selectedSet = {}
-    for _, id in ipairs(itemIDs) do selectedSet[id] = true end
+    for _, id in ipairs(itemIDs) do
+        selectedSet[id] = true
+    end
 
     local results = {}
     for _, spec in ipairs(specs) do
-        local allSpecItemIDs = VCA.LootPool.GetCachedItemsForSpec(
-            sourceType, sourceID, difficultyID, spec.classID, spec.specID)
+        local allSpecItemIDs = VCA.LootPool.GetCachedItemsForSpec(sourceType, sourceID, difficultyID, spec.classID,
+            spec.specID)
         if not allSpecItemIDs then
-            allSpecItemIDs = VCA.LootPool.GetItemsForSpec(
-                sourceType, sourceID, difficultyID, spec.classID, spec.specID)
+            allSpecItemIDs = VCA.LootPool.GetItemsForSpec(sourceType, sourceID, difficultyID, spec.classID, spec.specID)
         end
         if not allSpecItemIDs then
             return nil
@@ -243,7 +256,7 @@ local function RankCurrentPlayerSpecsForItemsCached(itemIDs, sourceType, sourceI
             if selectedSet[itemID] then
                 matchCount = matchCount + 1
             end
-            if not VCA.Data.IsObtained(sourceType, sourceID, difficultyID, itemID) then
+            if not VCA.Data.IsObtained(sourceType, sourceID, difficultyID, spec.specID, itemID) then
                 remainingCount = remainingCount + 1
                 if selectedSet[itemID] then
                     matchRemainingCount = matchRemainingCount + 1
@@ -254,30 +267,40 @@ local function RankCurrentPlayerSpecsForItemsCached(itemIDs, sourceType, sourceI
         local baseCount = #allSpecItemIDs
         local selectedCount = #itemIDs
         results[#results + 1] = {
-            specID              = spec.specID,
-            specName            = spec.name,
-            specIcon            = spec.icon,
-            specRole            = spec.role,
-            specIndex           = spec.specIndex,
-            baseCount           = baseCount,
-            remainingCount      = remainingCount,
-            matchCount          = matchCount,
+            specID = spec.specID,
+            specName = spec.name,
+            specIcon = spec.icon,
+            specRole = spec.role,
+            specIndex = spec.specIndex,
+            baseCount = baseCount,
+            remainingCount = remainingCount,
+            matchCount = matchCount,
             matchRemainingCount = matchRemainingCount,
-            selectedOdds        = remainingCount > 0 and (matchRemainingCount / remainingCount) or 0,
-            allObtained         = baseCount > 0 and remainingCount == 0,
-            noItems             = matchCount < selectedCount,
+            selectedOdds = remainingCount > 0 and (matchRemainingCount / remainingCount) or 0,
+            allObtained = baseCount > 0 and remainingCount == 0,
+            noItems = matchCount < selectedCount
         }
     end
 
     table.sort(results, function(a, b)
-        if a.noItems ~= b.noItems then return not a.noItems end
-        if a.allObtained ~= b.allObtained then return not a.allObtained end
-        if a.remainingCount ~= b.remainingCount then return a.remainingCount < b.remainingCount end
-        if a.baseCount ~= b.baseCount then return a.baseCount < b.baseCount end
+        if a.noItems ~= b.noItems then
+            return not a.noItems
+        end
+        if a.allObtained ~= b.allObtained then
+            return not a.allObtained
+        end
+        if a.remainingCount ~= b.remainingCount then
+            return a.remainingCount < b.remainingCount
+        end
+        if a.baseCount ~= b.baseCount then
+            return a.baseCount < b.baseCount
+        end
         return a.specID < b.specID
     end)
 
-    for i, r in ipairs(results) do r.rank = i end
+    for i, r in ipairs(results) do
+        r.rank = i
+    end
     return results
 end
 
@@ -286,7 +309,7 @@ local function Populate()
 
     local contentW = frame:GetWidth() - PADDING * 2
     scrollFrame:ClearAllPoints()
-    scrollFrame:SetPoint("TOPLEFT",     contentArea, "TOPLEFT",     PADDING, -(COL_HEADER_H + 8))
+    scrollFrame:SetPoint("TOPLEFT", contentArea, "TOPLEFT", PADDING, -(COL_HEADER_H + 8))
     scrollFrame:SetPoint("BOTTOMRIGHT", contentArea, "BOTTOMRIGHT", -PADDING, 4)
     scrollChild:SetWidth(contentW)
 
@@ -304,15 +327,20 @@ local function Populate()
     local idx = 1
     while true do
         local bossName, _, encounterID = EJ_GetEncounterInfoByIndex(idx)
-        if not bossName then break end
+        if not bossName then
+            break
+        end
         local selectedSet = VCA.Data.GetSelectedItems(VCA.ContentType.RAID, encounterID, difficultyID)
         local selectedList = {}
-        for itemID in pairs(selectedSet) do selectedList[#selectedList + 1] = itemID end
+        for itemID in pairs(selectedSet) do
+            selectedList[#selectedList + 1] = itemID
+        end
 
         local hasSelected = #selectedList > 0
         if hasSelected then
             selectedBossCount = selectedBossCount + 1
-            local rankings = RankCurrentPlayerSpecsForItemsCached(selectedList, VCA.ContentType.RAID, encounterID, difficultyID)
+            local rankings = RankCurrentPlayerSpecsForItemsCached(selectedList, VCA.ContentType.RAID, encounterID,
+                difficultyID)
             local best = rankings and rankings[1] or nil
             local selectedOdds = best and best.selectedOdds or nil
             local baseCount = best and best.baseCount or 0
@@ -330,7 +358,7 @@ local function Populate()
                 specIcon = best and best.specIcon or nil,
                 baseCount = baseCount,
                 remainingCount = remainingCount,
-                selectedOdds = selectedOdds,
+                selectedOdds = selectedOdds
             }
         else
             entries[#entries + 1] = {
@@ -342,7 +370,7 @@ local function Populate()
                 specIcon = nil,
                 baseCount = 0,
                 remainingCount = 0,
-                selectedOdds = nil,
+                selectedOdds = nil
             }
         end
 

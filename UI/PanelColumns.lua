@@ -36,6 +36,169 @@ end
 
 Panel.UpdateScrollbar = UpdateScrollbar
 
+-- ── Spec Picker Popup ─────────────────────────────────────────────────────────
+-- Floating popup shown when clicking the loot icon on an item row.
+-- Multiple specializations can be selected; confirmed with OK.
+
+local SpecPickerPopup = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+SpecPickerPopup:SetFrameStrata("TOOLTIP")
+SpecPickerPopup:SetClampedToScreen(true)
+SpecPickerPopup:SetBackdrop({
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true,
+    tileSize = 16,
+    edgeSize = 12,
+    insets = {
+        left = 3,
+        right = 3,
+        top = 3,
+        bottom = 3
+    }
+})
+SpecPickerPopup:SetBackdropColor(0.05, 0.02, 0.12, 0.95)
+SpecPickerPopup:SetBackdropBorderColor(0.58, 0.0, 0.82, 1)
+SpecPickerPopup:Hide()
+
+-- Full-screen click-catcher that dismisses the popup without saving.
+local _pickerCatchFrame = CreateFrame("Frame", nil, UIParent)
+_pickerCatchFrame:SetAllPoints(UIParent)
+_pickerCatchFrame:SetFrameStrata("DIALOG")
+_pickerCatchFrame:EnableMouse(true)
+_pickerCatchFrame:SetPropagateMouseClicks(true)
+_pickerCatchFrame:Hide()
+
+local _pickerContext = {}
+local _pickerCheckRows = {} -- pooled { frame, checkbox, iconTex, lbl, specID }
+local _pickerOkBtn
+
+local PICKER_ROW_H = 22
+local PICKER_W = 175
+local PICKER_PAD = 6
+local PICKER_TOP = 24 -- title bar height
+local PICKER_OK_H = 28 -- bottom row reserved for OK button
+
+local function HideSpecPicker()
+    SpecPickerPopup:Hide()
+    _pickerCatchFrame:Hide()
+end
+
+_pickerCatchFrame:SetScript("OnMouseDown", function()
+    HideSpecPicker()
+end)
+
+local function OnPickerOK()
+    local ctx = _pickerContext
+    HideSpecPicker()
+
+    local anyChecked = false
+    for _, row in ipairs(_pickerCheckRows) do
+        if row.frame:IsShown() then
+            local checked = row.checkbox:GetChecked()
+            VCA.Data.SetObtained(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID, checked)
+            if checked then
+                anyChecked = true
+            end
+        end
+    end
+
+    if anyChecked then
+        -- At least one real spec is now checked; remove any migrated (specID=0) entry.
+        VCA.Data.SetObtained(ctx.sourceType, ctx.sourceID, ctx.diffID, 0, ctx.itemID, false)
+    end
+
+    if not anyChecked then
+        -- All unchecked: item is fully unobtained; remove any stale selection.
+        if _s.selectedItemIDs[ctx.itemID] then
+            _s.selectedItemIDs[ctx.itemID] = nil
+            Panel.SaveItemSelections()
+        end
+    else
+        if _s.selectedItemIDs[ctx.itemID] then
+            _s.selectedItemIDs[ctx.itemID] = nil
+            Panel.SaveItemSelections()
+        end
+    end
+    Panel.Refresh()
+end
+
+local _pickerTitleLabel = SpecPickerPopup:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+_pickerTitleLabel:SetPoint("TOPLEFT", SpecPickerPopup, "TOPLEFT", PICKER_PAD, -8)
+_pickerTitleLabel:SetPoint("TOPRIGHT", SpecPickerPopup, "TOPRIGHT", -PICKER_PAD, -8)
+_pickerTitleLabel:SetJustifyH("LEFT")
+_pickerTitleLabel:SetText(L["SPEC_PICKER_TITLE"])
+
+local function BuildPickerRows(specs, sourceType, sourceID, diffID, itemID)
+    for _, row in ipairs(_pickerCheckRows) do
+        row.frame:Hide()
+    end
+
+    for i, spec in ipairs(specs) do
+        local row = _pickerCheckRows[i]
+        if not row then
+            local f = CreateFrame("Frame", nil, SpecPickerPopup)
+            f:SetHeight(PICKER_ROW_H)
+
+            local cb = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+            cb:SetSize(16, 16)
+            cb:SetPoint("LEFT", f, "LEFT", 0, 0)
+
+            local iconTex = f:CreateTexture(nil, "ARTWORK")
+            iconTex:SetSize(16, 16)
+            iconTex:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+            iconTex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+            local lbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            lbl:SetPoint("LEFT", iconTex, "RIGHT", 4, 0)
+            lbl:SetPoint("RIGHT", f, "RIGHT", 0, 0)
+            lbl:SetJustifyH("LEFT")
+
+            row = {
+                frame = f,
+                checkbox = cb,
+                iconTex = iconTex,
+                lbl = lbl
+            }
+            _pickerCheckRows[i] = row
+        end
+
+        row.frame:SetWidth(PICKER_W - PICKER_PAD * 2)
+        row.frame:ClearAllPoints()
+        row.frame:SetPoint("TOPLEFT", SpecPickerPopup, "TOPLEFT", PICKER_PAD, -(PICKER_TOP + (i - 1) * PICKER_ROW_H))
+        row.iconTex:SetTexture(spec.icon)
+        row.lbl:SetText(spec.name)
+        row.specID = spec.specID
+        -- Pre-check if this spec already has the item recorded as obtained.
+        local alreadyObtained = itemID and VCA.Data.IsObtained(sourceType, sourceID, diffID, spec.specID, itemID)
+        row.checkbox:SetChecked(alreadyObtained or false)
+        row.frame:Show()
+    end
+
+    SpecPickerPopup:SetSize(PICKER_W, PICKER_TOP + #specs * PICKER_ROW_H + PICKER_OK_H + PICKER_PAD)
+
+    if not _pickerOkBtn then
+        _pickerOkBtn = CreateFrame("Button", nil, SpecPickerPopup, "UIPanelButtonTemplate")
+        _pickerOkBtn:SetSize(70, 22)
+        _pickerOkBtn:SetText(L["SPEC_PICKER_OK"])
+        _pickerOkBtn:SetScript("OnClick", OnPickerOK)
+    end
+    _pickerOkBtn:ClearAllPoints()
+    _pickerOkBtn:SetPoint("BOTTOM", SpecPickerPopup, "BOTTOM", 0, PICKER_PAD)
+    _pickerOkBtn:Show()
+end
+
+local function ShowSpecPickerFor(anchorWidget, sourceType, sourceID, diffID, itemID)
+    _pickerContext.sourceType = sourceType
+    _pickerContext.sourceID = sourceID
+    _pickerContext.diffID = diffID
+    _pickerContext.itemID = itemID
+    BuildPickerRows(VCA.SpecInfo.GetPlayerSpecs(), sourceType, sourceID, diffID, itemID)
+    SpecPickerPopup:ClearAllPoints()
+    SpecPickerPopup:SetPoint("BOTTOMLEFT", anchorWidget, "TOPRIGHT", 4, 0)
+    _pickerCatchFrame:Show()
+    SpecPickerPopup:Show()
+end
+
 -- ── Populate item column ───────────────────────────────────────────────────────
 
 local function PopulateItemColumn(sourceType, sourceID, difficultyID)
@@ -177,7 +340,19 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
     local colW = _s.LeftColWidth()
     local rowTop = 0
     for _, item in ipairs(displayItems) do
-        local obtained = VCA.Data.IsObtained(sourceType, sourceID, difficultyID, item.itemID)
+        -- An item is considered obtained when it has been won by at least one
+        -- of the player's specs.  Probability rows track per-spec state
+        -- independently; this just drives the visual dim in the item list.
+        local obtained = false
+        for _, spec in ipairs(specs) do
+            if VCA.Data.IsObtained(sourceType, sourceID, difficultyID, spec.specID, item.itemID) then
+                obtained = true
+                break
+            end
+        end
+        -- Amber state: obtained only under specID=0 (migrated from pre-spec data).
+        local obtainedMigrated = not obtained and
+                                     VCA.Data.IsObtainedMigrated(sourceType, sourceID, difficultyID, item.itemID)
         local row = _s.GetOrCreateItemRow(_s.itemRows, _s.itemScrollChild)
         row.frame:SetWidth(colW - PADDING)
         row.frame:ClearAllPoints()
@@ -228,27 +403,49 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         end
 
         -- Obtained checkbox
-        row.checkbox:SetChecked(obtained)
+        row.checkbox:SetChecked(obtainedMigrated and "migrated" or obtained)
         row.checkbox.itemID = item.itemID
         row.checkbox.sourceType = sourceType
         row.checkbox.sourceID = sourceID
         row.checkbox.diffID = difficultyID
-        row.checkbox:SetScript("OnClick", function(self)
-            local now = self:GetChecked()
-            VCA.Data.SetObtained(self.sourceType, self.sourceID, self.diffID, self.itemID, now)
-            -- If item was just marked obtained, deselect it.
-            if now and _s.selectedItemIDs[self.itemID] then
-                _s.selectedItemIDs[self.itemID] = nil
-                Panel.SaveItemSelections()
+        -- Obtained loot icon button tooltip: list which specs have it obtained.
+        row.checkbox.specs = specs
+        row.checkbox:SetScript("OnEnter", function(self)
+            local obtainedSpecs = {}
+            for _, sp in ipairs(self.specs) do
+                if VCA.Data.IsObtained(self.sourceType, self.sourceID, self.diffID, sp.specID, self.itemID) then
+                    obtainedSpecs[#obtainedSpecs + 1] = sp
+                end
             end
-            Panel.Refresh()
+            local migratedObtained = VCA.Data.IsObtainedMigrated(self.sourceType, self.sourceID, self.diffID,
+                self.itemID)
+            if #obtainedSpecs == 0 and not migratedObtained then
+                return
+            end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(L["SPEC_PICKER_TITLE"], 1, 1, 1)
+            for _, sp in ipairs(obtainedSpecs) do
+                GameTooltip:AddLine("|T" .. sp.icon .. ":12:12:0:0:64:64:4:60:4:60|t " .. sp.name, 0.4, 1.0, 0.4)
+            end
+            if migratedObtained then
+                GameTooltip:AddLine(L["OBTAINED_UNKNOWN_SPEC"], 1.0, 0.7, 0.1)
+            end
+            GameTooltip:Show()
+        end)
+        row.checkbox:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        row.checkbox:SetScript("OnClick", function(self)
+            -- Always open the spec picker, pre-checked to the current obtained state.
+            -- OK saves whatever is checked; clicking outside dismisses without changes.
+            ShowSpecPickerFor(self, self.sourceType, self.sourceID, self.diffID, self.itemID)
         end)
 
         -- Dim row if obtained, filtered out by spec selection, or
         -- not lootable by the specs implied by the item selection.
         local specFiltered = specFilterSet and not specFilterSet[item.itemID]
         local itemFiltered = itemImpliedFilter and not itemImpliedFilter[item.itemID]
-        local dimmed = obtained or specFiltered or itemFiltered
+        local dimmed = obtained or obtainedMigrated or specFiltered or itemFiltered
         row.frame.dimmed = dimmed
         if dimmed then
             local alpha = (specFiltered or itemFiltered) and 0.25 or 0.4

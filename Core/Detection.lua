@@ -1,6 +1,5 @@
 -- VoidcoreAdvisor: Detection
 -- BONUS_ROLL_RESULT-only detection for Nebulous Voidcore rewards.
-
 local _, VCA = ...
 
 VCA.Detection = {}
@@ -8,7 +7,7 @@ local Detection = VCA.Detection
 
 -- -- Internal state -----------------------------------------------------------
 
-local sourceOverride = nil    -- optional UI-selected source context
+local sourceOverride = nil -- optional UI-selected source context
 local onDetectedCallback = nil -- function(itemID, source) | nil
 local pendingRewards = {}
 
@@ -17,7 +16,7 @@ local function CreateSource(sourceType, sourceID, difficultyID, keyLevel)
         sourceType = sourceType,
         sourceID = sourceID,
         difficultyID = difficultyID,
-        keyLevel = keyLevel,
+        keyLevel = keyLevel
     }
 end
 
@@ -33,15 +32,12 @@ local function ResolveCurrentMythicPlusSource()
     end
 
     local sourceID = VCA.LootPool and VCA.LootPool.GetCachedSeasonDungeonByName and
-        VCA.LootPool.GetCachedSeasonDungeonByName(instanceName)
+                         VCA.LootPool.GetCachedSeasonDungeonByName(instanceName)
     if not sourceID then
         return nil
     end
 
-    return CreateSource(
-        VCA.ContentType.MYTHIC_PLUS,
-        sourceID,
-        VCA.MythicPlusEJDifficulty)
+    return CreateSource(VCA.ContentType.MYTHIC_PLUS, sourceID, VCA.MythicPlusEJDifficulty)
 end
 
 local function GetResolvedSource()
@@ -58,19 +54,23 @@ local function IsInInstancedContent()
 end
 
 local function FindDetectedItem(itemID, source)
-    if not source or not itemID then return nil end
+    if not source or not itemID then
+        return nil
+    end
 
     local classID = VCA.SpecInfo and VCA.SpecInfo.GetPlayerClassID and VCA.SpecInfo.GetPlayerClassID()
-    if not classID then return nil end
+    if not classID then
+        return nil
+    end
 
     local cachedItemIDs = VCA.LootPool and VCA.LootPool.GetCachedItemsForClass and
-        VCA.LootPool.GetCachedItemsForClass(
-            source.sourceType,
-            source.sourceID,
-            source.difficultyID,
+                              VCA.LootPool
+                                  .GetCachedItemsForClass(source.sourceType, source.sourceID, source.difficultyID,
             classID)
 
-    if not cachedItemIDs then return nil end
+    if not cachedItemIDs then
+        return nil
+    end
 
     for _, cachedItemID in ipairs(cachedItemIDs) do
         if cachedItemID == itemID then
@@ -104,38 +104,41 @@ end
 
 -- -- Item detection -----------------------------------------------------------
 
-local function OnCandidateItemDetected(itemID, source)
-    if not source or not itemID then return end
-
-    if VCA.Data.IsObtained(source.sourceType, source.sourceID,
-                            source.difficultyID, itemID) then
+local function OnCandidateItemDetected(itemID, source, specID)
+    if not source or not itemID then
         return
     end
 
-    VCA.Data.SetObtained(source.sourceType, source.sourceID,
-                          source.difficultyID, itemID, true)
+    if VCA.Data.IsObtained(source.sourceType, source.sourceID, source.difficultyID, specID, itemID) then
+        return
+    end
+
+    VCA.Data.SetObtained(source.sourceType, source.sourceID, source.difficultyID, specID, itemID, true)
 
     if onDetectedCallback then
         onDetectedCallback(itemID, source)
     end
 end
 
-local function TryResolveReward(itemID, source)
+local function TryResolveReward(itemID, source, specID)
     local matchedItemID = FindDetectedItem(itemID, source)
     if matchedItemID then
-        OnCandidateItemDetected(matchedItemID, source)
+        OnCandidateItemDetected(matchedItemID, source, specID)
         return true
     end
 
     return false
 end
 
-local function QueuePendingReward(itemID, source)
-    if not itemID then return end
+local function QueuePendingReward(itemID, source, specID)
+    if not itemID then
+        return
+    end
 
     pendingRewards[#pendingRewards + 1] = {
         itemID = itemID,
         source = source,
+        specID = specID
     }
 end
 
@@ -147,10 +150,11 @@ local function ProcessPendingRewards()
     local remaining = {}
     for _, entry in ipairs(pendingRewards) do
         local source = entry.source or GetResolvedSource()
-        if not TryResolveReward(entry.itemID, source) then
+        if not TryResolveReward(entry.itemID, source, entry.specID) then
             remaining[#remaining + 1] = {
                 itemID = entry.itemID,
                 source = source,
+                specID = entry.specID
             }
         end
     end
@@ -158,20 +162,22 @@ local function ProcessPendingRewards()
     pendingRewards = remaining
 end
 
-local function ProcessRewardItem(itemID)
-    if not itemID then return end
+local function ProcessRewardItem(itemID, specID)
+    if not itemID then
+        return
+    end
 
     local source = GetResolvedSource()
-    if TryResolveReward(itemID, source) then
+    if TryResolveReward(itemID, source, specID) then
         return
     end
 
     if IsInInstancedContent() then
-        QueuePendingReward(itemID, source)
+        QueuePendingReward(itemID, source, specID)
         return
     end
 
-    QueuePendingReward(itemID, source)
+    QueuePendingReward(itemID, source, specID)
     ProcessPendingRewards()
 end
 
@@ -191,17 +197,31 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         return
     end
 
-    if event ~= "BONUS_ROLL_RESULT" then return end
+    if event ~= "BONUS_ROLL_RESULT" then
+        return
+    end
 
-    local typeIdentifier, itemLink = ...
-    if typeIdentifier ~= "item" then return end
-    if type(itemLink) ~= "string" then return end
+    local typeIdentifier, itemLink, quantity, specID = ...
+    if typeIdentifier ~= "item" then
+        return
+    end
+    if type(itemLink) ~= "string" then
+        return
+    end
 
     local idStr = itemLink:match("|Hitem:(%d+):")
     local itemID = idStr and tonumber(idStr)
-    if not itemID then return end
+    if not itemID then
+        return
+    end
+
+    -- specID is provided directly by the event payload.  Fall back to the
+    -- effective loot spec only if the event omits it (future-proofing).
+    if not specID or specID == 0 then
+        specID = VCA.SpecInfo and VCA.SpecInfo.GetEffectiveLootSpecID and VCA.SpecInfo.GetEffectiveLootSpecID()
+    end
 
     C_Timer.After(0, function()
-        ProcessRewardItem(itemID)
+        ProcessRewardItem(itemID, specID)
     end)
 end)

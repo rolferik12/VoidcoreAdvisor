@@ -2,7 +2,6 @@
 -- Bootstrap: SavedVariables initialisation, login event handling, and
 -- the public slash-command interface.  Loaded last so every other module
 -- is available when this code runs.
-
 local addonName, VCA = ...
 local L = VCA.L
 
@@ -11,26 +10,28 @@ local L = VCA.L
 local function GetDefaults()
     return {
         schemaVersion = VCA.SCHEMA_VERSION,
-        obtained      = {},
-        selectedItems = {},   -- { ["TYPE:sourceID:diffID"] = { [itemID]=true, ... } }
-        minimized     = false,
-        overviewMinimized = false,
+        obtained = {},
+        selectedItems = {}, -- { ["TYPE:sourceID:diffID"] = { [itemID]=true, ... } }
+        minimized = false,
+        overviewMinimized = false
     }
 end
 
 local function GetGlobalDefaults()
     return {
-        reminderEnabled = true,
+        reminderEnabled = true
     }
 end
 
 -- Apply any future schema migrations here.
 local function MigrateDB(db)
-    if db.schemaVersion == VCA.SCHEMA_VERSION then return end
-    -- Example (when SCHEMA_VERSION bumps to 2):
-    -- if db.schemaVersion < 2 then
-    --     db.newField = {}
-    -- end
+    if db.schemaVersion == VCA.SCHEMA_VERSION then
+        return
+    end
+    if (db.schemaVersion or 1) < 2 then
+        -- v1→v2: insert specID=0 segment into obtained keys that lack it.
+        VCA.Data.MigrateV1Keys(db)
+    end
     db.schemaVersion = VCA.SCHEMA_VERSION
 end
 
@@ -40,7 +41,9 @@ local function InitDB()
         _G[VCA.GLOBAL_DB_NAME] = GetGlobalDefaults()
     else
         local gdb = _G[VCA.GLOBAL_DB_NAME]
-        if gdb.reminderEnabled == nil then gdb.reminderEnabled = true end
+        if gdb.reminderEnabled == nil then
+            gdb.reminderEnabled = true
+        end
     end
 
     -- Per-character DB
@@ -49,8 +52,8 @@ local function InitDB()
     else
         MigrateDB(_G[VCA.CHAR_DB_NAME])
         -- Ensure required top-level keys are present (handles sparse old saves).
-        _G[VCA.CHAR_DB_NAME].obtained      = _G[VCA.CHAR_DB_NAME].obtained or {}
-        _G[VCA.CHAR_DB_NAME].selectedItems  = _G[VCA.CHAR_DB_NAME].selectedItems or {}
+        _G[VCA.CHAR_DB_NAME].obtained = _G[VCA.CHAR_DB_NAME].obtained or {}
+        _G[VCA.CHAR_DB_NAME].selectedItems = _G[VCA.CHAR_DB_NAME].selectedItems or {}
         if _G[VCA.CHAR_DB_NAME].minimized == nil then
             _G[VCA.CHAR_DB_NAME].minimized = false
         end
@@ -106,7 +109,9 @@ local _hasInitializedWorld = false
 
 initFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
-        if (...) ~= addonName then return end
+        if (...) ~= addonName then
+            return
+        end
         InitDB()
         VCA.LootPool.LoadPersistedCache()
         self:UnregisterEvent("ADDON_LOADED")
@@ -114,7 +119,9 @@ initFrame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_ENTERING_WORLD" then
         -- Validate and warm loot caches only on the first world enter and only
         -- while outside instances so gameplay events never trigger this work.
-        if _hasInitializedWorld then return end
+        if _hasInitializedWorld then
+            return
+        end
         _hasInitializedWorld = true
 
         -- Defer warmup so login/zone-load work is not competing with EJ reads.
@@ -154,17 +161,17 @@ SlashCmdList["VOIDCOREADVISOR"] = function(msg)
 
     elseif cmd == "spec" then
         -- Debug: print which spec will be used for loot.
-        local specID   = VCA.SpecInfo.GetEffectiveLootSpecID()
-        local rawID    = VCA.SpecInfo.GetRawLootSpecID()
-        local suffix   = rawID == 0 and L["FOLLOWS_ACTIVE_SPEC"] or ""
+        local specID = VCA.SpecInfo.GetEffectiveLootSpecID()
+        local rawID = VCA.SpecInfo.GetRawLootSpecID()
+        local suffix = rawID == 0 and L["FOLLOWS_ACTIVE_SPEC"] or ""
         print("|cff9370DBVoidcoreAdvisor:|r " .. string.format(L["SPEC_FORMAT"], specID or "unknown", suffix))
 
     elseif cmd == "source" then
         -- Debug: print the currently active detection source.
         local src = VCA.Detection.GetActiveSource()
         if src then
-            print("|cff9370DBVoidcoreAdvisor:|r " .. string.format(L["SOURCE_FORMAT"],
-                  src.sourceType, src.sourceID, src.difficultyID))
+            print("|cff9370DBVoidcoreAdvisor:|r " ..
+                      string.format(L["SOURCE_FORMAT"], src.sourceType, src.sourceID, src.difficultyID))
         else
             print("|cff9370DBVoidcoreAdvisor:|r " .. L["NO_ACTIVE_SOURCE"])
         end

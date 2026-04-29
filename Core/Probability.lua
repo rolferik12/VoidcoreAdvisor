@@ -13,7 +13,6 @@
 -- This module exposes two numbers per spec:
 --   baseOdds      – 1 / total items for this spec (no accounting for obtained)
 --   remainingOdds – 1 / items NOT yet obtained (the live, actionable number)
-
 local _, VCA = ...
 
 VCA.Probability = {}
@@ -45,19 +44,19 @@ function Probability.CalculateForSpec(sourceType, sourceID, difficultyID, classI
 
     local remainingCount = 0
     for _, itemID in ipairs(itemIDs) do
-        if not VCA.Data.IsObtained(sourceType, sourceID, difficultyID, itemID) then
+        if not VCA.Data.IsObtained(sourceType, sourceID, difficultyID, specID, itemID) then
             remainingCount = remainingCount + 1
         end
     end
 
     return {
-        specID         = specID,
-        baseCount      = baseCount,
+        specID = specID,
+        baseCount = baseCount,
         remainingCount = remainingCount,
-        baseOdds       = baseCount > 0       and (1 / baseCount)       or 0,
-        remainingOdds  = remainingCount > 0  and (1 / remainingCount)  or 0,
-        allObtained    = baseCount > 0 and remainingCount == 0,
-        noItems        = baseCount == 0,
+        baseOdds = baseCount > 0 and (1 / baseCount) or 0,
+        remainingOdds = remainingCount > 0 and (1 / remainingCount) or 0,
+        allObtained = baseCount > 0 and remainingCount == 0,
+        noItems = baseCount == 0
     }
 end
 
@@ -79,13 +78,10 @@ end
 function Probability.RankSpecs(specs, sourceType, sourceID, difficultyID)
     local results = {}
     for _, spec in ipairs(specs) do
-        local data = Probability.CalculateForSpec(
-            sourceType, sourceID, difficultyID,
-            spec.classID, spec.specID
-        )
-        data.specName  = spec.name
-        data.specIcon  = spec.icon
-        data.specRole  = spec.role
+        local data = Probability.CalculateForSpec(sourceType, sourceID, difficultyID, spec.classID, spec.specID)
+        data.specName = spec.name
+        data.specIcon = spec.icon
+        data.specRole = spec.role
         data.specIndex = spec.specIndex
         results[#results + 1] = data
     end
@@ -136,12 +132,14 @@ function Probability.RankCurrentPlayerSpecsForItems(itemIDs, sourceType, sourceI
     local specs = VCA.SpecInfo.GetPlayerSpecs()
 
     local selectedSet = {}
-    for _, id in ipairs(itemIDs) do selectedSet[id] = true end
+    for _, id in ipairs(itemIDs) do
+        selectedSet[id] = true
+    end
 
     local results = {}
     for _, spec in ipairs(specs) do
-        local allSpecItemIDs = VCA.LootPool.GetItemsForSpec(
-            sourceType, sourceID, difficultyID, spec.classID, spec.specID)
+        local allSpecItemIDs = VCA.LootPool.GetItemsForSpec(sourceType, sourceID, difficultyID, spec.classID,
+            spec.specID)
 
         -- Check if this spec can see any of the selected items.
         local matchCount = 0
@@ -154,11 +152,11 @@ function Probability.RankCurrentPlayerSpecsForItems(itemIDs, sourceType, sourceI
         -- Full-pool counts drive the probability: the Voidcore rolls from the
         -- entire loot table for this spec, so a smaller remaining pool means a
         -- higher chance that any specific item (including the selected one) drops.
-        local baseCount      = #allSpecItemIDs
+        local baseCount = #allSpecItemIDs
         local remainingCount = 0
         local matchRemainingCount = 0
         for _, itemID in ipairs(allSpecItemIDs) do
-            if not VCA.Data.IsObtained(sourceType, sourceID, difficultyID, itemID) then
+            if not VCA.Data.IsObtained(sourceType, sourceID, difficultyID, spec.specID, itemID) then
                 remainingCount = remainingCount + 1
                 if selectedSet[itemID] then
                     matchRemainingCount = matchRemainingCount + 1
@@ -168,33 +166,43 @@ function Probability.RankCurrentPlayerSpecsForItems(itemIDs, sourceType, sourceI
 
         local selectedCount = #itemIDs
         results[#results + 1] = {
-            specID              = spec.specID,
-            specName            = spec.name,
-            specIcon            = spec.icon,
-            specRole            = spec.role,
-            specIndex           = spec.specIndex,
-            baseCount           = baseCount,
-            remainingCount      = remainingCount,
-            matchCount          = matchCount,
+            specID = spec.specID,
+            specName = spec.name,
+            specIcon = spec.icon,
+            specRole = spec.role,
+            specIndex = spec.specIndex,
+            baseCount = baseCount,
+            remainingCount = remainingCount,
+            matchCount = matchCount,
             matchRemainingCount = matchRemainingCount,
-            baseOdds            = baseCount > 0 and (1 / baseCount) or 0,
-            remainingOdds       = remainingCount > 0 and (1 / remainingCount) or 0,
-            selectedOdds        = remainingCount > 0 and (matchRemainingCount / remainingCount) or 0,
-            allObtained         = baseCount > 0 and remainingCount == 0,
-            noItems             = matchCount < selectedCount,  -- spec cannot loot ALL selected items
+            baseOdds = baseCount > 0 and (1 / baseCount) or 0,
+            remainingOdds = remainingCount > 0 and (1 / remainingCount) or 0,
+            selectedOdds = remainingCount > 0 and (matchRemainingCount / remainingCount) or 0,
+            allObtained = baseCount > 0 and remainingCount == 0,
+            noItems = matchCount < selectedCount -- spec cannot loot ALL selected items
         }
     end
 
     table.sort(results, function(a, b)
-        if a.noItems ~= b.noItems then return not a.noItems end
-        if a.allObtained ~= b.allObtained then return not a.allObtained end
+        if a.noItems ~= b.noItems then
+            return not a.noItems
+        end
+        if a.allObtained ~= b.allObtained then
+            return not a.allObtained
+        end
         -- Smaller remaining pool = higher drop chance = ranks higher.
-        if a.remainingCount ~= b.remainingCount then return a.remainingCount < b.remainingCount end
-        if a.baseCount ~= b.baseCount then return a.baseCount < b.baseCount end
+        if a.remainingCount ~= b.remainingCount then
+            return a.remainingCount < b.remainingCount
+        end
+        if a.baseCount ~= b.baseCount then
+            return a.baseCount < b.baseCount
+        end
         return a.specID < b.specID
     end)
 
-    for i, r in ipairs(results) do r.rank = i end
+    for i, r in ipairs(results) do
+        r.rank = i
+    end
     return results
 end
 
