@@ -537,7 +537,7 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
         row.nameLabel:SetPoint("RIGHT", row.frame, "RIGHT", -90, 0)
         row.nameLabel:SetText(nameColor .. (entry.specName or "?") .. "|r")
 
-        -- Stats: remaining/total + percentage (right side)
+        -- Stats: obtained/total + percentage (right side)
         local hasSelection = filterItemIDs and #filterItemIDs > 0
         local statsText
         if entry.noItems then
@@ -546,10 +546,12 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
             statsText = "|cff44ff44" .. L["ALL_OBTAINED"] .. "|r"
         elseif hasSelection and entry.selectedOdds then
             local pct = math.floor(entry.selectedOdds * 100 + 0.5)
-            statsText =
-                "|cffaaaaaa" .. entry.remainingCount .. "/" .. entry.baseCount .. "|r  " .. "|cffffff00" .. pct .. "%|r"
+            local obtainedCount = entry.baseCount - entry.remainingCount
+            statsText = "|cffaaaaaa" .. obtainedCount .. "/" .. entry.baseCount .. "|r  " .. "|cffffff00" .. pct ..
+                            "%|r"
         else
-            statsText = "|cffaaaaaa" .. entry.remainingCount .. "/" .. entry.baseCount .. "|r"
+            local obtainedCount = entry.baseCount - entry.remainingCount
+            statsText = "|cffaaaaaa" .. obtainedCount .. "/" .. entry.baseCount .. "|r"
         end
         row.statsLabel:SetText(statsText)
 
