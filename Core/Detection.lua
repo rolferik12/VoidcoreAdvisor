@@ -221,6 +221,12 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         specID = VCA.SpecInfo and VCA.SpecInfo.GetEffectiveLootSpecID and VCA.SpecInfo.GetEffectiveLootSpecID()
     end
 
+    -- Persist a raw log entry immediately so the player can manually verify
+    -- which items fired if auto-detection later fails to match them.
+    if VCA.Data and VCA.Data.LogBonusRoll then
+        VCA.Data.LogBonusRoll(itemID, itemLink, specID, GetResolvedSource())
+    end
+
     C_Timer.After(0, function()
         ProcessRewardItem(itemID, specID)
     end)

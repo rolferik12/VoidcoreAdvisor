@@ -12,6 +12,7 @@ local function GetDefaults()
         schemaVersion = VCA.SCHEMA_VERSION,
         obtained = {},
         selectedItems = {}, -- { ["TYPE:sourceID:diffID"] = { [itemID]=true, ... } }
+        bonusRollLog = {}, -- raw BONUS_ROLL_RESULT entries for manual verification
         minimized = false,
         overviewMinimized = false
     }
@@ -54,6 +55,7 @@ local function InitDB()
         -- Ensure required top-level keys are present (handles sparse old saves).
         _G[VCA.CHAR_DB_NAME].obtained = _G[VCA.CHAR_DB_NAME].obtained or {}
         _G[VCA.CHAR_DB_NAME].selectedItems = _G[VCA.CHAR_DB_NAME].selectedItems or {}
+        _G[VCA.CHAR_DB_NAME].bonusRollLog = _G[VCA.CHAR_DB_NAME].bonusRollLog or {}
         if _G[VCA.CHAR_DB_NAME].minimized == nil then
             _G[VCA.CHAR_DB_NAME].minimized = false
         end
@@ -174,6 +176,25 @@ SlashCmdList["VOIDCOREADVISOR"] = function(msg)
                       string.format(L["SOURCE_FORMAT"], src.sourceType, src.sourceID, src.difficultyID))
         else
             print("|cff9370DBVoidcoreAdvisor:|r " .. L["NO_ACTIVE_SOURCE"])
+        end
+
+    elseif cmd == "rolls" then
+        -- Print raw bonus roll event log for manual verification.
+        local log = VCA.Data.GetBonusRollLog()
+        if #log == 0 then
+            print("|cff9370DBVoidcoreAdvisor:|r No bonus roll events recorded.")
+        else
+            print("|cff9370DBVoidcoreAdvisor:|r Bonus roll log (" .. #log .. " entries, oldest first):")
+            for i, entry in ipairs(log) do
+                local ts = date("%Y-%m-%d %H:%M:%S", entry.timestamp)
+                local src = "unknown source"
+                if entry.sourceType and entry.sourceID and entry.difficultyID then
+                    src = entry.sourceType .. ":" .. entry.sourceID .. " diff=" .. entry.difficultyID
+                end
+                local spec = entry.specID and ("spec=" .. entry.specID) or "spec=?"
+                print(string.format("  [%d] %s  %s  %s  %s", i, ts,
+                    entry.itemLink or ("itemID=" .. tostring(entry.itemID)), spec, src))
+            end
         end
 
     elseif cmd == "version" then

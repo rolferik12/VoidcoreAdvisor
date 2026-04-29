@@ -257,3 +257,42 @@ function Data.MigrateV1Keys(db)
         db.obtained[k] = true
     end
 end
+
+-- ── Bonus roll event log ──────────────────────────────────────────────────────
+-- Stores raw BONUS_ROLL_RESULT payloads so the player can manually verify
+-- item detection after the fact.  Capped at the last 50 rolls.
+
+local BONUS_ROLL_LOG_MAX = 50
+
+-- Records one bonus roll entry.  source may be nil if it could not be resolved.
+-- entry = { timestamp, itemID, itemLink, specID, sourceType, sourceID, difficultyID }
+function Data.LogBonusRoll(itemID, itemLink, specID, source)
+    local db = _G[VCA.CHAR_DB_NAME]
+    if not db then
+        return
+    end
+    db.bonusRollLog = db.bonusRollLog or {}
+    local log = db.bonusRollLog
+    log[#log + 1] = {
+        timestamp = time(),
+        itemID = itemID,
+        itemLink = itemLink,
+        specID = specID,
+        sourceType = source and source.sourceType or nil,
+        sourceID = source and source.sourceID or nil,
+        difficultyID = source and source.difficultyID or nil
+    }
+    -- Trim to the last N entries.
+    while #log > BONUS_ROLL_LOG_MAX do
+        table.remove(log, 1)
+    end
+end
+
+-- Returns the saved bonus roll log (array, oldest first), or an empty table.
+function Data.GetBonusRollLog()
+    local db = _G[VCA.CHAR_DB_NAME]
+    if not db or not db.bonusRollLog then
+        return {}
+    end
+    return db.bonusRollLog
+end

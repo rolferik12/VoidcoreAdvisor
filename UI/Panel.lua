@@ -456,6 +456,43 @@ local function GetRaidEJItemLink(itemID)
     return result
 end
 
+-- ── Tooltip: obtained-spec lines ───────────────────────────────────────────
+-- Appends "Obtained as:" spec lines to whatever tooltip is currently open.
+-- Called before every GameTooltip:Show() on item icon hover.
+local function AppendObtainedSpecLines(rf)
+    local specs = rf.checkbox and rf.checkbox.specs
+    if not specs or #specs == 0 then
+        return
+    end
+    if not (Panel.sourceType and Panel.sourceID and Panel.difficultyID) then
+        return
+    end
+    local itemID = rf.itemID
+    if not itemID then
+        return
+    end
+
+    local obtainedSpecs = {}
+    for _, sp in ipairs(specs) do
+        if VCA.Data.IsObtained(Panel.sourceType, Panel.sourceID, Panel.difficultyID, sp.specID, itemID) then
+            obtainedSpecs[#obtainedSpecs + 1] = sp
+        end
+    end
+    local migratedObtained = VCA.Data.IsObtainedMigrated(Panel.sourceType, Panel.sourceID, Panel.difficultyID, itemID)
+    if #obtainedSpecs == 0 and not migratedObtained then
+        return
+    end
+
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine(L["SPEC_PICKER_TITLE"], 1, 1, 1)
+    for _, sp in ipairs(obtainedSpecs) do
+        GameTooltip:AddLine("|T" .. sp.icon .. ":12:12:0:0:64:64:4:60:4:60|t " .. sp.name, 0.4, 1.0, 0.4)
+    end
+    if migratedObtained then
+        GameTooltip:AddLine(L["OBTAINED_UNKNOWN_SPEC"], 1.0, 0.7, 0.1)
+    end
+end
+
 -- ── Row pool helpers ──────────────────────────────────────────────────────────
 -- We maintain two pools of recycled row frames so we never create more widgets
 -- than necessary.
@@ -572,6 +609,7 @@ local function GetOrCreateItemRow(pool, parent)
             if modified then
                 local ok = pcall(GameTooltip.SetHyperlink, GameTooltip, modified)
                 if ok and GameTooltip:NumLines() and GameTooltip:NumLines() > 0 then
+                    AppendObtainedSpecLines(rf)
                     GameTooltip:Show()
                     return
                 end
@@ -585,6 +623,7 @@ local function GetOrCreateItemRow(pool, parent)
         elseif id then
             GameTooltip:SetItemByID(id)
         end
+        AppendObtainedSpecLines(rf)
         GameTooltip:Show()
     end)
     iconButton:SetScript("OnLeave", function()
