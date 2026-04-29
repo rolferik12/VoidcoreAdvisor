@@ -2,14 +2,13 @@
 -- Populate and refresh logic for the two panel columns.
 -- Loaded after Panel.lua.  Accesses shared widget/state references via
 -- Panel._s (a table set up by Panel.lua before this file is loaded).
-
 local _, VCA = ...
 local L = VCA.L
 local Panel = VCA.Panel
 local _s = Panel._s
 
 -- Column-layout constants (must match Panel.lua).
-local ROW_H   = 26
+local ROW_H = 26
 local PADDING = 12
 
 -- ── Scrollbar ──────────────────────────────────────────────────────────────────
@@ -47,20 +46,34 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
     local specs = VCA.SpecInfo.GetPlayerSpecs()
 
     for _, spec in ipairs(specs) do
-        local specItemIDs = VCA.LootPool.GetItemsForSpec(
-            sourceType, sourceID, difficultyID, spec.classID, spec.specID)
+        local specItemIDs = VCA.LootPool.GetItemsForSpec(sourceType, sourceID, difficultyID, spec.classID, spec.specID)
         for _, id in ipairs(specItemIDs) do
             trustedItemSet[id] = true
         end
     end
 
+    -- If selected items were persisted from an older dataset for this source,
+    -- drop selections that are no longer trusted so they do not force the
+    -- entire list into an always-dimmed state.
+    local prunedAnySelection = false
+    if next(_s.selectedItemIDs) then
+        for selID in pairs(_s.selectedItemIDs) do
+            if not trustedItemSet[selID] then
+                _s.selectedItemIDs[selID] = nil
+                prunedAnySelection = true
+            end
+        end
+    end
+    if prunedAnySelection then
+        Panel.SaveItemSelections()
+    end
+
     -- Build set of item IDs lootable by selected specs (if any).
-    local specFilterSet  -- nil when no spec filter is active
+    local specFilterSet -- nil when no spec filter is active
     if next(_s.selectedSpecIDs) then
         specFilterSet = {}
         for specID in pairs(_s.selectedSpecIDs) do
-            local specItemIDs = VCA.LootPool.GetItemsForSpec(
-                sourceType, sourceID, difficultyID, classID, specID)
+            local specItemIDs = VCA.LootPool.GetItemsForSpec(sourceType, sourceID, difficultyID, classID, specID)
             for _, id in ipairs(specItemIDs) do
                 specFilterSet[id] = true
             end
@@ -69,13 +82,12 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
 
     -- When items are selected, find which specs can loot ALL of them,
     -- then build a lootable set from those specs to grey out the rest.
-    local itemImpliedFilter  -- nil when no item selection filter is active
+    local itemImpliedFilter -- nil when no item selection filter is active
     if next(_s.selectedItemIDs) then
         -- Find specs that can loot every selected item
         local qualifyingSpecs = {}
         for _, spec in ipairs(specs) do
-            local specItemIDs = VCA.LootPool.GetItemsForSpec(
-                sourceType, sourceID, difficultyID, classID, spec.specID)
+            local specItemIDs = VCA.LootPool.GetItemsForSpec(sourceType, sourceID, difficultyID, classID, spec.specID)
             local idSet = {}
             for _, id in ipairs(specItemIDs) do
                 idSet[id] = true
@@ -95,8 +107,7 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         if #qualifyingSpecs > 0 then
             itemImpliedFilter = {}
             for _, specID in ipairs(qualifyingSpecs) do
-                local specItemIDs = VCA.LootPool.GetItemsForSpec(
-                    sourceType, sourceID, difficultyID, classID, specID)
+                local specItemIDs = VCA.LootPool.GetItemsForSpec(sourceType, sourceID, difficultyID, classID, specID)
                 for _, id in ipairs(specItemIDs) do
                     itemImpliedFilter[id] = true
                 end
@@ -148,7 +159,7 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
                 name = itemName or "",
                 link = itemLink or "",
                 icon = itemIcon or 0,
-                slot = (equipLoc and _G[equipLoc]) or "",
+                slot = (equipLoc and _G[equipLoc]) or ""
             }
         end
     end
@@ -157,22 +168,24 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
     table.sort(displayItems, function(a, b)
         local oa = _s.GetSlotSortOrder(a.itemID)
         local ob = _s.GetSlotSortOrder(b.itemID)
-        if oa ~= ob then return oa < ob end
+        if oa ~= ob then
+            return oa < ob
+        end
         return (a.name or "") < (b.name or "")
     end)
 
-    local colW      = _s.LeftColWidth()
-    local rowTop    = 0
+    local colW = _s.LeftColWidth()
+    local rowTop = 0
     for _, item in ipairs(displayItems) do
         local obtained = VCA.Data.IsObtained(sourceType, sourceID, difficultyID, item.itemID)
-        local row      = _s.GetOrCreateItemRow(_s.itemRows, _s.itemScrollChild)
+        local row = _s.GetOrCreateItemRow(_s.itemRows, _s.itemScrollChild)
         row.frame:SetWidth(colW - PADDING)
         row.frame:ClearAllPoints()
         row.frame:SetPoint("TOPLEFT", _s.itemScrollChild, "TOPLEFT", 0, -rowTop)
         row.frame:Show()
 
         -- Selection highlight
-        row.frame.itemID   = item.itemID
+        row.frame.itemID = item.itemID
         row.frame.itemLink = item.link or ""
         row.frame.itemSlot = item.slot or ""
         if _s.selectedItemIDs[item.itemID] then
@@ -195,11 +208,11 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         local itemName, _, quality = GetItemInfo(item.itemID)
         local ejName = (item.name ~= "" and item.name) or nil
         itemName = itemName or ejName or ("Item " .. item.itemID)
-        quality  = quality  or 1
+        quality = quality or 1
         if sourceType == VCA.ContentType.MYTHIC_PLUS then
             local reward = _s.GetRewardForKeyLevel(_s.getSelectedKeyLevel())
             if reward and reward.bonusID >= 12793 then
-                quality = 4  -- Hero/Myth track → Epic
+                quality = 4 -- Hero/Myth track → Epic
             end
         end
         local slotText = item.slot ~= "" and (" |cff888888[" .. item.slot .. "]|r") or ""
@@ -216,10 +229,10 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
 
         -- Obtained checkbox
         row.checkbox:SetChecked(obtained)
-        row.checkbox.itemID     = item.itemID
+        row.checkbox.itemID = item.itemID
         row.checkbox.sourceType = sourceType
-        row.checkbox.sourceID   = sourceID
-        row.checkbox.diffID     = difficultyID
+        row.checkbox.sourceID = sourceID
+        row.checkbox.diffID = difficultyID
         row.checkbox:SetScript("OnClick", function(self)
             local now = self:GetChecked()
             VCA.Data.SetObtained(self.sourceType, self.sourceID, self.diffID, self.itemID, now)
@@ -279,13 +292,12 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
 
     local rankings
     if filterItemIDs and #filterItemIDs > 0 then
-        rankings = VCA.Probability.RankCurrentPlayerSpecsForItems(
-            filterItemIDs, sourceType, sourceID, difficultyID)
+        rankings = VCA.Probability.RankCurrentPlayerSpecsForItems(filterItemIDs, sourceType, sourceID, difficultyID)
     else
         rankings = VCA.Probability.RankCurrentPlayerSpecs(sourceType, sourceID, difficultyID)
     end
-    local colW     = _s.RightColWidth()
-    local rowTop   = 0
+    local colW = _s.RightColWidth()
+    local rowTop = 0
 
     for _, entry in ipairs(rankings) do
         local row = _s.GetOrCreateSpecRow(_s.specRows, _s.specScrollChild)
@@ -317,9 +329,8 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
         end
 
         -- Spec name (left part of nameLabel)
-        local nameColor = entry.allObtained and "|cff44ff44" or
-                          (entry.noItems    and "|cff888888" or "|cffdddddd")
-        row.nameLabel:SetPoint("LEFT",  row.icon, "RIGHT", 4, 0)
+        local nameColor = entry.allObtained and "|cff44ff44" or (entry.noItems and "|cff888888" or "|cffdddddd")
+        row.nameLabel:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
         row.nameLabel:SetPoint("RIGHT", row.frame, "RIGHT", -90, 0)
         row.nameLabel:SetText(nameColor .. (entry.specName or "?") .. "|r")
 
@@ -332,12 +343,10 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
             statsText = "|cff44ff44" .. L["ALL_OBTAINED"] .. "|r"
         elseif hasSelection and entry.selectedOdds then
             local pct = math.floor(entry.selectedOdds * 100 + 0.5)
-            statsText = "|cffaaaaaa" .. entry.remainingCount .. "/" ..
-                        entry.baseCount .. "|r  " ..
-                        "|cffffff00" .. pct .. "%|r"
+            statsText =
+                "|cffaaaaaa" .. entry.remainingCount .. "/" .. entry.baseCount .. "|r  " .. "|cffffff00" .. pct .. "%|r"
         else
-            statsText = "|cffaaaaaa" .. entry.remainingCount .. "/" ..
-                        entry.baseCount .. "|r"
+            statsText = "|cffaaaaaa" .. entry.remainingCount .. "/" .. entry.baseCount .. "|r"
         end
         row.statsLabel:SetText(statsText)
 
@@ -364,7 +373,9 @@ end
 function Panel.RefreshItemColumn()
     PopulateItemColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
     local count = 0
-    for _ in pairs(_s.selectedSpecIDs) do count = count + 1 end
+    for _ in pairs(_s.selectedSpecIDs) do
+        count = count + 1
+    end
     if count > 0 then
         local label = count == 1 and L["COL_LOOT_FILTERED"] or string.format(L["COL_LOOT_FILTERED_N"], count)
         _s.lootColHeader:SetText("|cffb048f8" .. label .. "|r")

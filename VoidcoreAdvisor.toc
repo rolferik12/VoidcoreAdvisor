@@ -22,6 +22,7 @@ Locales\zhTW.lua
 Core\Constants.lua
 Core\Data.lua
 Core\SpecInfo.lua
+Core\SeasonData.lua
 Core\LootPool.lua
 Core\LootPoolWarm.lua
 Core\Probability.lua
