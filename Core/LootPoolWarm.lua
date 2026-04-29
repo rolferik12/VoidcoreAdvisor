@@ -157,8 +157,6 @@ function LootPool.WarmCache()
         end
     end
 
-    print("|cff66ccffVoidcoreAdvisor:|r Warming cache")
-
     local PHASE1_BATCH = 30 -- items per tick
     local PHASE2_BATCH = 5 -- work entries per tick
     local MAX_RETRIES = 3
@@ -203,11 +201,6 @@ function LootPool.WarmCache()
             _warmTicker = nil
         end
         _warmInProgress = false
-        if success then
-            print("|cff66ccffVoidcoreAdvisor:|r Cache loaded and ready!")
-        else
-            print("|cff66ccffVoidcoreAdvisor:|r Cache warm abandoned")
-        end
         -- Poke EJHook in case the player opened the journal during warmup.
         if LootPool.IsSeasonFilterReady() and VCA.EJHook and VCA.EJHook.TryReevaluate then
             VCA.EJHook.TryReevaluate()

@@ -405,6 +405,23 @@ end
 
 _s.BuildMythicPlusTooltipLink = BuildMythicPlusTooltipLink
 
+-- Returns the item link for a raid item directly from EJ_GetLootInfo, which
+-- already contains the correct difficulty/track bonus IDs (matching exactly
+-- what the EJ tooltip shows). Returns nil if the item is not found.
+local function GetRaidEJItemLink(itemID)
+    if not C_EncounterJournal or not C_EncounterJournal.GetLootInfoByIndex then
+        return nil
+    end
+    local numLoot = EJ_GetNumLoot and EJ_GetNumLoot() or 0
+    for i = 1, numLoot do
+        local info = C_EncounterJournal.GetLootInfoByIndex(i)
+        if info and info.itemID == itemID and info.link and info.link ~= "" then
+            return info.link
+        end
+    end
+    return nil
+end
+
 -- ── Row pool helpers ──────────────────────────────────────────────────────────
 -- We maintain two pools of recycled row frames so we never create more widgets
 -- than necessary.
@@ -507,10 +524,17 @@ local function GetOrCreateItemRow(pool, parent)
 
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 
-        -- For M+ dungeons, inject Myth 1/6 bonus IDs so the tooltip shows
-        -- the correct Voidcore reward item level.
-        if Panel.sourceType == VCA.ContentType.MYTHIC_PLUS and link and link ~= "" and rf.itemSlot ~= "" then
-            local modified = BuildMythicPlusTooltipLink(link)
+        -- Inject Voidcore reward bonus IDs so the tooltip shows the correct
+        -- item level for the Nebulous Voidcore reward track (Myth 1/6).
+        if link and link ~= "" then
+            local modified
+            if Panel.sourceType == VCA.ContentType.MYTHIC_PLUS and rf.itemSlot ~= "" then
+                modified = BuildMythicPlusTooltipLink(link)
+            elseif Panel.sourceType == VCA.ContentType.RAID then
+                -- Use the EJ's own link for this item — it already has the
+                -- correct difficulty / Myth track bonus IDs for this boss.
+                modified = GetRaidEJItemLink(rf.itemID)
+            end
             if modified then
                 local ok = pcall(GameTooltip.SetHyperlink, GameTooltip, modified)
                 if ok and GameTooltip:NumLines() and GameTooltip:NumLines() > 0 then
@@ -522,7 +546,6 @@ local function GetOrCreateItemRow(pool, parent)
             end
         end
 
-        -- Default path: raids use the link as-is (already at the EJ difficulty).
         if link and link ~= "" then
             GameTooltip:SetHyperlink(link)
         elseif id then
@@ -739,8 +762,8 @@ end)
 local scrollTrack = itemScrollFrame:CreateTexture(nil, "BACKGROUND")
 scrollTrack:SetWidth(4)
 scrollTrack:SetColorTexture(0.1, 0.1, 0.1, 0.4)
-scrollTrack:SetPoint("TOPRIGHT", itemScrollFrame, "TOPRIGHT", 0, 0)
-scrollTrack:SetPoint("BOTTOMRIGHT", itemScrollFrame, "BOTTOMRIGHT", 0, 0)
+scrollTrack:SetPoint("TOPRIGHT", itemScrollFrame, "TOPRIGHT", 5, 0)
+scrollTrack:SetPoint("BOTTOMRIGHT", itemScrollFrame, "BOTTOMRIGHT", 5, 0)
 scrollTrack:Hide()
 
 local scrollThumb = itemScrollFrame:CreateTexture(nil, "OVERLAY")

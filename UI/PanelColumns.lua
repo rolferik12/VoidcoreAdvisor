@@ -31,7 +31,7 @@ local function UpdateScrollbar()
     local trackSpace = frameH - thumbH
     local offset = (current / scrollRange) * trackSpace
     _s.scrollThumb:ClearAllPoints()
-    _s.scrollThumb:SetPoint("TOPRIGHT", _s.itemScrollFrame, "TOPRIGHT", 0, -offset)
+    _s.scrollThumb:SetPoint("TOPRIGHT", _s.itemScrollFrame, "TOPRIGHT", 5, -offset)
 end
 
 Panel.UpdateScrollbar = UpdateScrollbar
@@ -462,14 +462,20 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
     _s.itemScrollChild:SetHeight(math.max(rowTop, 1))
 
     if #displayItems == 0 then
-        -- Show a "no items" notice
+        -- Show a context-appropriate notice
+        local noticeText
+        if sourceType == VCA.ContentType.RAID and difficultyID == VCA.Difficulty.RAID_LFR then
+            noticeText = L["LFR_NOT_ELIGIBLE"]
+        else
+            noticeText = L["NO_ITEMS_FOR_SPEC"]
+        end
         local noRow = _s.GetOrCreateItemRow(_s.itemRows, _s.itemScrollChild)
         noRow.frame:SetWidth(colW - PADDING)
         noRow.frame:ClearAllPoints()
         noRow.frame:SetPoint("TOPLEFT", _s.itemScrollChild, "TOPLEFT", 0, 0)
         noRow.frame:Show()
         noRow.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-        noRow.nameLabel:SetText("|cff888888" .. L["NO_ITEMS_FOR_SPEC"] .. "|r")
+        noRow.nameLabel:SetText("|cff888888" .. noticeText .. "|r")
         noRow.nameLabel:SetAlpha(1)
         noRow.iconButton:SetAlpha(0.3)
         noRow.iconBorder:Hide()

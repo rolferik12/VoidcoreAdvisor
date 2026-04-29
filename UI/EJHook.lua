@@ -14,7 +14,6 @@
 --   Only current-season M+ dungeons (from C_ChallengeMode rotation) and
 --   current-tier raids trigger the panel.  Old-expansion content is ignored.
 --   Filter logic lives in LootPool so the cache warmup can share it.
-
 local _, VCA = ...
 
 VCA.EJHook = {}
@@ -28,21 +27,27 @@ local EJ_TAB_DUNGEONS = 4
 local EJ_TAB_RAIDS = 5
 
 local function IsEJOnInstanceListView()
-    return EncounterJournal
-        and EncounterJournal.instanceSelect
-        and EncounterJournal.instanceSelect:IsShown()
+    return EncounterJournal and EncounterJournal.instanceSelect and EncounterJournal.instanceSelect:IsShown()
 end
 
 local function IsEJDungeonsTabSelected()
-    if not EncounterJournal or not EncounterJournal:IsShown() then return false end
-    if not PanelTemplates_GetSelectedTab then return false end
+    if not EncounterJournal or not EncounterJournal:IsShown() then
+        return false
+    end
+    if not PanelTemplates_GetSelectedTab then
+        return false
+    end
     local selected = PanelTemplates_GetSelectedTab(EncounterJournal)
     return selected == EJ_TAB_DUNGEONS
 end
 
 local function IsEJRaidsTabSelected()
-    if not EncounterJournal or not EncounterJournal:IsShown() then return false end
-    if not PanelTemplates_GetSelectedTab then return false end
+    if not EncounterJournal or not EncounterJournal:IsShown() then
+        return false
+    end
+    if not PanelTemplates_GetSelectedTab then
+        return false
+    end
     local selected = PanelTemplates_GetSelectedTab(EncounterJournal)
     return selected == EJ_TAB_RAIDS
 end
@@ -65,8 +70,12 @@ _s.IsCurrentSeasonDungeonInstance = IsCurrentSeasonDungeonInstance
 -- ── Hook: boss encounter selected ────────────────────────────────────────────
 
 hooksecurefunc("EJ_SelectEncounter", function(encounterID)
-    if VCA.LootPool._reentryGuard then return end
-    if not EncounterJournal or not EncounterJournal:IsShown() then return end
+    if VCA.LootPool._reentryGuard then
+        return
+    end
+    if not EncounterJournal or not EncounterJournal:IsShown() then
+        return
+    end
 
     local isRaid = EJ_InstanceIsRaid() == true
 
@@ -89,12 +98,7 @@ hooksecurefunc("EJ_SelectEncounter", function(encounterID)
         end
 
         local difficultyID = EJ_GetDifficulty() or VCA.Difficulty.RAID_NORMAL
-        VCA.Panel.SetContext(
-            VCA.ContentType.RAID,
-            encounterID,
-            difficultyID,
-            name,
-            true   -- is raid
+        VCA.Panel.SetContext(VCA.ContentType.RAID, encounterID, difficultyID, name, true -- is raid
         )
         if not VCA.Panel.IsMinimized() then
             VCA.Panel.Show()
@@ -106,7 +110,9 @@ hooksecurefunc("EJ_SelectEncounter", function(encounterID)
     else
         -- Dungeon boss clicked: show entire instance loot pool, not just this boss.
         local _, _, _, _, _, journalInstanceID = EJ_GetEncounterInfo(encounterID)
-        if not journalInstanceID then return end
+        if not journalInstanceID then
+            return
+        end
 
         if not VCA.LootPool.IsCurrentSeasonDungeon(journalInstanceID) then
             VCA.Panel.Hide()
@@ -121,14 +127,12 @@ hooksecurefunc("EJ_SelectEncounter", function(encounterID)
         end
 
         local instanceName = EJ_GetInstanceInfo(journalInstanceID)
-        if not instanceName then return end
+        if not instanceName then
+            return
+        end
 
-        VCA.Panel.SetContext(
-            VCA.ContentType.MYTHIC_PLUS,
-            journalInstanceID,
-            VCA.MythicPlusEJDifficulty,
-            instanceName,
-            false  -- not a raid
+        VCA.Panel.SetContext(VCA.ContentType.MYTHIC_PLUS, journalInstanceID, VCA.MythicPlusEJDifficulty, instanceName,
+            false -- not a raid
         )
         if not VCA.Panel.IsMinimized() then
             VCA.Panel.Show()
@@ -143,11 +147,17 @@ end)
 -- ── Hook: instance (dungeon / raid overview) selected ────────────────────────
 
 hooksecurefunc("EJ_SelectInstance", function(instanceID)
-    if VCA.LootPool._reentryGuard then return end
-    if not EncounterJournal or not EncounterJournal:IsShown() then return end
+    if VCA.LootPool._reentryGuard then
+        return
+    end
+    if not EncounterJournal or not EncounterJournal:IsShown() then
+        return
+    end
 
     local name = EJ_GetInstanceInfo(instanceID)
-    if not name then return end
+    if not name then
+        return
+    end
 
     VCA.RaidOverview.Hide()
 
@@ -184,12 +194,7 @@ hooksecurefunc("EJ_SelectInstance", function(instanceID)
     end
 
     -- M+ / dungeon overview: show the panel for the whole instance pool.
-    VCA.Panel.SetContext(
-        VCA.ContentType.MYTHIC_PLUS,
-        instanceID,
-        VCA.MythicPlusEJDifficulty,
-        name,
-        false  -- not a raid
+    VCA.Panel.SetContext(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty, name, false -- not a raid
     )
     if not VCA.Panel.IsMinimized() then
         VCA.Panel.Show()
@@ -208,26 +213,26 @@ end)
 -- panel's stored difficultyID so later probability reads use the right pool.
 
 hooksecurefunc("EJ_SetDifficulty", function(difficultyID)
-    if VCA.LootPool._reentryGuard then return end
+    if VCA.LootPool._reentryGuard then
+        return
+    end
     if VCA.RaidOverview.IsShown() then
         local instanceID = EncounterJournal and EncounterJournal.instanceID
         if instanceID and instanceID > 0 then
             VCA.RaidOverview.Show(instanceID, difficultyID)
         end
     end
-    if not VCA.Panel.IsShown() then return end
-    if VCA.Panel.sourceType ~= VCA.ContentType.RAID then return end
+    if not VCA.Panel.IsShown() then
+        return
+    end
+    if VCA.Panel.sourceType ~= VCA.ContentType.RAID then
+        return
+    end
 
     -- Update stored difficulty and re-apply context with the same source.
     if VCA.Panel.sourceID then
         local name = VCA.Panel.sourceLabel and VCA.Panel.sourceLabel:GetText() or ""
-        VCA.Panel.SetContext(
-            VCA.ContentType.RAID,
-            VCA.Panel.sourceID,
-            difficultyID,
-            name,
-            true
-        )
+        VCA.Panel.SetContext(VCA.ContentType.RAID, VCA.Panel.sourceID, difficultyID, name, true)
     end
 end)
 
@@ -253,7 +258,9 @@ syncFrame:SetScript("OnEvent", function(self, event)
         EncounterJournal_LoadUI()
     end
 
-    if not EncounterJournal then return end
+    if not EncounterJournal then
+        return
+    end
 
     -- When the EJ closes, hide our panel with it.
     EncounterJournal:HookScript("OnHide", function()
@@ -270,7 +277,9 @@ syncFrame:SetScript("OnEvent", function(self, event)
         VCA.Panel.AnchorToEJ()
         EJHook.UpdateToggleVisibility()
         EJHook.ShowOverviewIfAllowed()
-        if VCA.Panel.IsMinimized() then return end
+        if VCA.Panel.IsMinimized() then
+            return
+        end
         EJHook.QueueReevaluateAndShow()
     end)
 
@@ -278,7 +287,9 @@ syncFrame:SetScript("OnEvent", function(self, event)
     -- Hook this to keep the panel in sync on the first EJ open in instances.
     if type(EncounterJournal_DisplayInstance) == "function" then
         hooksecurefunc("EncounterJournal_DisplayInstance", function()
-            if not EncounterJournal or not EncounterJournal:IsShown() then return end
+            if not EncounterJournal or not EncounterJournal:IsShown() then
+                return
+            end
             EJHook.QueueReevaluateAndShow()
         end)
     end
@@ -289,7 +300,9 @@ syncFrame:SetScript("OnEvent", function(self, event)
         EncounterJournal.instanceSelect:HookScript("OnShow", function()
             _s.forcedRaidOverviewInstanceID = nil
             VCA.Panel.Hide()
-            if VCA.EJHook.toggleBtn then VCA.EJHook.toggleBtn:Hide() end
+            if VCA.EJHook.toggleBtn then
+                VCA.EJHook.toggleBtn:Hide()
+            end
             EJHook.ShowOverviewIfAllowed()
             EJHook.UpdateToggleVisibility()
         end)
@@ -307,11 +320,15 @@ syncFrame:SetScript("OnEvent", function(self, event)
         VCA.Panel.Hide()
         VCA.DungeonOverview.Hide()
         VCA.RaidOverview.Hide()
-        if VCA.EJHook.toggleBtn then VCA.EJHook.toggleBtn:Hide() end
+        if VCA.EJHook.toggleBtn then
+            VCA.EJHook.toggleBtn:Hide()
+        end
 
         -- Tab switching updates EJ state asynchronously; re-check next frame.
         C_Timer.After(0, function()
-            if not EncounterJournal or not EncounterJournal:IsShown() then return end
+            if not EncounterJournal or not EncounterJournal:IsShown() then
+                return
+            end
 
             if _s.IsEJDungeonsTabSelected() or _s.IsEJRaidsTabSelected() then
                 if _s.IsEJOnInstanceListView() then
@@ -362,9 +379,11 @@ syncFrame:SetScript("OnEvent", function(self, event)
         end
         GameTooltip:Show()
     end)
-    toggleBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    toggleBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
 
-    toggleBtn:Hide()  -- hidden by default; shown when viewing relevant content
+    toggleBtn:Hide() -- hidden by default; shown when viewing relevant content
     VCA.EJHook.toggleBtn = toggleBtn
 
     -- ── Overview toggle button (instance-list view) ─────────────────────────
@@ -406,7 +425,9 @@ syncFrame:SetScript("OnEvent", function(self, event)
         end
         GameTooltip:Show()
     end)
-    overviewToggleBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    overviewToggleBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
 
     overviewToggleBtn:Hide()
     VCA.EJHook.overviewToggleBtn = overviewToggleBtn

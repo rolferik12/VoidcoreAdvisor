@@ -22,6 +22,7 @@ L["NEBULOUS_VOIDCORE"] = "Nebulous Voidcore"
 L["NEBULOUS_VOIDCORES"] = "Nebulous Voidcores"
 
 L["NO_ITEMS_FOR_SPEC"] = "No items for this spec"
+L["LFR_NOT_ELIGIBLE"] = "Not available in Raid Finder"
 
 L["LOOT_SPEC_LABEL"] = "Loot:"
 L["ALL_OBTAINED"] = "✓ all"
