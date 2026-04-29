@@ -22,7 +22,7 @@ LootPool._reentryGuard = false
 
 local _cache = {}
 local GetSeasonFingerprint
-local PERSISTED_CACHE_VERSION = 7
+local PERSISTED_CACHE_VERSION = 10
 local _itemSpecCache = {}
 
 local HUNTER_CLASS_ID = 3
@@ -263,6 +263,18 @@ local function EnsureSeasonFilter()
     end
 end
 
+function LootPool.IsSeasonFilterReady()
+    return _seasonFilterBuilt == true
+end
+
+function LootPool.GetCachedSeasonDungeonByName(name)
+    return _seasonDungeonByName[name]
+end
+
+function LootPool.GetCachedSeasonDungeonInstanceIDs()
+    return _seasonDungeonList
+end
+
 function LootPool.IsCurrentSeasonDungeon(instanceID)
     EnsureSeasonFilter()
     return _seasonDungeonIDs[instanceID] == true
@@ -490,7 +502,7 @@ end
 local function GetItemEligibleSpecSet(itemID)
     local cached = _itemSpecCache[itemID]
     if cached ~= nil then
-        return cached
+        return cached, true
     end
 
     local specInfo
@@ -502,17 +514,50 @@ local function GetItemEligibleSpecSet(itemID)
     end
 
     if type(specInfo) == "table" then
+        -- Some universally-eligible items can report an empty spec list. Treat
+        -- this as "all player specs" only once item data is actually loaded;
+        -- otherwise treat as not-ready to avoid caching transient empty results.
+        if #specInfo == 0 then
+            local itemName
+            if C_Item and C_Item.GetItemNameByID then
+                itemName = C_Item.GetItemNameByID(itemID)
+            elseif GetItemInfo then
+                itemName = GetItemInfo(itemID)
+            end
+
+            if not itemName then
+                if GetItemInfo then
+                    GetItemInfo(itemID)
+                end
+                return nil, false
+            end
+
+            local allSpecSet = {}
+            if VCA.SpecInfo and VCA.SpecInfo.GetPlayerSpecs then
+                for _, spec in ipairs(VCA.SpecInfo.GetPlayerSpecs()) do
+                    allSpecSet[spec.specID] = true
+                end
+            end
+
+            _itemSpecCache[itemID] = allSpecSet
+            return allSpecSet, true
+        end
+
         local specSet = {}
         for _, eligibleSpecID in ipairs(specInfo) do
             specSet[eligibleSpecID] = true
         end
         _itemSpecCache[itemID] = specSet
-        return specSet
+        return specSet, true
     end
 
     -- Metadata may be temporarily unavailable while item data is still warming.
-    -- Do not cache this miss so later reads can recover without /reload.
-    return nil
+    -- Prime the client cache and do not cache this miss so later reads can
+    -- recover without /reload.
+    if GetItemInfo then
+        GetItemInfo(itemID)
+    end
+    return nil, false
 end
 
 local function GetClassIDForSpecID(specID)
@@ -576,32 +621,32 @@ local function IsFallbackItemEligibleForClass(itemID, classID)
 end
 
 local function IsItemEligibleForSpec(itemID, specID)
-    local specSet = GetItemEligibleSpecSet(itemID)
+    local specSet, metadataReady = GetItemEligibleSpecSet(itemID)
     if specSet ~= nil then
-        return specSet[specID] == true
+        return specSet[specID] == true, metadataReady
     end
 
     local classID = GetClassIDForSpecID(specID)
-    return IsFallbackItemEligibleForClass(itemID, classID)
+    return IsFallbackItemEligibleForClass(itemID, classID), metadataReady
 end
 
 local function IsItemEligibleForClass(itemID, classID)
     if not classID or not VCA.SpecInfo or not VCA.SpecInfo.GetPlayerSpecs then
-        return false
+        return false, true
     end
 
-    local specSet = GetItemEligibleSpecSet(itemID)
+    local specSet, metadataReady = GetItemEligibleSpecSet(itemID)
     if specSet == nil then
-        return IsFallbackItemEligibleForClass(itemID, classID)
+        return IsFallbackItemEligibleForClass(itemID, classID), metadataReady
     end
 
     for _, spec in ipairs(VCA.SpecInfo.GetPlayerSpecs()) do
         if spec.classID == classID and specSet[spec.specID] then
-            return true
+            return true, metadataReady
         end
     end
 
-    return false
+    return false, metadataReady
 end
 
 -- ── Low-level EJ read ─────────────────────────────────────────────────────────
@@ -681,15 +726,24 @@ function LootPool.GetEncounterItemsForSpec(encounterID, difficultyID, classID, s
 
     local rawItems = LootPool.GetEncounterItems(encounterID, difficultyID)
     local itemIDs = {}
+    local metadataComplete = true
     for _, item in ipairs(rawItems) do
-        if IsItemEligibleForSpec(item.itemID, specID) then
+        local eligible, metadataReady = IsItemEligibleForSpec(item.itemID, specID)
+        if not metadataReady then
+            metadataComplete = false
+        end
+        if eligible then
             itemIDs[#itemIDs + 1] = item.itemID
         end
     end
 
-    _cache[key] = itemIDs
-    PersistCacheEntry(key, itemIDs)
-    return itemIDs
+    if metadataComplete then
+        _cache[key] = itemIDs
+        PersistCacheEntry(key, itemIDs)
+        return itemIDs
+    end
+
+    return {}
 end
 
 -- ── Public: per-instance reads (M+ dungeons) ─────────────────────────────────
@@ -769,9 +823,14 @@ function LootPool.GetInstanceItemsForSpec(instanceID, difficultyID, classID, spe
 
     local itemIDSet = {}
     local rawItems = LootPool.GetInstanceItems(instanceID, difficultyID).all
+    local metadataComplete = true
 
     for _, item in ipairs(rawItems) do
-        if IsItemEligibleForSpec(item.itemID, specID) then
+        local eligible, metadataReady = IsItemEligibleForSpec(item.itemID, specID)
+        if not metadataReady then
+            metadataComplete = false
+        end
+        if eligible then
             itemIDSet[item.itemID] = true
         end
     end
@@ -781,9 +840,13 @@ function LootPool.GetInstanceItemsForSpec(instanceID, difficultyID, classID, spe
         itemIDs[#itemIDs + 1] = id
     end
 
-    _cache[key] = itemIDs
-    PersistCacheEntry(key, itemIDs)
-    return itemIDs
+    if metadataComplete then
+        _cache[key] = itemIDs
+        PersistCacheEntry(key, itemIDs)
+        return itemIDs
+    end
+
+    return {}
 end
 
 -- ── Public: class-wide reads (all specs) ──────────────────────────────────────
@@ -801,15 +864,24 @@ function LootPool.GetEncounterItemsForClass(encounterID, difficultyID, classID, 
 
     local rawItems = LootPool.GetEncounterItems(encounterID, difficultyID)
     local itemIDs = {}
+    local metadataComplete = true
     for _, item in ipairs(rawItems) do
-        if IsItemEligibleForClass(item.itemID, classID) then
+        local eligible, metadataReady = IsItemEligibleForClass(item.itemID, classID)
+        if not metadataReady then
+            metadataComplete = false
+        end
+        if eligible then
             itemIDs[#itemIDs + 1] = item.itemID
         end
     end
 
-    _cache[key] = itemIDs
-    PersistCacheEntry(key, itemIDs)
-    return itemIDs
+    if metadataComplete then
+        _cache[key] = itemIDs
+        PersistCacheEntry(key, itemIDs)
+        return itemIDs
+    end
+
+    return {}
 end
 
 -- Returns item IDs visible to ANY spec of a class across an entire instance.
@@ -825,9 +897,14 @@ function LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
 
     local itemIDSet = {}
     local rawItems = LootPool.GetInstanceItems(instanceID, difficultyID).all
+    local metadataComplete = true
 
     for _, item in ipairs(rawItems) do
-        if IsItemEligibleForClass(item.itemID, classID) then
+        local eligible, metadataReady = IsItemEligibleForClass(item.itemID, classID)
+        if not metadataReady then
+            metadataComplete = false
+        end
+        if eligible then
             itemIDSet[item.itemID] = true
         end
     end
@@ -837,9 +914,13 @@ function LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
         itemIDs[#itemIDs + 1] = id
     end
 
-    _cache[key] = itemIDs
-    PersistCacheEntry(key, itemIDs)
-    return itemIDs
+    if metadataComplete then
+        _cache[key] = itemIDs
+        PersistCacheEntry(key, itemIDs)
+        return itemIDs
+    end
+
+    return {}
 end
 
 -- ── Public: unified dispatch ──────────────────────────────────────────────────
@@ -908,6 +989,8 @@ local _maxWarmRetries = 5
 local _warmTicker     = nil  -- handle for in-progress warm ticker
 local _warmInProgress = false
 local _warmPausedByEJ = false
+local _warmStartRetries = 0
+local _maxWarmStartRetries = 3
 
 function LootPool.IsWarmInProgress()
     return _warmInProgress
@@ -927,6 +1010,24 @@ end
 
 function LootPool.WarmCache()
     EnsureSeasonFilter()
+
+    if not _seasonFilterBuilt then
+        _warmInProgress = false
+        _warmPausedByEJ = false
+
+        if _warmStartRetries < _maxWarmStartRetries then
+            _warmStartRetries = _warmStartRetries + 1
+            C_Timer.After(3, function()
+                if IsInInstance and IsInInstance() then
+                    return
+                end
+                LootPool.WarmCache()
+            end)
+        end
+        return
+    end
+
+    _warmStartRetries = 0
     _warmInProgress = true
     _warmPausedByEJ = false
     _savedWarmEJState = nil
@@ -1053,10 +1154,17 @@ function LootPool.WarmCache()
     -- after EJ interruption. These are treated as optional for warm completion.
     local warmSpecMissCount = {}
     local warmSpecSkip = {}
+    local warmRaidClassMissCount = {}
+    local warmRaidClassSkip = {}
+    local warmDungeonMissCount = {}
+    local warmDungeonSkip = {}
 
-    local function IsWarmEntryCached(entry, warmSpecSkipTable)
+    local function IsWarmEntryCached(entry, warmSpecSkipTable, warmRaidClassSkipTable, warmDungeonSkipTable)
         if entry.kind == "raid-class" then
             local classKey = CacheKey("eic", entry.encounterID, entry.difficultyID, classID)
+            if warmRaidClassSkipTable and warmRaidClassSkipTable[classKey] then
+                return true
+            end
             return _cache[classKey] ~= nil
         end
 
@@ -1069,6 +1177,10 @@ function LootPool.WarmCache()
         end
 
         local instanceID = entry.instanceID
+        if warmDungeonSkipTable and warmDungeonSkipTable[instanceID] then
+            return true
+        end
+
         -- The "ii" key (enriched item data with names/icons) is NOT required here.
         -- It has a completeness check that can fail until item data loads from server.
         -- The class/spec ID-only caches (iic/iis) are what the overview and probability
@@ -1099,7 +1211,7 @@ function LootPool.WarmCache()
         local allCached = _seasonFilterBuilt == true
         local uncachedEntries = {}
         for _, entry in ipairs(queue) do
-            if not IsWarmEntryCached(entry, warmSpecSkip) then
+            if not IsWarmEntryCached(entry, warmSpecSkip, warmRaidClassSkip, warmDungeonSkip) then
                 allCached = false
                 if entry.kind == "dungeon" then
                     uncachedEntries[#uncachedEntries + 1] = string.format("dungeon:%d", entry.instanceID)
@@ -1128,7 +1240,7 @@ function LootPool.WarmCache()
 
             local hasUncachedItems = false
             for _, entry in ipairs(queue) do
-                if not IsWarmEntryCached(entry, warmSpecSkip) then
+                if not IsWarmEntryCached(entry, warmSpecSkip, warmRaidClassSkip, warmDungeonSkip) then
                     hasUncachedItems = true
                     break
                 end
@@ -1159,6 +1271,16 @@ function LootPool.WarmCache()
     end
 
     local function ProcessNext()
+        if IsInInstance and IsInInstance() then
+            if _warmTicker then
+                _warmTicker:Cancel()
+                _warmTicker = nil
+            end
+            _warmInProgress = false
+            _warmPausedByEJ = false
+            return
+        end
+
         -- Never drive internal EJ navigation while the journal is visible.
         -- Otherwise the player can hear page-turn sounds and briefly see the
         -- UI flip as warm-cache SelectInstance/SelectEncounter calls run.
@@ -1207,6 +1329,15 @@ function LootPool.WarmCache()
 
         if entry.kind == "raid-class" then
             LootPool.GetEncounterItemsForClass(entry.encounterID, entry.difficultyID, classID, entry.instanceID)
+
+            local classKey = CacheKey("eic", entry.encounterID, entry.difficultyID, classID)
+            if _cache[classKey] == nil then
+                local missCount = (warmRaidClassMissCount[classKey] or 0) + 1
+                warmRaidClassMissCount[classKey] = missCount
+                if missCount >= 2 and not warmRaidClassSkip[classKey] then
+                    warmRaidClassSkip[classKey] = true
+                end
+            end
             return
         end
 
@@ -1245,6 +1376,29 @@ function LootPool.WarmCache()
         -- Per-spec reads (used by Probability)
         for _, spec in ipairs(specs) do
             LootPool.GetInstanceItemsForSpec(instanceID, difficultyID, spec.classID, spec.specID)
+        end
+
+        local iicKey = CacheKey("iic", instanceID, difficultyID, classID)
+        local cacheReady = _cache[iicKey] ~= nil
+        if cacheReady then
+            for _, spec in ipairs(specs) do
+                local specKey = CacheKey("iis", instanceID, difficultyID, spec.classID, spec.specID)
+                if _cache[specKey] == nil then
+                    cacheReady = false
+                    break
+                end
+            end
+        end
+
+        if not cacheReady then
+            local missCount = (warmDungeonMissCount[instanceID] or 0) + 1
+            warmDungeonMissCount[instanceID] = missCount
+            -- If metadata is still incomplete after multiple passes, treat this
+            -- dungeon as optional for warm completion and let on-demand reads
+            -- fill it later once item data is fully available.
+            if missCount >= 2 and not warmDungeonSkip[instanceID] then
+                warmDungeonSkip[instanceID] = true
+            end
         end
     end
 

@@ -22,6 +22,64 @@ local Reminder = VCA.Reminder
 local lastShownInstanceID = nil   -- prevents re-showing for the same dungeon
 local pendingSpecID       = nil   -- specID to switch to if user clicks "Yes"
 
+local function RankCurrentPlayerSpecsForItemsCached(itemIDs, sourceType, sourceID, difficultyID)
+    local specs = VCA.SpecInfo.GetPlayerSpecs()
+    local selectedSet = {}
+    for _, id in ipairs(itemIDs) do
+        selectedSet[id] = true
+    end
+
+    local results = {}
+    for _, spec in ipairs(specs) do
+        local allSpecItemIDs = VCA.LootPool.GetCachedItemsForSpec(
+            sourceType, sourceID, difficultyID, spec.classID, spec.specID)
+        if not allSpecItemIDs then
+            return nil
+        end
+
+        local matchCount = 0
+        local remainingCount = 0
+        local matchRemainingCount = 0
+        for _, itemID in ipairs(allSpecItemIDs) do
+            if selectedSet[itemID] then
+                matchCount = matchCount + 1
+            end
+            if not VCA.Data.IsObtained(sourceType, sourceID, difficultyID, itemID) then
+                remainingCount = remainingCount + 1
+                if selectedSet[itemID] then
+                    matchRemainingCount = matchRemainingCount + 1
+                end
+            end
+        end
+
+        local selectedCount = #itemIDs
+        results[#results + 1] = {
+            specID              = spec.specID,
+            specName            = spec.name,
+            specIcon            = spec.icon,
+            specRole            = spec.role,
+            specIndex           = spec.specIndex,
+            baseCount           = #allSpecItemIDs,
+            remainingCount      = remainingCount,
+            matchCount          = matchCount,
+            matchRemainingCount = matchRemainingCount,
+            selectedOdds        = remainingCount > 0 and (matchRemainingCount / remainingCount) or 0,
+            allObtained         = #allSpecItemIDs > 0 and remainingCount == 0,
+            noItems             = matchCount < selectedCount,
+        }
+    end
+
+    table.sort(results, function(a, b)
+        if a.noItems ~= b.noItems then return not a.noItems end
+        if a.allObtained ~= b.allObtained then return not a.allObtained end
+        if a.remainingCount ~= b.remainingCount then return a.remainingCount < b.remainingCount end
+        if a.baseCount ~= b.baseCount then return a.baseCount < b.baseCount end
+        return a.specID < b.specID
+    end)
+
+    return results
+end
+
 -- ── Main frame ────────────────────────────────────────────────────────────────
 
 local frame = CreateFrame("Frame", "VoidcoreAdvisorReminder", UIParent, "BackdropTemplate")
@@ -211,14 +269,10 @@ function Reminder.Evaluate()
     local owned = currInfo and currInfo.quantity or 0
     if owned < 1 then return end
 
-    -- Season filter may have been built too early (before C_ChallengeMode
-    -- data was available).  Force a rebuild if the list is still empty.
-    if #VCA.LootPool.GetSeasonDungeonInstanceIDs() == 0 then
-        VCA.LootPool.BuildSeasonFilter()
-    end
+    if not VCA.LootPool.IsSeasonFilterReady or not VCA.LootPool.IsSeasonFilterReady() then return end
 
     -- Map the in-game instance name to the EJ instanceID.
-    local ejInstanceID = VCA.LootPool.GetSeasonDungeonByName(instanceName)
+    local ejInstanceID = VCA.LootPool.GetCachedSeasonDungeonByName(instanceName)
     if not ejInstanceID then return end  -- not a current-season dungeon
 
     -- Don't re-show for the same dungeon until the player leaves.
@@ -235,7 +289,7 @@ function Reminder.Evaluate()
     end
 
     -- Rank all player specs by probability for the selected items.
-    local rankings = VCA.Probability.RankCurrentPlayerSpecsForItems(
+    local rankings = RankCurrentPlayerSpecsForItemsCached(
         selectedList, VCA.ContentType.MYTHIC_PLUS, ejInstanceID, VCA.MythicPlusEJDifficulty)
 
     if not rankings or #rankings == 0 then return end
