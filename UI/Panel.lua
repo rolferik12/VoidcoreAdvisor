@@ -20,15 +20,17 @@ local L = VCA.L
 VCA.Panel = {}
 local Panel = VCA.Panel
 
--- ── Selection state ──────────────────────────────────────────────────────────
--- Tracks which itemIDs the user has clicked to highlight.
--- Ctrl+click toggles an item; plain click is single-select.
-local selectedItemIDs = {}  -- set: { [itemID] = true }
--- Tracks which specIDs the user has clicked to filter the loot column.
-local selectedSpecIDs = {}  -- set: { [specID] = true }
-local RefreshSpecColumn     -- forward declaration; defined after PopulateSpecColumn
-local RefreshItemColumn     -- forward declaration; defined after PopulateItemColumn
-local SaveItemSelections     -- forward declaration; defined after Panel.SetContext
+-- ── Internal state shared with PanelColumns.lua ───────────────────────────────
+-- PanelColumns.lua (loaded after this file) accesses these via Panel._s.
+-- Never reassign the tables themselves; use wipe() to clear them.
+local _s = {}
+Panel._s = _s
+
+-- Selection state
+_s.selectedItemIDs = {}
+local selectedItemIDs = _s.selectedItemIDs  -- local alias for this file's closures
+_s.selectedSpecIDs = {}
+local selectedSpecIDs = _s.selectedSpecIDs  -- local alias for this file's closures
 
 -- ── Sizing ────────────────────────────────────────────────────────────────────
 
@@ -90,7 +92,7 @@ end)
 
 -- Persist item selections when the panel hides (close, navigate away, logout).
 frame:SetScript("OnHide", function()
-    SaveItemSelections()
+    Panel.SaveItemSelections()
 end)
 
 -- Source name (boss or dungeon)
@@ -139,6 +141,9 @@ local function RightColWidth()
     return ContentWidth() - LeftColWidth() - 1  -- 1px for the vertical separator
 end
 
+_s.LeftColWidth = LeftColWidth
+_s.RightColWidth = RightColWidth
+
 -- ── Column header labels ──────────────────────────────────────────────────────
 
 local lootColHeader = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -154,9 +159,9 @@ clearSpecBtn:SetText("|cffff4444x|r")
 clearSpecBtn:SetScript("OnClick", function()
     wipe(selectedSpecIDs)
     wipe(selectedItemIDs)
-    SaveItemSelections()
-    RefreshSpecColumn()
-    RefreshItemColumn()
+    Panel.SaveItemSelections()
+    Panel.RefreshSpecColumn()
+    Panel.RefreshItemColumn()
 end)
 clearSpecBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -185,6 +190,9 @@ end
 local function GetRewardForKeyLevel(level)
     return VCA.MythicPlusVaultRewards[math.min(level, 10)]
 end
+
+_s.GetRewardForKeyLevel = GetRewardForKeyLevel
+_s.getSelectedKeyLevel = function() return selectedKeyLevel end
 
 local function UpdateKeyLevelText()
     local reward = GetRewardForKeyLevel(selectedKeyLevel)
@@ -280,9 +288,9 @@ clearItemBtn:SetNormalFontObject("GameFontNormal")
 clearItemBtn:SetText("|cffff4444x|r")
 clearItemBtn:SetScript("OnClick", function()
     wipe(selectedItemIDs)
-    SaveItemSelections()
-    RefreshSpecColumn()
-    RefreshItemColumn()
+    Panel.SaveItemSelections()
+    Panel.RefreshSpecColumn()
+    Panel.RefreshItemColumn()
 end)
 clearItemBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -298,6 +306,12 @@ lootSpecLabel:SetText("")
 
 -- Vertical separator between columns
 local colSep = contentArea:CreateTexture(nil, "ARTWORK")
+
+-- Expose column header widgets for PanelColumns.lua
+_s.lootColHeader = lootColHeader
+_s.clearSpecBtn  = clearSpecBtn
+_s.specColHeader = specColHeader
+_s.clearItemBtn  = clearItemBtn
 colSep:SetColorTexture(0.58, 0.0, 0.82, 0.3)
 colSep:SetWidth(1)
 
@@ -314,6 +328,8 @@ colHeaderRule:SetHeight(1)
 local function QualityColor(quality)
     return "|cnIQ" .. (quality or 1) .. ":"
 end
+
+_s.QualityColor = QualityColor
 
 -- ── Tooltip: M+ bonus ID injection ──────────────────────────────────────────
 -- Builds a modified item hyperlink string with bonus IDs matching the
@@ -364,12 +380,17 @@ local function BuildMythicPlusTooltipLink(itemLink)
     return table.concat(fields, ":")
 end
 
+_s.BuildMythicPlusTooltipLink = BuildMythicPlusTooltipLink
+
 -- ── Row pool helpers ──────────────────────────────────────────────────────────
 -- We maintain two pools of recycled row frames so we never create more widgets
 -- than necessary.
-
-local itemRows  = {}   -- { frame, icon, nameLabel, checkbox }
-local specRows  = {}   -- { frame, icon, nameLabel, statsLabel }
+-- itemRows and specRows are exposed in Panel._s so PanelColumns.lua can
+-- pass them to GetOrCreateItemRow / GetOrCreateSpecRow.
+_s.itemRows = {}
+local itemRows = _s.itemRows
+_s.specRows = {}
+local specRows = _s.specRows
 
 local function GetOrCreateItemRow(pool, parent)
     for _, row in ipairs(pool) do
@@ -492,14 +513,16 @@ local function GetOrCreateItemRow(pool, parent)
                 end
             end
         end
-        RefreshSpecColumn()
-        RefreshItemColumn()
-        SaveItemSelections()
+        Panel.RefreshSpecColumn()
+        Panel.RefreshItemColumn()
+        Panel.SaveItemSelections()
     end)
 
     pool[#pool + 1] = row
     return row
 end
+
+_s.GetOrCreateItemRow = GetOrCreateItemRow
 
 local function GetOrCreateSpecRow(pool, parent)
     for _, row in ipairs(pool) do
@@ -557,7 +580,7 @@ local function GetOrCreateSpecRow(pool, parent)
                 end
             end
         end
-        RefreshItemColumn()
+        Panel.RefreshItemColumn()
     end)
 
     local row = {
@@ -574,6 +597,8 @@ end
 
 -- ── Row hide helpers ──────────────────────────────────────────────────────────
 
+_s.GetOrCreateSpecRow = GetOrCreateSpecRow
+
 local function HideAllItemRows()
     for _, row in ipairs(itemRows) do row.frame:Hide() end
 end
@@ -581,6 +606,9 @@ end
 local function HideAllSpecRows()
     for _, row in ipairs(specRows) do row.frame:Hide() end
 end
+
+_s.HideAllItemRows = HideAllItemRows
+_s.HideAllSpecRows = HideAllSpecRows
 
 -- ── Slot sort order ───────────────────────────────────────────────────────────
 -- Maps INVTYPE_* equip-location strings to a numeric sort priority so the item
@@ -620,6 +648,8 @@ local function GetSlotSortOrder(itemID)
     return SLOT_SORT_ORDER[equipLoc] or 99
 end
 
+_s.GetSlotSortOrder = GetSlotSortOrder
+
 -- ── Populate item column ──────────────────────────────────────────────────────
 
 local itemScrollChild = CreateFrame("Frame", nil, contentArea)
@@ -649,241 +679,15 @@ scrollThumb:SetWidth(4)
 scrollThumb:SetColorTexture(0.6, 0.6, 0.6, 0.6)
 scrollThumb:Hide()
 
-local function UpdateScrollbar()
-    local childH = itemScrollChild:GetHeight()
-    local frameH = itemScrollFrame:GetHeight()
-    if childH <= frameH or frameH <= 0 then
-        scrollTrack:Hide()
-        scrollThumb:Hide()
-        return
-    end
-    scrollTrack:Show()
-    scrollThumb:Show()
-    local thumbRatio = frameH / childH
-    local thumbH = math.max(20, frameH * thumbRatio)
-    scrollThumb:SetHeight(thumbH)
-    local scrollRange = childH - frameH
-    local current = itemScrollFrame:GetVerticalScroll()
-    local trackSpace = frameH - thumbH
-    local offset = (current / scrollRange) * trackSpace
-    scrollThumb:ClearAllPoints()
-    scrollThumb:SetPoint("TOPRIGHT", itemScrollFrame, "TOPRIGHT", 0, -offset)
-end
+-- Expose scroll frame widgets and scrollbar for PanelColumns.lua
+_s.itemScrollChild = itemScrollChild
+_s.itemScrollFrame = itemScrollFrame
+_s.scrollTrack     = scrollTrack
+_s.scrollThumb     = scrollThumb
 
-itemScrollFrame:HookScript("OnMouseWheel", function() UpdateScrollbar() end)
-
-local function PopulateItemColumn(sourceType, sourceID, difficultyID)
-    HideAllItemRows()
-
-    local classID = VCA.SpecInfo.GetPlayerClassID()
-    local trustedItemSet = {}
-    local specs = VCA.SpecInfo.GetPlayerSpecs()
-
-    for _, spec in ipairs(specs) do
-        local specItemIDs = VCA.LootPool.GetItemsForSpec(
-            sourceType, sourceID, difficultyID, spec.classID, spec.specID)
-        for _, id in ipairs(specItemIDs) do
-            trustedItemSet[id] = true
-        end
-    end
-
-    -- Build set of item IDs lootable by selected specs (if any).
-    local specFilterSet  -- nil when no spec filter is active
-    if next(selectedSpecIDs) then
-        specFilterSet = {}
-        for specID in pairs(selectedSpecIDs) do
-            local specItemIDs = VCA.LootPool.GetItemsForSpec(
-                sourceType, sourceID, difficultyID, classID, specID)
-            for _, id in ipairs(specItemIDs) do
-                specFilterSet[id] = true
-            end
-        end
-    end
-
-    -- When items are selected, find which specs can loot ALL of them,
-    -- then build a lootable set from those specs to grey out the rest.
-    local itemImpliedFilter  -- nil when no item selection filter is active
-    if next(selectedItemIDs) then
-        local specs = VCA.SpecInfo.GetPlayerSpecs()
-        -- Find specs that can loot every selected item
-        local qualifyingSpecs = {}
-        for _, spec in ipairs(specs) do
-            local specItemIDs = VCA.LootPool.GetItemsForSpec(
-                sourceType, sourceID, difficultyID, classID, spec.specID)
-            local idSet = {}
-            for _, id in ipairs(specItemIDs) do
-                idSet[id] = true
-            end
-            local coversAll = true
-            for selID in pairs(selectedItemIDs) do
-                if not idSet[selID] then
-                    coversAll = false
-                    break
-                end
-            end
-            if coversAll then
-                qualifyingSpecs[#qualifyingSpecs + 1] = spec.specID
-            end
-        end
-        -- Build the union of items lootable by qualifying specs
-        if #qualifyingSpecs > 0 then
-            itemImpliedFilter = {}
-            for _, specID in ipairs(qualifyingSpecs) do
-                local specItemIDs = VCA.LootPool.GetItemsForSpec(
-                    sourceType, sourceID, difficultyID, classID, specID)
-                for _, id in ipairs(specItemIDs) do
-                    itemImpliedFilter[id] = true
-                end
-            end
-        else
-            -- No single spec covers all selected items — only keep selected
-            itemImpliedFilter = {}
-            for id in pairs(selectedItemIDs) do
-                itemImpliedFilter[id] = true
-            end
-        end
-    end
-    -- Fetch enriched item data with class filter so the EJ returns only items
-    -- relevant to this class (all specs).  Using the class filter ensures the
-    -- client has cached data (name, icon) for every item returned.
-    local displayItems
-    if sourceType == VCA.ContentType.RAID then
-        displayItems = VCA.LootPool.GetEncounterItems(sourceID, difficultyID)
-    else
-        displayItems = VCA.LootPool.GetInstanceItems(sourceID, difficultyID).all
-    end
-
-    if next(trustedItemSet) then
-        local filteredItems = {}
-        for _, item in ipairs(displayItems) do
-            if trustedItemSet[item.itemID] then
-                filteredItems[#filteredItems + 1] = item
-            end
-        end
-        displayItems = filteredItems
-    end
-
-    -- Sort by equipment slot: head first, trinkets last.
-    table.sort(displayItems, function(a, b)
-        local oa = GetSlotSortOrder(a.itemID)
-        local ob = GetSlotSortOrder(b.itemID)
-        if oa ~= ob then return oa < ob end
-        return (a.name or "") < (b.name or "")
-    end)
-
-    local colW      = LeftColWidth()
-    local rowTop    = 0
-    for _, item in ipairs(displayItems) do
-        local obtained = VCA.Data.IsObtained(sourceType, sourceID, difficultyID, item.itemID)
-        local row      = GetOrCreateItemRow(itemRows, itemScrollChild)
-        row.frame:SetWidth(colW - PADDING)
-        row.frame:ClearAllPoints()
-        row.frame:SetPoint("TOPLEFT", itemScrollChild, "TOPLEFT", 0, -rowTop)
-        row.frame:Show()
-
-        -- Selection highlight
-        row.frame.itemID   = item.itemID
-        row.frame.itemLink = item.link or ""
-        row.frame.itemSlot = item.slot or ""
-        if selectedItemIDs[item.itemID] then
-            row.selHighlight:SetColorTexture(1, 0.75, 0, 0.18)
-            row.selHighlight:Show()
-        else
-            row.selHighlight:Hide()
-        end
-
-        -- (OnClick is wired once at row creation inside GetOrCreateItemRow.)
-
-        -- Icon (info.icon is a fileID number in the current EJ API)
-        if item.icon and item.icon ~= 0 and item.icon ~= "" then
-            row.icon:SetTexture(item.icon)
-        else
-            row.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-        end
-
-        -- Name with quality color and slot.
-        -- GetItemInfo returns quality as the 3rd value; fall back to Uncommon
-        -- if the item isn't in the cache yet (rare for EJ items).
-        -- For M+ dungeons, quality depends on the selected key level's track.
-        local itemName, _, quality = GetItemInfo(item.itemID)
-        local ejName = (item.name ~= "" and item.name) or nil
-        itemName = itemName or ejName or ("Item " .. item.itemID)
-        quality  = quality  or 1
-        if sourceType == VCA.ContentType.MYTHIC_PLUS then
-            local reward = GetRewardForKeyLevel(selectedKeyLevel)
-            if reward and reward.bonusID >= 12793 then
-                quality = 4  -- Hero/Myth track → Epic
-            end
-        end
-        local slotText = item.slot ~= "" and (" |cff888888[" .. item.slot .. "]|r") or ""
-        row.nameLabel:SetText(QualityColor(quality) .. itemName .. "|r" .. slotText)
-
-        -- Quality border on the icon
-        if ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality] then
-            local c = ITEM_QUALITY_COLORS[quality]
-            row.iconBorder:SetVertexColor(c.r, c.g, c.b)
-            row.iconBorder:Show()
-        else
-            row.iconBorder:Hide()
-        end
-
-        -- Obtained checkbox
-        row.checkbox:SetChecked(obtained)
-        row.checkbox.itemID     = item.itemID
-        row.checkbox.sourceType = sourceType
-        row.checkbox.sourceID   = sourceID
-        row.checkbox.diffID     = difficultyID
-        row.checkbox:SetScript("OnClick", function(self)
-            local now = self:GetChecked()
-            VCA.Data.SetObtained(self.sourceType, self.sourceID, self.diffID, self.itemID, now)
-            -- If item was just marked obtained, deselect it.
-            if now and selectedItemIDs[self.itemID] then
-                selectedItemIDs[self.itemID] = nil
-                SaveItemSelections()
-            end
-            Panel.Refresh()
-        end)
-
-        -- Dim row if obtained, filtered out by spec selection, or
-        -- not lootable by the specs implied by the item selection.
-        local specFiltered = specFilterSet and not specFilterSet[item.itemID]
-        local itemFiltered = itemImpliedFilter and not itemImpliedFilter[item.itemID]
-        local dimmed = obtained or specFiltered or itemFiltered
-        row.frame.dimmed = dimmed
-        if dimmed then
-            local alpha = (specFiltered or itemFiltered) and 0.25 or 0.4
-            row.nameLabel:SetAlpha(alpha)
-            row.iconButton:SetAlpha(alpha)
-        else
-            row.nameLabel:SetAlpha(1)
-            row.iconButton:SetAlpha(1)
-        end
-
-        rowTop = rowTop + ROW_H + 2
-    end
-
-    itemScrollChild:SetHeight(math.max(rowTop, 1))
-
-    if #displayItems == 0 then
-        -- Show a "no items" notice
-        local noRow = GetOrCreateItemRow(itemRows, itemScrollChild)
-        noRow.frame:SetWidth(colW - PADDING)
-        noRow.frame:ClearAllPoints()
-        noRow.frame:SetPoint("TOPLEFT", itemScrollChild, "TOPLEFT", 0, 0)
-        noRow.frame:Show()
-        noRow.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-        noRow.nameLabel:SetText("|cff888888" .. L["NO_ITEMS_FOR_SPEC"] .. "|r")
-        noRow.nameLabel:SetAlpha(1)
-        noRow.iconButton:SetAlpha(0.3)
-        noRow.iconBorder:Hide()
-        noRow.checkbox:Hide()
-        itemScrollChild:SetHeight(ROW_H)
-    end
-
-    -- Reset scroll position and update scrollbar
-    itemScrollFrame:SetVerticalScroll(0)
-    UpdateScrollbar()
-end
+-- UpdateScrollbar is defined in PanelColumns.lua (loaded after this file).
+-- The hook body runs at game time when PanelColumns.lua is already loaded.
+itemScrollFrame:HookScript("OnMouseWheel", function() Panel.UpdateScrollbar() end)
 
 -- ── Populate spec column ──────────────────────────────────────────────────────
 
@@ -891,124 +695,8 @@ local specScrollChild = CreateFrame("Frame", nil, contentArea)
 local specScrollFrame = CreateFrame("ScrollFrame", nil, contentArea)
 specScrollFrame:SetScrollChild(specScrollChild)
 
-local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItemIDs)
-    HideAllSpecRows()
-
-    local rankings
-    if filterItemIDs and #filterItemIDs > 0 then
-        rankings = VCA.Probability.RankCurrentPlayerSpecsForItems(
-            filterItemIDs, sourceType, sourceID, difficultyID)
-    else
-        rankings = VCA.Probability.RankCurrentPlayerSpecs(sourceType, sourceID, difficultyID)
-    end
-    local colW     = RightColWidth()
-    local rowTop   = 0
-
-    for _, entry in ipairs(rankings) do
-        local row = GetOrCreateSpecRow(specRows, specScrollChild)
-        row.frame:SetWidth(colW - PADDING)
-        row.frame:ClearAllPoints()
-        row.frame:SetPoint("TOPLEFT", specScrollChild, "TOPLEFT", 0, -rowTop)
-        row.frame:Show()
-
-        -- Store specID for click selection
-        row.frame.specID = entry.specID
-
-        -- Selection highlight
-        if selectedSpecIDs[entry.specID] then
-            row.selHighlight:SetColorTexture(0.69, 0.28, 0.97, 0.18)
-            row.selHighlight:Show()
-        else
-            row.selHighlight:Hide()
-        end
-
-        -- Rank #
-        local rankColor = entry.rank == 1 and "|cffffff00" or "|cffaaaaaa"
-        row.rankLabel:SetText(rankColor .. "#" .. entry.rank .. "|r")
-
-        -- Spec icon
-        if entry.specIcon then
-            row.icon:SetTexture(entry.specIcon)
-        else
-            row.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-        end
-
-        -- Spec name (left part of nameLabel)
-        local nameColor = entry.allObtained and "|cff44ff44" or
-                          (entry.noItems    and "|cff888888" or "|cffdddddd")
-        row.nameLabel:SetPoint("LEFT",  row.icon, "RIGHT", 4, 0)
-        row.nameLabel:SetPoint("RIGHT", row.frame, "RIGHT", -90, 0)
-        row.nameLabel:SetText(nameColor .. (entry.specName or "?") .. "|r")
-
-        -- Stats: remaining/total + percentage (right side)
-        -- When items are selected, show the chance to get any selected item
-        -- (selectedOdds).  When nothing is selected, show only the pool counts
-        -- with no percentage.
-        local hasSelection = filterItemIDs and #filterItemIDs > 0
-        local statsText
-        if entry.noItems then
-            statsText = "|cff888888—|r"
-        elseif entry.allObtained then
-            statsText = "|cff44ff44" .. L["ALL_OBTAINED"] .. "|r"
-        elseif hasSelection and entry.selectedOdds then
-            local pct = math.floor(entry.selectedOdds * 100 + 0.5)
-            statsText = "|cffaaaaaa" .. entry.remainingCount .. "/" ..
-                        entry.baseCount .. "|r  " ..
-                        "|cffffff00" .. pct .. "%|r"
-        else
-            statsText = "|cffaaaaaa" .. entry.remainingCount .. "/" ..
-                        entry.baseCount .. "|r"
-        end
-        row.statsLabel:SetText(statsText)
-
-        rowTop = rowTop + ROW_H + 2
-    end
-
-    specScrollChild:SetHeight(math.max(rowTop, 1))
-end
--- ── Unified clear-filter button visibility ───────────────────────────────────────
-local function UpdateClearFilterButton()
-    if next(selectedSpecIDs) or next(selectedItemIDs) then
-        clearSpecBtn:Show()
-    else
-        clearSpecBtn:Hide()
-    end
-end
--- ── Refresh item column ───────────────────────────────────────────────────────────
--- Updates the item column when spec selection changes.
--- Updates the loot header to indicate spec filtering.
-RefreshItemColumn = function()
-    PopulateItemColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
-    local count = 0
-    for _ in pairs(selectedSpecIDs) do count = count + 1 end
-    if count > 0 then
-        local label = count == 1 and L["COL_LOOT_FILTERED"] or string.format(L["COL_LOOT_FILTERED_N"], count)
-        lootColHeader:SetText("|cffb048f8" .. label .. "|r")
-    else
-        lootColHeader:SetText("|cffb048f8" .. L["COL_LOOT"] .. "|r")
-    end
-    UpdateClearFilterButton()
-end
--- ── Refresh spec column ───────────────────────────────────────────────────────────
--- Updates the spec column based on current item selection:
---   * Items selected  → header shows “SPEC FIT” and ranks by intersection
---   * Nothing selected → normal full-pool rankings
-RefreshSpecColumn = function()
-    local selectedList = {}
-    for id in pairs(selectedItemIDs) do
-        selectedList[#selectedList + 1] = id
-    end
-    if #selectedList > 0 then
-        local count = #selectedList
-        local label = count == 1 and L["COL_SPEC_FIT"] or (L["COL_SPEC_FIT"] .. "  |cff888888(" .. count .. ")|r")
-        specColHeader:SetText("|cffb048f8" .. label .. "|r")
-        PopulateSpecColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID, selectedList)
-    else
-        specColHeader:SetText("|cffb048f8" .. L["COL_SPEC_RANKING"] .. "|r")
-        PopulateSpecColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
-    end
-    UpdateClearFilterButton()
-end
+_s.specScrollChild = specScrollChild
+_s.specScrollFrame = specScrollFrame
 -- ── Layout pass ───────────────────────────────────────────────────────────────
 -- Recalculates all column/scroll frame positions.  Called on Refresh and on
 -- frame resize (if we ever make it resizable).
@@ -1060,7 +748,7 @@ end
 -- ── Context update ────────────────────────────────────────────────────────────
 
 -- Persist the current item selection to the char DB.
-SaveItemSelections = function()
+function Panel.SaveItemSelections()
     if Panel.sourceType and Panel.sourceID and Panel.difficultyID then
         VCA.Data.SaveSelectedItems(Panel.sourceType, Panel.sourceID,
             Panel.difficultyID, selectedItemIDs)
@@ -1069,7 +757,7 @@ end
 
 function Panel.SetContext(sourceType, sourceID, difficultyID, sourceName, isRaid)
     -- Persist outgoing selections before switching context.
-    SaveItemSelections()
+    Panel.SaveItemSelections()
 
     -- Restore saved item selection for this source (spec selection is transient).
     wipe(selectedItemIDs)
@@ -1103,7 +791,7 @@ function Panel.SetContext(sourceType, sourceID, difficultyID, sourceName, isRaid
 end
 
 function Panel.ClearContext()
-    SaveItemSelections()
+    Panel.SaveItemSelections()
 
     VCA.Detection.ClearActiveSource()
 
@@ -1163,8 +851,8 @@ function Panel.Refresh()
     infoLabel:SetText(contentTag .. "  •  " .. costColor .. cost .. " " .. coreWord .. "|r")
 
     DoLayout()
-    PopulateItemColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
-    RefreshSpecColumn()
+    Panel.RefreshItemColumn()
+    Panel.RefreshSpecColumn()
 end
 
 -- ── Detection callback ────────────────────────────────────────────────────────
