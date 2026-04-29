@@ -676,6 +676,16 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
     HideAllItemRows()
 
     local classID = VCA.SpecInfo.GetPlayerClassID()
+    local trustedItemSet = {}
+    local specs = VCA.SpecInfo.GetPlayerSpecs()
+
+    for _, spec in ipairs(specs) do
+        local specItemIDs = VCA.LootPool.GetItemsForSpec(
+            sourceType, sourceID, difficultyID, spec.classID, spec.specID)
+        for _, id in ipairs(specItemIDs) do
+            trustedItemSet[id] = true
+        end
+    end
 
     -- Build set of item IDs lootable by selected specs (if any).
     local specFilterSet  -- nil when no spec filter is active
@@ -738,9 +748,19 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
     -- client has cached data (name, icon) for every item returned.
     local displayItems
     if sourceType == VCA.ContentType.RAID then
-        displayItems = VCA.LootPool.GetEncounterItems(sourceID, difficultyID, classID)
+        displayItems = VCA.LootPool.GetEncounterItems(sourceID, difficultyID)
     else
-        displayItems = VCA.LootPool.GetInstanceItems(sourceID, difficultyID, classID).all
+        displayItems = VCA.LootPool.GetInstanceItems(sourceID, difficultyID).all
+    end
+
+    if next(trustedItemSet) then
+        local filteredItems = {}
+        for _, item in ipairs(displayItems) do
+            if trustedItemSet[item.itemID] then
+                filteredItems[#filteredItems + 1] = item
+            end
+        end
+        displayItems = filteredItems
     end
 
     -- Sort by equipment slot: head first, trinkets last.

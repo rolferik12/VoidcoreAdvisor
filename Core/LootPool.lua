@@ -21,6 +21,83 @@ LootPool._reentryGuard = false
 -- change (CHALLENGE_MODE_MAPS_UPDATE).
 
 local _cache = {}
+local GetSeasonFingerprint
+local PERSISTED_CACHE_VERSION = 7
+local _itemSpecCache = {}
+
+local HUNTER_CLASS_ID = 3
+local _fallbackUniversalEquipLoc = {
+    INVTYPE_NECK = true,
+    INVTYPE_FINGER = true,
+}
+local _fallbackHunterEquipLoc = {
+    INVTYPE_RANGED = true,
+    INVTYPE_RANGEDRIGHT = true,
+}
+
+local _persistableCacheTags = {
+    eic = true,
+    eis = true,
+    iic = true,
+    iis = true,
+}
+
+local function CopyArray(source)
+    local copy = {}
+    for i = 1, #source do
+        copy[i] = source[i]
+    end
+    return copy
+end
+
+local function GetPersistentCacheDB()
+    local db = _G[VCA.CHAR_DB_NAME]
+    if type(db) ~= "table" then return nil end
+
+    if type(db.lootCache) ~= "table" then
+        db.lootCache = {
+            version = PERSISTED_CACHE_VERSION,
+            fingerprint = nil,
+            entries = {},
+        }
+    end
+
+    local cacheDB = db.lootCache
+    if cacheDB.version ~= PERSISTED_CACHE_VERSION then
+        cacheDB.version = PERSISTED_CACHE_VERSION
+        cacheDB.fingerprint = nil
+        cacheDB.entries = {}
+    elseif type(cacheDB.entries) ~= "table" then
+        cacheDB.entries = {}
+    end
+
+    return cacheDB
+end
+
+local function PersistCacheEntry(key, value)
+    local tag = key:match("^([^:]+):")
+    if not _persistableCacheTags[tag] or type(value) ~= "table" then
+        return
+    end
+
+    local cacheDB = GetPersistentCacheDB()
+    if not cacheDB then return end
+
+    cacheDB.entries[key] = CopyArray(value)
+    if GetSeasonFingerprint then
+        local fingerprint = GetSeasonFingerprint()
+        if fingerprint and fingerprint ~= "" then
+            cacheDB.fingerprint = fingerprint
+        end
+    end
+end
+
+local function ClearPersistedCache()
+    local db = _G[VCA.CHAR_DB_NAME]
+    if type(db) == "table" then
+        db.lootCache = nil
+    end
+end
 
 local function CacheKey(...)
     local parts = {}
@@ -32,9 +109,10 @@ end
 
 function LootPool.InvalidateCache()
     wipe(_cache)
+    ClearPersistedCache()
 end
 
--- ── Season filter ─────────────────────────────────────────────────────────────
+-- -- Season filter -------------------------------------------------------------
 -- Determines which EJ instanceIDs belong to the current season.
 -- Shared across LootPool (for warmup) and EJHook (for panel gating).
 
@@ -43,6 +121,73 @@ local _seasonDungeonList    = {}   -- array of instanceIDs (for iteration)
 local _seasonDungeonByName  = {}   -- { [localizedName] = ejInstanceID }
 local _seasonRaidIDs        = {}   -- set: { [instanceID] = true }
 local _seasonFilterBuilt    = false
+
+GetSeasonFingerprint = function()
+    if not _seasonFilterBuilt then
+        return nil
+    end
+
+    local parts = {}
+    for _, instanceID in ipairs(_seasonDungeonList) do
+        parts[#parts + 1] = "d" .. tostring(instanceID)
+    end
+
+    local raidIDs = {}
+    for instanceID in pairs(_seasonRaidIDs) do
+        raidIDs[#raidIDs + 1] = instanceID
+    end
+    table.sort(raidIDs)
+    for _, instanceID in ipairs(raidIDs) do
+        parts[#parts + 1] = "r" .. tostring(instanceID)
+    end
+
+    return table.concat(parts, ",")
+end
+
+local function SyncPersistedSeasonFingerprint()
+    local cacheDB = GetPersistentCacheDB()
+    if not cacheDB then return end
+
+    local fingerprint = GetSeasonFingerprint()
+    if not fingerprint or fingerprint == "" then return end
+
+    if type(cacheDB.fingerprint) == "string"
+       and cacheDB.fingerprint ~= ""
+       and cacheDB.fingerprint ~= fingerprint
+    then
+        wipe(_cache)
+        cacheDB.entries = {}
+    end
+
+    cacheDB.fingerprint = fingerprint
+end
+
+function LootPool.LoadPersistedCache()
+    local cacheDB = GetPersistentCacheDB()
+    if not cacheDB or type(cacheDB.entries) ~= "table" then
+        return
+    end
+
+    local fingerprint = GetSeasonFingerprint()
+    if fingerprint and fingerprint ~= "" then
+        if type(cacheDB.fingerprint) == "string"
+           and cacheDB.fingerprint ~= ""
+           and cacheDB.fingerprint ~= fingerprint
+        then
+            cacheDB.entries = {}
+            cacheDB.fingerprint = fingerprint
+            return
+        end
+        cacheDB.fingerprint = fingerprint
+    end
+
+    for key, itemIDs in pairs(cacheDB.entries) do
+        local tag = key:match("^([^:]+):")
+        if _persistableCacheTags[tag] and type(itemIDs) == "table" then
+            _cache[key] = CopyArray(itemIDs)
+        end
+    end
+end
 
 function LootPool.BuildSeasonFilter()
     wipe(_seasonDungeonIDs)
@@ -108,6 +253,7 @@ function LootPool.BuildSeasonFilter()
     -- or zone transitions), EnsureSeasonFilter() will retry on next access.
     if #_seasonDungeonList > 0 or next(_seasonRaidIDs) then
         _seasonFilterBuilt = true
+        SyncPersistedSeasonFingerprint()
     end
 end
 
@@ -150,6 +296,7 @@ local _activeDifficultyID = nil
 local _activeTierID       = nil
 local _activeClassID      = nil
 local _activeSpecID       = nil
+local _activeUseLootFilter = false
 
 local function ReapplyEJFilter()
     if _activeTierID then
@@ -158,7 +305,9 @@ local function ReapplyEJFilter()
     if _activeDifficultyID then
         EJ_SetDifficulty(_activeDifficultyID)
     end
-    EJ_SetLootFilter(_activeClassID or 0, _activeSpecID or 0)
+    if _activeUseLootFilter then
+        EJ_SetLootFilter(_activeClassID or 0, _activeSpecID or 0)
+    end
 end
 
 local function RestorePlayerLootFilter()
@@ -172,6 +321,19 @@ local function RestorePlayerLootFilter()
     end
     EJ_SetLootFilter(classID or 0, specID or 0)
     LootPool._reentryGuard = false
+end
+
+local function ResolveEncounterInstanceID(encounterID)
+    if not encounterID or encounterID == 0 then
+        return nil
+    end
+
+    local _, _, _, _, _, instanceID = EJ_GetEncounterInfo(encounterID)
+    if instanceID and instanceID > 0 then
+        return instanceID
+    end
+
+    return nil
 end
 
 -- Snapshot the player's current EJ page so warm-cache navigation can restore it
@@ -262,6 +424,7 @@ local function WithEJState(difficultyID, classID, specID, fn)
     local origDifficulty           = EJ_GetDifficulty()
     local origClassID, origSpecID  = EJ_GetLootFilter()
     local origTier                 = EJ_GetCurrentTier()
+    local useLootFilter            = classID ~= nil or specID ~= nil
 
     -- Always select the latest tier before setting filters.  On first load
     -- the EJ may default to tier 1 which can cause EJ_SetLootFilter to
@@ -273,19 +436,25 @@ local function WithEJState(difficultyID, classID, specID, fn)
     _activeTierID       = latestTier
     _activeClassID      = classID or 0
     _activeSpecID       = specID or 0
+    _activeUseLootFilter = useLootFilter
 
     LootPool._reentryGuard = true
     if latestTier and latestTier > 0 then
         EJ_SelectTier(latestTier)
     end
     EJ_SetDifficulty(difficultyID)
-    EJ_SetLootFilter(classID or 0, specID or 0)
+    if useLootFilter then
+        EJ_SetLootFilter(classID or 0, specID or 0)
+    end
 
     -- Verify the loot filter actually took effect.  If the EJ hasn't fully
     -- initialised yet the filter can silently fail, causing all-class items
     -- to be returned and cached as if they were class-filtered.
-    local actualClass, actualSpec = EJ_GetLootFilter()
-    local filterOK = (actualClass == (classID or 0)) and (actualSpec == (specID or 0))
+    local filterOK = true
+    if useLootFilter then
+        local actualClass, actualSpec = EJ_GetLootFilter()
+        filterOK = (actualClass == (classID or 0)) and (actualSpec == (specID or 0))
+    end
 
     local ok, err = true, nil
     if filterOK then
@@ -299,6 +468,7 @@ local function WithEJState(difficultyID, classID, specID, fn)
     _activeTierID       = nil
     _activeClassID      = nil
     _activeSpecID       = nil
+    _activeUseLootFilter = false
 
     if origTier and origTier > 0 then
         EJ_SelectTier(origTier)
@@ -315,6 +485,123 @@ local function WithEJState(difficultyID, classID, specID, fn)
     end
 
     return filterOK and ok
+end
+
+local function GetItemEligibleSpecSet(itemID)
+    local cached = _itemSpecCache[itemID]
+    if cached ~= nil then
+        return cached
+    end
+
+    local specInfo
+
+    if C_Item and C_Item.GetItemSpecInfo then
+        specInfo = C_Item.GetItemSpecInfo(itemID)
+    elseif GetItemSpecInfo then
+        specInfo = GetItemSpecInfo(itemID)
+    end
+
+    if type(specInfo) == "table" then
+        local specSet = {}
+        for _, eligibleSpecID in ipairs(specInfo) do
+            specSet[eligibleSpecID] = true
+        end
+        _itemSpecCache[itemID] = specSet
+        return specSet
+    end
+
+    -- Metadata may be temporarily unavailable while item data is still warming.
+    -- Do not cache this miss so later reads can recover without /reload.
+    return nil
+end
+
+local function GetClassIDForSpecID(specID)
+    if not VCA.SpecInfo or not VCA.SpecInfo.GetPlayerSpecs then
+        return nil
+    end
+
+    for _, spec in ipairs(VCA.SpecInfo.GetPlayerSpecs()) do
+        if spec.specID == specID then
+            return spec.classID
+        end
+    end
+
+    return nil
+end
+
+local function IsItemUsableByPlayer(itemID)
+    if C_Item and C_Item.IsUsableItem then
+        local usable = C_Item.IsUsableItem(itemID)
+        return usable == true
+    end
+
+    if IsUsableItem then
+        local usable = IsUsableItem(itemID)
+        return usable == true
+    end
+
+    return false
+end
+
+local function IsFallbackItemEligibleForClass(itemID, classID)
+    if not classID or not C_Item or not C_Item.GetItemInfoInstant then
+        return false
+    end
+
+    local playerClassID = VCA.SpecInfo and VCA.SpecInfo.GetPlayerClassID and VCA.SpecInfo.GetPlayerClassID()
+    if not playerClassID or classID ~= playerClassID then
+        return false
+    end
+
+    -- Primary fallback when spec metadata is absent: if the item is usable by
+    -- the current character, treat it as eligible for this class/spec pool.
+    if IsItemUsableByPlayer(itemID) then
+        return true
+    end
+
+    local _, _, _, equipLoc = C_Item.GetItemInfoInstant(itemID)
+    if not equipLoc or equipLoc == "" then
+        return false
+    end
+
+    if _fallbackUniversalEquipLoc[equipLoc] then
+        return true
+    end
+
+    if classID == HUNTER_CLASS_ID and _fallbackHunterEquipLoc[equipLoc] then
+        return true
+    end
+
+    return false
+end
+
+local function IsItemEligibleForSpec(itemID, specID)
+    local specSet = GetItemEligibleSpecSet(itemID)
+    if specSet ~= nil then
+        return specSet[specID] == true
+    end
+
+    local classID = GetClassIDForSpecID(specID)
+    return IsFallbackItemEligibleForClass(itemID, classID)
+end
+
+local function IsItemEligibleForClass(itemID, classID)
+    if not classID or not VCA.SpecInfo or not VCA.SpecInfo.GetPlayerSpecs then
+        return false
+    end
+
+    local specSet = GetItemEligibleSpecSet(itemID)
+    if specSet == nil then
+        return IsFallbackItemEligibleForClass(itemID, classID)
+    end
+
+    for _, spec in ipairs(VCA.SpecInfo.GetPlayerSpecs()) do
+        if spec.classID == classID and specSet[spec.specID] then
+            return true
+        end
+    end
+
+    return false
 end
 
 -- ── Low-level EJ read ─────────────────────────────────────────────────────────
@@ -365,10 +652,16 @@ function LootPool.GetEncounterItems(encounterID, difficultyID, classID, specID)
     if _cache[key] then return _cache[key] end
 
     local items = {}
-    WithEJState(difficultyID, classID or 0, specID or 0, function()
+    local readOK = WithEJState(difficultyID, nil, nil, function()
+        local instanceID = ResolveEncounterInstanceID(encounterID)
+        if instanceID then SelectInstance(instanceID) end
         SelectEncounter(encounterID)
         items = CollectLootForSelectedEncounter()
     end)
+
+    if not readOK then
+        return {}
+    end
 
     if #items > 0 then _cache[key] = items end
     return items
@@ -386,47 +679,16 @@ function LootPool.GetEncounterItemsForSpec(encounterID, difficultyID, classID, s
     local key = CacheKey("eis", encounterID, difficultyID, classID, specID)
     if _cache[key] then return _cache[key] end
 
+    local rawItems = LootPool.GetEncounterItems(encounterID, difficultyID)
     local itemIDs = {}
-    local readOK = WithEJState(difficultyID, classID, specID, function()
-        if instanceID then SelectInstance(instanceID) end
-        SelectEncounter(encounterID)
-        local numLoot = EJ_GetNumLoot()
-        for i = 1, numLoot do
-            local info = C_EncounterJournal.GetLootInfoByIndex(i)
-            if info and info.itemID and info.itemID > 0 and IsGearOrWeapon(info.itemID) then
-                itemIDs[#itemIDs + 1] = info.itemID
-            end
-        end
-    end)
-
-    -- Cross-validate: per-spec items must be a subset of the class-wide pool.
-    -- If the spec filter silently failed, it returns all-class items which
-    -- would NOT be a subset of the class pool. This catches that case.
-    -- Note: do NOT gate on GetEncounterItems(0,0) — EJ_SetLootFilter(0,0) is
-    -- invalid (class 0 doesn't exist) and always returns 0 items, blocking caching.
-    if readOK then
-        local classItems = LootPool.GetEncounterItemsForClass(encounterID, difficultyID, classID)
-        -- classItems being cached (non-nil from prior raid-class warm) confirms EJ data loaded.
-        if _cache[CacheKey("eic", encounterID, difficultyID, classID)] ~= nil then
-            if #classItems == 0 then
-                -- No gear for this class on this boss — valid empty result, cache it.
-                _cache[key] = itemIDs
-            else
-                local classSet = {}
-                for _, id in ipairs(classItems) do classSet[id] = true end
-                local isSubset = true
-                for _, id in ipairs(itemIDs) do
-                    if not classSet[id] then
-                        isSubset = false
-                        break
-                    end
-                end
-                if isSubset then
-                    _cache[key] = itemIDs
-                end
-            end
+    for _, item in ipairs(rawItems) do
+        if IsItemEligibleForSpec(item.itemID, specID) then
+            itemIDs[#itemIDs + 1] = item.itemID
         end
     end
+
+    _cache[key] = itemIDs
+    PersistCacheEntry(key, itemIDs)
     return itemIDs
 end
 
@@ -453,7 +715,7 @@ function LootPool.GetInstanceItems(instanceID, difficultyID, classID, specID)
     local result = { all = {}, byEncounter = {} }
     local seen   = {}
 
-    WithEJState(difficultyID, classID or 0, specID or 0, function()
+    local readOK = WithEJState(difficultyID, nil, nil, function()
         SelectInstance(instanceID)
         local idx = 1
         while true do
@@ -471,6 +733,11 @@ function LootPool.GetInstanceItems(instanceID, difficultyID, classID, specID)
             idx = idx + 1
         end
     end)
+
+    -- If EJ filter application failed, do not return untrusted all-class data.
+    if not readOK then
+        return { all = {}, byEncounter = {} }
+    end
 
     -- Only cache if item data looks complete (names + icons loaded).
     local complete = true
@@ -501,49 +768,21 @@ function LootPool.GetInstanceItemsForSpec(instanceID, difficultyID, classID, spe
     if _cache[key] then return _cache[key] end
 
     local itemIDSet = {}
-    WithEJState(difficultyID, classID, specID, function()
-        SelectInstance(instanceID)
-        local idx = 1
-        while true do
-            local name, _, encounterID = EJ_GetEncounterInfoByIndex(idx)
-            if not name then break end
-            SelectEncounter(encounterID)
-            local numLoot = EJ_GetNumLoot()
-            for i = 1, numLoot do
-                local info = C_EncounterJournal.GetLootInfoByIndex(i)
-                if info and info.itemID and info.itemID > 0 and IsGearOrWeapon(info.itemID) then
-                    itemIDSet[info.itemID] = true
-                end
-            end
-            idx = idx + 1
+    local rawItems = LootPool.GetInstanceItems(instanceID, difficultyID).all
+
+    for _, item in ipairs(rawItems) do
+        if IsItemEligibleForSpec(item.itemID, specID) then
+            itemIDSet[item.itemID] = true
         end
-    end)
+    end
 
     local itemIDs = {}
     for id in pairs(itemIDSet) do
         itemIDs[#itemIDs + 1] = id
     end
 
-    -- Cross-validate: per-spec items must be a subset of the class-wide pool.
-    -- If the spec filter silently failed, the result will match the class-wide
-    -- count rather than a proper subset.  Do not cache so the retry fixes it.
-    if #itemIDs > 0 then
-        local classItems = LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
-        if #classItems > 0 then
-            local classSet = {}
-            for _, id in ipairs(classItems) do classSet[id] = true end
-            local isSubset = true
-            for _, id in ipairs(itemIDs) do
-                if not classSet[id] then
-                    isSubset = false
-                    break
-                end
-            end
-            if isSubset then
-                _cache[key] = itemIDs
-            end
-        end
-    end
+    _cache[key] = itemIDs
+    PersistCacheEntry(key, itemIDs)
     return itemIDs
 end
 
@@ -560,24 +799,16 @@ function LootPool.GetEncounterItemsForClass(encounterID, difficultyID, classID, 
     local key = CacheKey("eic", encounterID, difficultyID, classID)
     if _cache[key] then return _cache[key] end
 
+    local rawItems = LootPool.GetEncounterItems(encounterID, difficultyID)
     local itemIDs = {}
-    local readOK = WithEJState(difficultyID, classID, 0, function()
-        if instanceID then SelectInstance(instanceID) end
-        SelectEncounter(encounterID)
-        local numLoot = EJ_GetNumLoot()
-        for i = 1, numLoot do
-            local info = C_EncounterJournal.GetLootInfoByIndex(i)
-            if info and info.itemID and info.itemID > 0 and IsGearOrWeapon(info.itemID) then
-                itemIDs[#itemIDs + 1] = info.itemID
-            end
+    for _, item in ipairs(rawItems) do
+        if IsItemEligibleForClass(item.itemID, classID) then
+            itemIDs[#itemIDs + 1] = item.itemID
         end
-    end)
-
-    if readOK then
-        -- readOK guarantees EJ_SetLootFilter verified successfully, so the result
-        -- is trustworthy even if empty (class simply has no gear on this boss).
-        _cache[key] = itemIDs
     end
+
+    _cache[key] = itemIDs
+    PersistCacheEntry(key, itemIDs)
     return itemIDs
 end
 
@@ -593,30 +824,21 @@ function LootPool.GetInstanceItemsForClass(instanceID, difficultyID, classID)
     if _cache[key] then return _cache[key] end
 
     local itemIDSet = {}
-    WithEJState(difficultyID, classID, 0, function()
-        SelectInstance(instanceID)
-        local idx = 1
-        while true do
-            local name, _, encounterID = EJ_GetEncounterInfoByIndex(idx)
-            if not name then break end
-            SelectEncounter(encounterID)
-            local numLoot = EJ_GetNumLoot()
-            for i = 1, numLoot do
-                local info = C_EncounterJournal.GetLootInfoByIndex(i)
-                if info and info.itemID and info.itemID > 0 and IsGearOrWeapon(info.itemID) then
-                    itemIDSet[info.itemID] = true
-                end
-            end
-            idx = idx + 1
+    local rawItems = LootPool.GetInstanceItems(instanceID, difficultyID).all
+
+    for _, item in ipairs(rawItems) do
+        if IsItemEligibleForClass(item.itemID, classID) then
+            itemIDSet[item.itemID] = true
         end
-    end)
+    end
 
     local itemIDs = {}
     for id in pairs(itemIDSet) do
         itemIDs[#itemIDs + 1] = id
     end
 
-    if #itemIDs > 0 then _cache[key] = itemIDs end
+    _cache[key] = itemIDs
+    PersistCacheEntry(key, itemIDs)
     return itemIDs
 end
 
@@ -746,7 +968,7 @@ function LootPool.WarmCache()
         end
     end
 
-    WithEJState(VCA.Difficulty.RAID_NORMAL, 0, 0, function()
+    WithEJState(VCA.Difficulty.RAID_NORMAL, nil, nil, function()
         for instanceID in pairs(_seasonRaidIDs) do
             SelectInstance(instanceID)
             local idx = 1
@@ -825,8 +1047,7 @@ function LootPool.WarmCache()
         end
     end
 
-    print(string.format("|cff66ccffVoidcoreAdvisor:|r [%.1f] Warming cache: %d raid entries, %d dungeons (%.1f queue items total)",
-        GetTime(), #raidQueue, #dungeonIDs, #queue))
+    print("|cff66ccffVoidcoreAdvisor:|r Warming cache")
 
     -- Warmup-only tracking for raid-spec keys that repeatedly fail to cache
     -- after EJ interruption. These are treated as optional for warm completion.
@@ -869,6 +1090,7 @@ function LootPool.WarmCache()
 
     local idx = 0
     local pauseCycles = 0
+    local warmStartTime = GetTime()
     local resumeCooldownUntil = 0
     local resumeRampUntil = 0
     local nextAllowedProcessTime = 0
@@ -888,12 +1110,7 @@ function LootPool.WarmCache()
         end
 
         if not allCached and #uncachedEntries > 0 then
-            -- Print up to 10 uncached entries so the log isn't flooded
-            local preview = {}
-            for i = 1, math.min(10, #uncachedEntries) do preview[i] = uncachedEntries[i] end
-            local suffix = #uncachedEntries > 10 and string.format(" (+%d more)", #uncachedEntries - 10) or ""
-            print(string.format("|cff66ccffVoidcoreAdvisor:|r [%.1f] Still uncached (%d): %s%s",
-                GetTime(), #uncachedEntries, table.concat(preview, ", "), suffix))
+            -- Intentionally silent: uncached detail list was debug-only.
         end
 
         if allCached then
@@ -903,7 +1120,7 @@ function LootPool.WarmCache()
             _warmInProgress = false
             _warmPausedByEJ = false
             _warmRetries = 0
-            print(string.format("|cff66ccffVoidcoreAdvisor:|r [%.1f] Cache loaded and ready!", GetTime()))
+            print("|cff66ccffVoidcoreAdvisor:|r Cache loaded and ready!")
         elseif _warmRetries < _maxWarmRetries then
             -- Not cached and retries remain. Restart the queue.
             _warmRetries = _warmRetries + 1
@@ -918,8 +1135,6 @@ function LootPool.WarmCache()
             end
 
             if hasUncachedItems then
-                print(string.format("|cff66ccffVoidcoreAdvisor:|r [%.1f] Item data incomplete, restarting cache warm (attempt %d/%d)",
-                    GetTime(), _warmRetries, _maxWarmRetries))
                 return  -- Will loop again next tick
             end
         else
@@ -928,7 +1143,7 @@ function LootPool.WarmCache()
             _warmTicker = nil
             _warmInProgress = false
             _warmPausedByEJ = false
-            print(string.format("|cff66ccffVoidcoreAdvisor:|r [%.1f] Cache warm abandoned after max retries", GetTime()))
+            print("|cff66ccffVoidcoreAdvisor:|r Cache warm abandoned")
         end
 
         RestorePlayerLootFilter()
@@ -951,14 +1166,12 @@ function LootPool.WarmCache()
             if not _warmPausedByEJ then
                 _warmPausedByEJ = true
                 pauseCycles = pauseCycles + 1
-                print(string.format("|cff66ccffVoidcoreAdvisor:|r [%.1f] Cache warming paused while EJ open", GetTime()))
             end
             CaptureWarmEJState()
             return
         end
 
         if _warmPausedByEJ then
-            print(string.format("|cff66ccffVoidcoreAdvisor:|r [%.1f] Cache warming resumed (paused %d times)", GetTime(), pauseCycles))
             _warmPausedByEJ = false
 
             -- Let the client settle after EJ closes, then ramp warmup back in.
@@ -984,11 +1197,6 @@ function LootPool.WarmCache()
         end
 
         idx = idx + 1
-        
-        -- Progress indicator every 50 items
-        if idx > 0 and idx % 50 == 0 then
-            print(string.format("|cff66ccffVoidcoreAdvisor:|r [%.1f] Warming cache: %d/%d items", GetTime(), idx, #queue))
-        end
         
         if idx > #queue then
             CompleteWarmPass()
@@ -1018,10 +1226,6 @@ function LootPool.WarmCache()
                 warmSpecMissCount[specKey] = missCount
                 if missCount >= 1 and not warmSpecSkip[specKey] then
                     warmSpecSkip[specKey] = true
-                    print(string.format(
-                        "|cff66ccffVoidcoreAdvisor:|r [%.1f] Skipping unstable raid-spec warm key E%d D%d S%d after %d misses",
-                        GetTime(), entry.encounterID, entry.difficultyID, entry.specID, missCount
-                    ))
                 end
             end
             return
@@ -1045,10 +1249,20 @@ function LootPool.WarmCache()
     end
 
     -- Process multiple items per tick at a short interval to keep total warm time low
-    -- without hammering every frame. 5 items per 0.05s tick = ~100 items/second.
-    local ITEMS_PER_TICK = 5
+    -- without hammering every frame. Use a startup ramp so first-login warming
+    -- does not spike FPS, then gradually increase throughput.
+    local ITEMS_PER_TICK = 3
     local function ProcessBatch()
         local itemsThisTick = ITEMS_PER_TICK
+        local elapsedSinceStart = GetTime() - warmStartTime
+
+        -- First-load ramp: start gently, then scale up.
+        if elapsedSinceStart < 3.0 then
+            itemsThisTick = 1
+        elseif elapsedSinceStart < 8.0 then
+            itemsThisTick = 2
+        end
+
         if GetTime() < resumeRampUntil then
             itemsThisTick = 1
         end
@@ -1066,5 +1280,5 @@ function LootPool.WarmCache()
             if not _warmTicker then return end
         end
     end
-    _warmTicker = C_Timer.NewTicker(0.05, ProcessBatch)
+    _warmTicker = C_Timer.NewTicker(0.08, ProcessBatch)
 end

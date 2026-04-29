@@ -225,6 +225,10 @@ local function RankCurrentPlayerSpecsForItemsCached(itemIDs, sourceType, sourceI
         local allSpecItemIDs = VCA.LootPool.GetCachedItemsForSpec(
             sourceType, sourceID, difficultyID, spec.classID, spec.specID)
         if not allSpecItemIDs then
+            allSpecItemIDs = VCA.LootPool.GetItemsForSpec(
+                sourceType, sourceID, difficultyID, spec.classID, spec.specID)
+        end
+        if not allSpecItemIDs then
             return nil
         end
 

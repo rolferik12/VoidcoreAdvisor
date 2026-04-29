@@ -64,18 +64,27 @@ end
 
 local initFrame = CreateFrame("Frame")
 initFrame:RegisterEvent("ADDON_LOADED")
-initFrame:RegisterEvent("PLAYER_LOGIN")
+initFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+
+-- Guard so zone transitions after the first world-enter do not re-run startup
+-- season validation.
+local _hasInitializedWorld = false
 
 initFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         if (...) ~= addonName then return end
         InitDB()
+        VCA.LootPool.LoadPersistedCache()
         self:UnregisterEvent("ADDON_LOADED")
 
-    elseif event == "PLAYER_LOGIN" then
-        -- Game data (class, specs, etc.) is now available.
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        -- Validate the persisted cache against the current season once the world
+        -- is available, but do not bulk-warm loot pools on login.
+        if _hasInitializedWorld then return end
+        _hasInitializedWorld = true
+
         VCA.LootPool.BuildSeasonFilter()
-        VCA.LootPool.WarmCache()
+        VCA.LootPool.LoadPersistedCache()
 
         -- Notify any future UI layer that the backend is ready.
         if VCA.OnBackendReady then
