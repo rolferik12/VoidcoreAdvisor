@@ -190,6 +190,9 @@ SlashCmdList["VOIDCOREADVISOR"] = function(msg)
                 local src = "unknown source"
                 if entry.sourceType and entry.sourceID and entry.difficultyID then
                     src = entry.sourceType .. ":" .. entry.sourceID .. " diff=" .. entry.difficultyID
+                    if entry.keyLevel then
+                        src = src .. " key=" .. entry.keyLevel
+                    end
                 end
                 local spec = entry.specID and ("spec=" .. entry.specID) or "spec=?"
                 print(string.format("  [%d] %s  %s  %s  %s", i, ts,
@@ -199,6 +202,9 @@ SlashCmdList["VOIDCOREADVISOR"] = function(msg)
 
     elseif cmd == "version" then
         print("|cff9370DBVoidcoreAdvisor:|r " .. string.format(L["VERSION_FORMAT"], VCA.VERSION))
+
+    elseif cmd == "replaylog" then
+        VCA.Detection.ReplayBonusRollLog(true)
 
     else
         print("|cff9370DBVoidcoreAdvisor:|r " .. L["HELP_HEADER"])

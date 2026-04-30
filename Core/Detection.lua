@@ -21,7 +21,7 @@ local function CreateSource(sourceType, sourceID, difficultyID, keyLevel)
 end
 
 local function ResolveCurrentMythicPlusSource()
-    local instanceName, instanceType, difficultyID = GetInstanceInfo()
+    local instanceName, instanceType, difficultyID, _, _, _, _, instanceID = GetInstanceInfo()
     if instanceType ~= "party" then
         return nil
     end
@@ -31,13 +31,29 @@ local function ResolveCurrentMythicPlusSource()
         return nil
     end
 
-    local sourceID = VCA.LootPool and VCA.LootPool.GetCachedSeasonDungeonByName and
-                         VCA.LootPool.GetCachedSeasonDungeonByName(instanceName)
+    -- Primary: locale-independent InstanceID lookup (requires SeasonData with mapID).
+    local sourceID = instanceID and VCA.LootPool and VCA.LootPool.GetSeasonDungeonByInstanceID and
+                         VCA.LootPool.GetSeasonDungeonByInstanceID(instanceID)
+
+    -- Fallback: localized name lookup for SeasonData built before mapID support.
+    if not sourceID then
+        sourceID = VCA.LootPool and VCA.LootPool.GetSeasonDungeonByName and
+                       VCA.LootPool.GetSeasonDungeonByName(instanceName)
+    end
+
     if not sourceID then
         return nil
     end
 
-    return CreateSource(VCA.ContentType.MYTHIC_PLUS, sourceID, VCA.MythicPlusEJDifficulty)
+    local keyLevel
+    if C_ChallengeMode then
+        local level = C_ChallengeMode.GetActiveKeystoneInfo()
+        if level and level > 0 then
+            keyLevel = level
+        end
+    end
+
+    return CreateSource(VCA.ContentType.MYTHIC_PLUS, sourceID, VCA.MythicPlusEJDifficulty, keyLevel)
 end
 
 local function GetResolvedSource()
@@ -128,6 +144,81 @@ local function TryResolveReward(itemID, source, specID)
     end
 
     return false
+end
+
+-- Replays saved bonus roll log entries through the detection pipeline.
+-- Marks any unmatched items as obtained if they belong to the known pool.
+-- Safe to call multiple times; IsObtained guards against double-marking.
+-- verbose=true prints per-entry results to chat.
+function Detection.ReplayBonusRollLog(verbose)
+    local log = VCA.Data and VCA.Data.GetBonusRollLog and VCA.Data.GetBonusRollLog()
+    if not log or #log == 0 then
+        if verbose then
+            print("|cff9370DBVoidcoreAdvisor:|r Replay: log is empty.")
+        end
+        return
+    end
+    local marked, skipped, nomatch, incomplete = 0, 0, 0, 0
+    for i, entry in ipairs(log) do
+        if not (entry.itemID and entry.sourceType and entry.sourceID and entry.difficultyID and entry.specID) then
+            incomplete = incomplete + 1
+            if verbose then
+                print(string.format(
+                    "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: skipped — incomplete entry (itemID=%s specID=%s source=%s:%s diff=%s)",
+                    i, tostring(entry.itemID), tostring(entry.specID), tostring(entry.sourceType),
+                    tostring(entry.sourceID), tostring(entry.difficultyID)))
+            end
+        else
+            local source = {
+                sourceType = entry.sourceType,
+                sourceID = entry.sourceID,
+                difficultyID = entry.difficultyID,
+                keyLevel = entry.keyLevel
+            }
+            local alreadyObtained = VCA.Data.IsObtained(source.sourceType, source.sourceID, source.difficultyID,
+                entry.specID, entry.itemID)
+            if alreadyObtained then
+                skipped = skipped + 1
+                if verbose then
+                    local name = C_Item.GetItemNameByID(entry.itemID) or tostring(entry.itemID)
+                    print(string.format("|cff9370DBVoidcoreAdvisor:|r Replay [%d]: already obtained — %s (spec=%s)",
+                        i, name, tostring(entry.specID)))
+                end
+            else
+                local classID = VCA.SpecInfo and VCA.SpecInfo.GetPlayerClassID and VCA.SpecInfo.GetPlayerClassID()
+                local cachedPool = classID and VCA.LootPool and VCA.LootPool.GetCachedItemsForClass and
+                                       VCA.LootPool
+                                           .GetCachedItemsForClass(source.sourceType, source.sourceID,
+                        source.difficultyID, classID)
+                local inPool = false
+                if cachedPool then
+                    for _, id in ipairs(cachedPool) do
+                        if id == entry.itemID then
+                            inPool = true;
+                            break
+                        end
+                    end
+                end
+                if verbose then
+                    local name = C_Item.GetItemNameByID(entry.itemID) or tostring(entry.itemID)
+                    print(string.format(
+                        "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: %s spec=%s source=%s:%s — classID=%s poolSize=%s inPool=%s",
+                        i, name, tostring(entry.specID), source.sourceType, tostring(source.sourceID),
+                        tostring(classID), cachedPool and tostring(#cachedPool) or "nil", tostring(inPool)))
+                end
+                if TryResolveReward(entry.itemID, source, entry.specID) then
+                    marked = marked + 1
+                else
+                    nomatch = nomatch + 1
+                end
+            end
+        end
+    end
+    if verbose then
+        print(string.format(
+            "|cff9370DBVoidcoreAdvisor:|r Replay complete: %d marked, %d already obtained, %d not in pool, %d incomplete.",
+            marked, skipped, nomatch, incomplete))
+    end
 end
 
 local function QueuePendingReward(itemID, source, specID)

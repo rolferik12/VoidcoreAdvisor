@@ -280,7 +280,8 @@ function Data.LogBonusRoll(itemID, itemLink, specID, source)
         specID = specID,
         sourceType = source and source.sourceType or nil,
         sourceID = source and source.sourceID or nil,
-        difficultyID = source and source.difficultyID or nil
+        difficultyID = source and source.difficultyID or nil,
+        keyLevel = source and source.keyLevel or nil
     }
     -- Trim to the last N entries.
     while #log > BONUS_ROLL_LOG_MAX do

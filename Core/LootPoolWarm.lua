@@ -205,6 +205,12 @@ function LootPool.WarmCache()
         if LootPool.IsSeasonFilterReady() and VCA.EJHook and VCA.EJHook.TryReevaluate then
             VCA.EJHook.TryReevaluate()
         end
+        -- Replay any saved bonus roll log entries that detection may have missed.
+        if success and VCA.Detection and VCA.Detection.ReplayBonusRollLog then
+            C_Timer.After(0, function()
+                VCA.Detection.ReplayBonusRollLog(false)
+            end)
+        end
     end
 
     _warmTicker = C_Timer.NewTicker(0.05, function()

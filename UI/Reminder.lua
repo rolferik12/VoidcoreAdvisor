@@ -266,7 +266,7 @@ function Reminder.Evaluate()
         return
     end
 
-    local instanceName, instanceType, difficultyID = GetInstanceInfo()
+    local instanceName, instanceType, difficultyID, _, _, _, _, instanceID = GetInstanceInfo()
 
     -- Reset tracking when not inside a 5-man dungeon.
     if instanceType ~= "party" then
@@ -290,8 +290,13 @@ function Reminder.Evaluate()
         return
     end
 
-    -- Map the in-game instance name to the EJ instanceID.
-    local ejInstanceID = VCA.LootPool.GetCachedSeasonDungeonByName(instanceName)
+    -- Map the in-game instance to the EJ instanceID.
+    -- Primary: locale-independent InstanceID lookup (requires SeasonData with mapID).
+    local ejInstanceID = instanceID and VCA.LootPool.GetSeasonDungeonByInstanceID(instanceID)
+    -- Fallback: localized name lookup for SeasonData built before mapID support.
+    if not ejInstanceID then
+        ejInstanceID = VCA.LootPool.GetSeasonDungeonByName(instanceName)
+    end
     if not ejInstanceID then
         return
     end -- not a current-season dungeon
