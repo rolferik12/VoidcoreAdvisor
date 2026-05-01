@@ -21,7 +21,7 @@ LootPool._reentryGuard = false
 
 local _cache = {}
 local GetSeasonFingerprint
-local PERSISTED_CACHE_VERSION = 17
+local PERSISTED_CACHE_VERSION = 18
 local _persistableCacheTags = {
     eic = true,
     eis = true,

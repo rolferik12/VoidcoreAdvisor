@@ -274,6 +274,15 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID, isHighTier
         end
     end
 
+    -- Also include class-wide items so that tier tokens / synthesis items are
+    -- trusted.  These items appear in the EJ under a class filter but are
+    -- excluded by the EJ's per-spec filter, so they land in byClass but not
+    -- in bySpec for any individual spec.
+    local classWideItemIDs = VCA.LootPool.GetItemsForClass(sourceType, sourceID, difficultyID, classID)
+    for _, id in ipairs(classWideItemIDs) do
+        trustedItemSet[id] = true
+    end
+
     -- If selected items were persisted from an older dataset for this source,
     -- drop selections that are no longer trusted so they do not force the
     -- entire list into an always-dimmed state.

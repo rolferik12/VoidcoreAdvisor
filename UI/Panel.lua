@@ -777,6 +777,9 @@ _s.HideAllSpecRows = HideAllSpecRows
 -- Finger/Ring and all weapon sub-types are collapsed into single categories.
 
 local SLOT_SORT_ORDER = {
+    -- Synthesis tokens (tier set tokens, Nullcores, etc.) have no equip slot;
+    -- sort them first to match EJ ordering.
+    INVTYPE_NON_EQUIP_IGNORE = 0,
     INVTYPE_HEAD = 1,
     INVTYPE_NECK = 2,
     INVTYPE_SHOULDER = 3,
