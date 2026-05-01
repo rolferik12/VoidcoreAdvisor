@@ -120,6 +120,38 @@ end
 
 -- -- Item detection -----------------------------------------------------------
 
+-- Checks whether every item in the spec-specific pool is now obtained.
+-- If so, resets (clears) all obtained flags for that spec/source combination
+-- so the cycle can repeat.  Returns true if a reset was performed.
+local function CheckAndResetIfComplete(source, specID)
+    if not source or not specID then
+        return false
+    end
+
+    local classID = VCA.SpecInfo and VCA.SpecInfo.GetPlayerClassID and VCA.SpecInfo.GetPlayerClassID()
+    if not classID then
+        return false
+    end
+
+    local specPool = VCA.LootPool and VCA.LootPool.GetCachedItemsForSpec and
+                         VCA.LootPool
+                             .GetCachedItemsForSpec(source.sourceType, source.sourceID, source.difficultyID, classID,
+            specID)
+    if not specPool or #specPool == 0 then
+        return false
+    end
+
+    for _, itemID in ipairs(specPool) do
+        if not VCA.Data.IsObtained(source.sourceType, source.sourceID, source.difficultyID, specID, itemID) then
+            return false
+        end
+    end
+
+    -- All items obtained for this spec — reset the cycle.
+    VCA.Data.ClearSource(source.sourceType, source.sourceID, source.difficultyID, specID)
+    return true
+end
+
 local function OnCandidateItemDetected(itemID, source, specID)
     if not source or not itemID then
         return
@@ -134,6 +166,8 @@ local function OnCandidateItemDetected(itemID, source, specID)
     if onDetectedCallback then
         onDetectedCallback(itemID, source)
     end
+
+    CheckAndResetIfComplete(source, specID)
 end
 
 local function TryResolveReward(itemID, source, specID)
@@ -208,6 +242,16 @@ function Detection.ReplayBonusRollLog(verbose)
                 end
                 if TryResolveReward(entry.itemID, source, entry.specID) then
                     marked = marked + 1
+                    -- Detect a cycle reset: if the item we just marked is no longer
+                    -- obtained, CheckAndResetIfComplete fired and cleared the pool.
+                    if verbose and
+                        not VCA.Data
+                            .IsObtained(source.sourceType, source.sourceID, source.difficultyID, entry.specID,
+                            entry.itemID) then
+                        print(string.format(
+                            "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: pool complete — cycle reset for spec %s.", i,
+                            tostring(entry.specID)))
+                    end
                 else
                     nomatch = nomatch + 1
                 end
