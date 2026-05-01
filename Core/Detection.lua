@@ -123,6 +123,7 @@ end
 -- Checks whether every item in the spec-specific pool is now obtained.
 -- If so, resets (clears) all obtained flags for that spec/source combination
 -- so the cycle can repeat.  Returns true if a reset was performed.
+-- Also exposed as Detection.CheckAndResetIfComplete for UI-driven toggles.
 local function CheckAndResetIfComplete(source, specID)
     if not source or not specID then
         return false
@@ -150,6 +151,13 @@ local function CheckAndResetIfComplete(source, specID)
     -- All items obtained for this spec — reset the cycle.
     VCA.Data.ClearSource(source.sourceType, source.sourceID, source.difficultyID, specID)
     return true
+end
+
+-- Public wrapper so UI code (PanelColumns) can trigger the same reset check
+-- after a manual spec-picker toggle without going through the detection path.
+-- source must be a table with sourceType, sourceID, difficultyID fields.
+function Detection.CheckAndResetIfComplete(source, specID)
+    return CheckAndResetIfComplete(source, specID)
 end
 
 local function OnCandidateItemDetected(itemID, source, specID)

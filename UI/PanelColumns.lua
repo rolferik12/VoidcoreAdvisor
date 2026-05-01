@@ -105,6 +105,17 @@ local function OnPickerOK()
     if anyChecked then
         -- At least one real spec is now checked; remove any migrated (specID=0) entry.
         VCA.Data.SetObtained(ctx.sourceType, ctx.sourceID, ctx.diffID, 0, ctx.itemID, false)
+
+        -- Check each checked spec for pool completion and reset if all items
+        -- have been obtained (mirrors the auto-detection path).
+        if VCA.Detection and VCA.Detection.CheckAndResetIfComplete then
+            local source = { sourceType = ctx.sourceType, sourceID = ctx.sourceID, difficultyID = ctx.diffID }
+            for _, row in ipairs(_pickerCheckRows) do
+                if row.frame:IsShown() and row.checkbox:GetChecked() then
+                    VCA.Detection.CheckAndResetIfComplete(source, row.specID)
+                end
+            end
+        end
     end
 
     if not anyChecked then
