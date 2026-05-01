@@ -120,11 +120,11 @@ end
 
 -- -- Item detection -----------------------------------------------------------
 
--- Checks whether every item in the spec-specific pool is now obtained.
--- If so, resets (clears) all obtained flags for that spec/source combination
--- so the cycle can repeat.  Returns true if a reset was performed.
--- Also exposed as Detection.CheckAndResetIfComplete for UI-driven toggles.
-local function CheckAndResetIfComplete(source, specID)
+-- Checks whether every item in the spec-specific pool is now obtained for
+-- the given key tier.  If so, resets only that tier's obtained flags so the
+-- cycle can repeat independently per tier.  Returns true if a reset was performed.
+-- isHighTier: true = ≥10 tier, false = <10 tier, nil = tier-less / non-M+ (full reset)
+local function CheckAndResetIfComplete(source, specID, isHighTier)
     if not source or not specID then
         return false
     end
@@ -143,21 +143,23 @@ local function CheckAndResetIfComplete(source, specID)
     end
 
     for _, itemID in ipairs(specPool) do
-        if not VCA.Data.IsObtained(source.sourceType, source.sourceID, source.difficultyID, specID, itemID) then
+        if not VCA.Data.IsObtainedForKeyTier(source.sourceType, source.sourceID, source.difficultyID, specID, itemID,
+            isHighTier) then
             return false
         end
     end
 
-    -- All items obtained for this spec — reset the cycle.
-    VCA.Data.ClearSource(source.sourceType, source.sourceID, source.difficultyID, specID)
+    -- All items obtained for this spec+tier — reset only this tier's cycle.
+    VCA.Data.ClearSourceForKeyTier(source.sourceType, source.sourceID, source.difficultyID, specID, isHighTier)
     return true
 end
 
 -- Public wrapper so UI code (PanelColumns) can trigger the same reset check
 -- after a manual spec-picker toggle without going through the detection path.
 -- source must be a table with sourceType, sourceID, difficultyID fields.
-function Detection.CheckAndResetIfComplete(source, specID)
-    return CheckAndResetIfComplete(source, specID)
+-- isHighTier: true = ≥10 cycle, false = <10 cycle, nil = full / non-M+ reset.
+function Detection.CheckAndResetIfComplete(source, specID, isHighTier)
+    return CheckAndResetIfComplete(source, specID, isHighTier)
 end
 
 local function OnCandidateItemDetected(itemID, source, specID)
@@ -165,17 +167,26 @@ local function OnCandidateItemDetected(itemID, source, specID)
         return
     end
 
-    if VCA.Data.IsObtained(source.sourceType, source.sourceID, source.difficultyID, specID, itemID) then
+    -- Derive the key tier from the source's key level.
+    -- Mythic Keystone (diffID 8) always has a keyLevel; Mythic 0 / unknown → nil (tier-less).
+    local isHighTier
+    if source.keyLevel then
+        isHighTier = source.keyLevel >= 10
+    end
+
+    if VCA.Data
+        .IsObtainedForKeyTier(source.sourceType, source.sourceID, source.difficultyID, specID, itemID, isHighTier) then
         return
     end
 
-    VCA.Data.SetObtained(source.sourceType, source.sourceID, source.difficultyID, specID, itemID, true)
+    VCA.Data.SetObtainedForKeyTier(source.sourceType, source.sourceID, source.difficultyID, specID, itemID, isHighTier,
+        true)
 
     if onDetectedCallback then
         onDetectedCallback(itemID, source)
     end
 
-    CheckAndResetIfComplete(source, specID)
+    CheckAndResetIfComplete(source, specID, isHighTier)
 end
 
 local function TryResolveReward(itemID, source, specID)
@@ -217,9 +228,32 @@ function Detection.ReplayBonusRollLog(verbose)
                 difficultyID = entry.difficultyID,
                 keyLevel = entry.keyLevel
             }
-            local alreadyObtained = VCA.Data.IsObtained(source.sourceType, source.sourceID, source.difficultyID,
-                entry.specID, entry.itemID)
+            local isHighTier
+            if entry.keyLevel then
+                isHighTier = entry.keyLevel >= 10
+            end
+            local alreadyObtained = VCA.Data.IsObtainedForKeyTier(source.sourceType, source.sourceID,
+                source.difficultyID, entry.specID, entry.itemID, isHighTier)
             if alreadyObtained then
+                -- If the log entry has a known tier and the existing record is a bare key
+                -- (unknown-tier legacy entry), upgrade it to a proper tiered key so that
+                -- each tier's cycle can be reset independently going forward.
+                if isHighTier ~= nil and
+                    VCA.Data
+                        .IsObtainedBareKey(source.sourceType, source.sourceID, source.difficultyID, entry.specID,
+                        entry.itemID) then
+                    if not VCA.Data.IsObtainedTiered(source.sourceType, source.sourceID, source.difficultyID,
+                        entry.specID, entry.itemID, isHighTier) then
+                        VCA.Data.SetObtainedForKeyTier(source.sourceType, source.sourceID, source.difficultyID,
+                            entry.specID, entry.itemID, isHighTier, true)
+                        if verbose then
+                            local name = C_Item.GetItemNameByID(entry.itemID) or tostring(entry.itemID)
+                            print(string.format(
+                                "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: upgraded bare → %s tier for %s (spec=%s)",
+                                i, isHighTier and "≥10" or "<10", name, tostring(entry.specID)))
+                        end
+                    end
+                end
                 skipped = skipped + 1
                 if verbose then
                     local name = C_Item.GetItemNameByID(entry.itemID) or tostring(entry.itemID)

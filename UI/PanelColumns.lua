@@ -95,9 +95,35 @@ local function OnPickerOK()
     for _, row in ipairs(_pickerCheckRows) do
         if row.frame:IsShown() then
             local checked = row.checkbox:GetChecked()
-            VCA.Data.SetObtained(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID, checked)
             if checked then
+                -- Write tier-specific obtained flag for M+, tier-less for raids.
+                VCA.Data.SetObtainedForKeyTier(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID,
+                    ctx.isHighTier, true)
                 anyChecked = true
+            else
+                if ctx.isHighTier ~= nil then
+                    -- M+: only clear the currently viewed tier's key.
+                    VCA.Data.SetObtainedForKeyTier(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID,
+                        ctx.isHighTier, false)
+                    -- If a bare (unknown-tier) key exists it falls back as obtained for
+                    -- BOTH tiers, so unchecking from here would have no visible effect.
+                    -- Promote it to the opposite tier first so the other list keeps its
+                    -- obtained state, then clear the bare key.
+                    if VCA.Data.IsObtainedBareKey(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID) then
+                        local otherTier = not ctx.isHighTier
+                        if not VCA.Data.IsObtainedTiered(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID,
+                            ctx.itemID, otherTier) then
+                            VCA.Data.SetObtainedForKeyTier(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID,
+                                ctx.itemID, otherTier, true)
+                        end
+                        -- Clear bare key only (isHighTier=nil → targets the bare key).
+                        VCA.Data.SetObtainedForKeyTier(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID,
+                            nil, false)
+                    end
+                else
+                    -- Non-M+ (raids): no tier concept, clear all variants as before.
+                    VCA.Data.SetObtained(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID, false)
+                end
             end
         end
     end
@@ -109,10 +135,14 @@ local function OnPickerOK()
         -- Check each checked spec for pool completion and reset if all items
         -- have been obtained (mirrors the auto-detection path).
         if VCA.Detection and VCA.Detection.CheckAndResetIfComplete then
-            local source = { sourceType = ctx.sourceType, sourceID = ctx.sourceID, difficultyID = ctx.diffID }
+            local source = {
+                sourceType = ctx.sourceType,
+                sourceID = ctx.sourceID,
+                difficultyID = ctx.diffID
+            }
             for _, row in ipairs(_pickerCheckRows) do
                 if row.frame:IsShown() and row.checkbox:GetChecked() then
-                    VCA.Detection.CheckAndResetIfComplete(source, row.specID)
+                    VCA.Detection.CheckAndResetIfComplete(source, row.specID, ctx.isHighTier)
                 end
             end
         end
@@ -139,7 +169,7 @@ _pickerTitleLabel:SetPoint("TOPRIGHT", SpecPickerPopup, "TOPRIGHT", -PICKER_PAD,
 _pickerTitleLabel:SetJustifyH("LEFT")
 _pickerTitleLabel:SetText(L["SPEC_PICKER_TITLE"])
 
-local function BuildPickerRows(specs, sourceType, sourceID, diffID, itemID)
+local function BuildPickerRows(specs, sourceType, sourceID, diffID, itemID, isHighTier)
     for _, row in ipairs(_pickerCheckRows) do
         row.frame:Hide()
     end
@@ -179,8 +209,11 @@ local function BuildPickerRows(specs, sourceType, sourceID, diffID, itemID)
         row.iconTex:SetTexture(spec.icon)
         row.lbl:SetText(spec.name)
         row.specID = spec.specID
-        -- Pre-check if this spec already has the item recorded as obtained.
-        local alreadyObtained = itemID and VCA.Data.IsObtained(sourceType, sourceID, diffID, spec.specID, itemID)
+        -- Pre-check if this spec already has the item recorded as obtained for this tier.
+        local alreadyObtained = itemID and
+                                    VCA.Data
+                                        .IsObtainedForKeyTier(sourceType, sourceID, diffID, spec.specID, itemID,
+                isHighTier)
         row.checkbox:SetChecked(alreadyObtained or false)
         row.frame:Show()
     end
@@ -198,12 +231,13 @@ local function BuildPickerRows(specs, sourceType, sourceID, diffID, itemID)
     _pickerOkBtn:Show()
 end
 
-local function ShowSpecPickerFor(anchorWidget, sourceType, sourceID, diffID, itemID)
+local function ShowSpecPickerFor(anchorWidget, sourceType, sourceID, diffID, itemID, isHighTier)
     _pickerContext.sourceType = sourceType
     _pickerContext.sourceID = sourceID
     _pickerContext.diffID = diffID
     _pickerContext.itemID = itemID
-    BuildPickerRows(VCA.SpecInfo.GetPlayerSpecs(), sourceType, sourceID, diffID, itemID)
+    _pickerContext.isHighTier = isHighTier
+    BuildPickerRows(VCA.SpecInfo.GetPlayerSpecs(), sourceType, sourceID, diffID, itemID, isHighTier)
     SpecPickerPopup:ClearAllPoints()
     SpecPickerPopup:SetPoint("BOTTOMLEFT", anchorWidget, "TOPRIGHT", 4, 0)
     _pickerCatchFrame:Show()
@@ -212,7 +246,7 @@ end
 
 -- ── Populate item column ───────────────────────────────────────────────────────
 
-local function PopulateItemColumn(sourceType, sourceID, difficultyID)
+local function PopulateItemColumn(sourceType, sourceID, difficultyID, isHighTier)
     _s.HideAllItemRows()
 
     local classID = VCA.SpecInfo.GetPlayerClassID()
@@ -356,7 +390,7 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         -- independently; this just drives the visual dim in the item list.
         local obtained = false
         for _, spec in ipairs(specs) do
-            if VCA.Data.IsObtained(sourceType, sourceID, difficultyID, spec.specID, item.itemID) then
+            if VCA.Data.IsObtainedForKeyTier(sourceType, sourceID, difficultyID, spec.specID, item.itemID, isHighTier) then
                 obtained = true
                 break
             end
@@ -419,12 +453,14 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         row.checkbox.sourceType = sourceType
         row.checkbox.sourceID = sourceID
         row.checkbox.diffID = difficultyID
+        row.checkbox.isHighTier = isHighTier
         -- Obtained loot icon button tooltip: list which specs have it obtained.
         row.checkbox.specs = specs
         row.checkbox:SetScript("OnEnter", function(self)
             local obtainedSpecs = {}
             for _, sp in ipairs(self.specs) do
-                if VCA.Data.IsObtained(self.sourceType, self.sourceID, self.diffID, sp.specID, self.itemID) then
+                if VCA.Data.IsObtainedForKeyTier(self.sourceType, self.sourceID, self.diffID, sp.specID, self.itemID,
+                    self.isHighTier) then
                     obtainedSpecs[#obtainedSpecs + 1] = sp
                 end
             end
@@ -436,7 +472,29 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(L["SPEC_PICKER_TITLE"], 1, 1, 1)
             for _, sp in ipairs(obtainedSpecs) do
-                GameTooltip:AddLine("|T" .. sp.icon .. ":12:12:0:0:64:64:4:60:4:60|t " .. sp.name, 0.4, 1.0, 0.4)
+                if self.sourceType == VCA.ContentType.MYTHIC_PLUS then
+                    local levels = VCA.Data.GetAllKeyLevelsForSpec(self.sourceType, self.sourceID, self.diffID,
+                        sp.specID, self.itemID)
+                    local klText
+                    if #levels > 0 then
+                        local parts = {}
+                        for _, kl in ipairs(levels) do
+                            parts[#parts + 1] = "+" .. kl
+                        end
+                        klText = " |cff888888(" .. table.concat(parts, ", ") .. ")|r"
+                    elseif VCA.Data.IsObtainedBareKey(self.sourceType, self.sourceID, self.diffID, sp.specID,
+                        self.itemID) then
+                        -- Bare key: obtained at unknown key level (pre-tier data or Mythic 0).
+                        klText = " |cff888888(" .. L["UNKNOWN_KEYLEVEL"] .. ")|r"
+                    else
+                        -- Tiered key with no log entry: set manually via the spec picker.
+                        klText = " |cff888888(" .. L["MANUAL_ENTRY"] .. ")|r"
+                    end
+                    GameTooltip:AddLine("|T" .. sp.icon .. ":12:12:0:0:64:64:4:60:4:60|t " .. sp.name .. klText, 0.4,
+                        1.0, 0.4)
+                else
+                    GameTooltip:AddLine("|T" .. sp.icon .. ":12:12:0:0:64:64:4:60:4:60|t " .. sp.name, 0.4, 1.0, 0.4)
+                end
             end
             if migratedObtained then
                 GameTooltip:AddLine(L["OBTAINED_UNKNOWN_SPEC"], 1.0, 0.7, 0.1)
@@ -449,7 +507,7 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID)
         row.checkbox:SetScript("OnClick", function(self)
             -- Always open the spec picker, pre-checked to the current obtained state.
             -- OK saves whatever is checked; clicking outside dismisses without changes.
-            ShowSpecPickerFor(self, self.sourceType, self.sourceID, self.diffID, self.itemID)
+            ShowSpecPickerFor(self, self.sourceType, self.sourceID, self.diffID, self.itemID, self.isHighTier)
         end)
 
         -- Dim row if obtained, filtered out by spec selection, or
@@ -504,11 +562,19 @@ end
 local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItemIDs)
     _s.HideAllSpecRows()
 
+    -- For M+: derive key tier from the selected key level so probability
+    -- reflects only items still needed for that tier.
+    local isHighTier = nil
+    if sourceType == VCA.ContentType.MYTHIC_PLUS then
+        isHighTier = _s.getSelectedKeyLevel() >= 10
+    end
+
     local rankings
     if filterItemIDs and #filterItemIDs > 0 then
-        rankings = VCA.Probability.RankCurrentPlayerSpecsForItems(filterItemIDs, sourceType, sourceID, difficultyID)
+        rankings = VCA.Probability.RankCurrentPlayerSpecsForItems(filterItemIDs, sourceType, sourceID, difficultyID,
+            isHighTier)
     else
-        rankings = VCA.Probability.RankCurrentPlayerSpecs(sourceType, sourceID, difficultyID)
+        rankings = VCA.Probability.RankCurrentPlayerSpecs(sourceType, sourceID, difficultyID, isHighTier)
     end
     local colW = _s.RightColWidth()
     local rowTop = 0
@@ -587,7 +653,11 @@ end
 -- Updates the loot header to indicate spec filtering.
 
 function Panel.RefreshItemColumn()
-    PopulateItemColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
+    local isHighTier = nil
+    if Panel.sourceType == VCA.ContentType.MYTHIC_PLUS then
+        isHighTier = _s.getSelectedKeyLevel() >= 10
+    end
+    PopulateItemColumn(Panel.sourceType, Panel.sourceID, Panel.difficultyID, isHighTier)
     local count = 0
     for _ in pairs(_s.selectedSpecIDs) do
         count = count + 1

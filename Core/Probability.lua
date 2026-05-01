@@ -38,13 +38,14 @@ local Probability = VCA.Probability
 --     allObtained    : bool    – true when every item has been claimed
 --     noItems        : bool    – true when this spec has no eligible items
 --   }
-function Probability.CalculateForSpec(sourceType, sourceID, difficultyID, classID, specID)
+-- isHighTier: nil = no tier filter (use plain obtained), true = key >= 10, false = key < 10
+function Probability.CalculateForSpec(sourceType, sourceID, difficultyID, classID, specID, isHighTier)
     local itemIDs = VCA.LootPool.GetItemsForSpec(sourceType, sourceID, difficultyID, classID, specID)
     local baseCount = #itemIDs
 
     local remainingCount = 0
     for _, itemID in ipairs(itemIDs) do
-        if not VCA.Data.IsObtained(sourceType, sourceID, difficultyID, specID, itemID) then
+        if not VCA.Data.IsObtainedForKeyTier(sourceType, sourceID, difficultyID, specID, itemID, isHighTier) then
             remainingCount = remainingCount + 1
         end
     end
@@ -75,10 +76,12 @@ end
 --
 -- Returns: sorted array.  Each entry is the table from CalculateForSpec, plus:
 --   { specName, specIcon, specRole, specIndex, rank }
-function Probability.RankSpecs(specs, sourceType, sourceID, difficultyID)
+-- isHighTier: nil = no tier filter, true = key >= 10, false = key < 10
+function Probability.RankSpecs(specs, sourceType, sourceID, difficultyID, isHighTier)
     local results = {}
     for _, spec in ipairs(specs) do
-        local data = Probability.CalculateForSpec(sourceType, sourceID, difficultyID, spec.classID, spec.specID)
+        local data = Probability.CalculateForSpec(sourceType, sourceID, difficultyID, spec.classID, spec.specID,
+            isHighTier)
         data.specName = spec.name
         data.specIcon = spec.icon
         data.specRole = spec.role
@@ -114,10 +117,10 @@ function Probability.RankSpecs(specs, sourceType, sourceID, difficultyID)
 end
 
 -- Convenience: rank all specs of the current player for a given source.
--- Returns the sorted array from RankSpecs.
-function Probability.RankCurrentPlayerSpecs(sourceType, sourceID, difficultyID)
+-- isHighTier: nil = no tier filter, true = key >= 10, false = key < 10
+function Probability.RankCurrentPlayerSpecs(sourceType, sourceID, difficultyID, isHighTier)
     local specs = VCA.SpecInfo.GetPlayerSpecs()
-    return Probability.RankSpecs(specs, sourceType, sourceID, difficultyID)
+    return Probability.RankSpecs(specs, sourceType, sourceID, difficultyID, isHighTier)
 end
 
 -- Ranks the current player's specs by how many of the given itemIDs fall into
@@ -128,7 +131,8 @@ end
 -- reflect only the supplied items (not the full pool).
 -- Sort order: specs that cover MORE selected items rank first; within equals,
 -- fewer remaining (smaller unobtained intersection) ranks higher.
-function Probability.RankCurrentPlayerSpecsForItems(itemIDs, sourceType, sourceID, difficultyID)
+-- isHighTier: nil = no tier filter, true = key >= 10, false = key < 10
+function Probability.RankCurrentPlayerSpecsForItems(itemIDs, sourceType, sourceID, difficultyID, isHighTier)
     local specs = VCA.SpecInfo.GetPlayerSpecs()
 
     local selectedSet = {}
@@ -156,7 +160,7 @@ function Probability.RankCurrentPlayerSpecsForItems(itemIDs, sourceType, sourceI
         local remainingCount = 0
         local matchRemainingCount = 0
         for _, itemID in ipairs(allSpecItemIDs) do
-            if not VCA.Data.IsObtained(sourceType, sourceID, difficultyID, spec.specID, itemID) then
+            if not VCA.Data.IsObtainedForKeyTier(sourceType, sourceID, difficultyID, spec.specID, itemID, isHighTier) then
                 remainingCount = remainingCount + 1
                 if selectedSet[itemID] then
                     matchRemainingCount = matchRemainingCount + 1
