@@ -237,7 +237,21 @@ local function ShowSpecPickerFor(anchorWidget, sourceType, sourceID, diffID, ite
     _pickerContext.diffID = diffID
     _pickerContext.itemID = itemID
     _pickerContext.isHighTier = isHighTier
-    BuildPickerRows(VCA.SpecInfo.GetPlayerSpecs(), sourceType, sourceID, diffID, itemID, isHighTier)
+
+    -- Only show specs that can actually loot this item.
+    local classID = VCA.SpecInfo.GetPlayerClassID()
+    local eligibleSpecs = {}
+    for _, spec in ipairs(VCA.SpecInfo.GetPlayerSpecs()) do
+        local specItems = VCA.LootPool.GetItemsForSpec(sourceType, sourceID, diffID, classID, spec.specID)
+        for _, id in ipairs(specItems) do
+            if id == itemID then
+                eligibleSpecs[#eligibleSpecs + 1] = spec
+                break
+            end
+        end
+    end
+
+    BuildPickerRows(eligibleSpecs, sourceType, sourceID, diffID, itemID, isHighTier)
     SpecPickerPopup:ClearAllPoints()
     SpecPickerPopup:SetPoint("BOTTOMLEFT", anchorWidget, "TOPRIGHT", 4, 0)
     _pickerCatchFrame:Show()
