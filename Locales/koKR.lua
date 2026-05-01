@@ -93,3 +93,5 @@ L["RAID_OVERVIEW_NO_DATA"] = "공격대 조우 데이터를 사용할 수 없습
 L["SPEC_PICKER_TITLE"] = "획득 방식:"
 L["SPEC_PICKER_OK"] = "확인"
 L["OBTAINED_UNKNOWN_SPEC"] = "획득 (전문화 알 수 없음)"
+L["UNKNOWN_KEYLEVEL"] = "알 수 없는 열쇠 레벨"
+L["MANUAL_ENTRY"] = "수동 입력"

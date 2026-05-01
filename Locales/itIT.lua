@@ -93,3 +93,5 @@ L["RAID_OVERVIEW_NO_DATA"] = "Nessun dato di scontro nell'incursione disponibile
 L["SPEC_PICKER_TITLE"] = "Ottenuto come:"
 L["SPEC_PICKER_OK"] = "OK"
 L["OBTAINED_UNKNOWN_SPEC"] = "Ottenuto (specializzazione sconosciuta)"
+L["UNKNOWN_KEYLEVEL"] = "livello chiave sconosciuto"
+L["MANUAL_ENTRY"] = "inserimento manuale"
