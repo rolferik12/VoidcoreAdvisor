@@ -51,6 +51,15 @@ local function ResolveCurrentMythicPlusSource()
         if level and level > 0 then
             keyLevel = level
         end
+        -- Fallback: after run completion GetActiveKeystoneInfo() returns 0/nil
+        -- because the keystone is no longer active.  GetCompletionInfo() retains
+        -- the just-finished run's level while the player is still in the instance.
+        if not keyLevel then
+            local _, completionLevel = C_ChallengeMode.GetCompletionInfo()
+            if completionLevel and completionLevel > 0 then
+                keyLevel = completionLevel
+            end
+        end
     end
 
     return CreateSource(VCA.ContentType.MYTHIC_PLUS, sourceID, VCA.MythicPlusEJDifficulty, keyLevel)
