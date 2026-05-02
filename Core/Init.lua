@@ -84,9 +84,6 @@ local function StartDeferredWarmup()
         return
     end
 
-    -- Build season data just-in-time for warmup. Persisted cache is already
-    -- loaded on ADDON_LOADED, so this can run later without blocking login.
-    VCA.LootPool.BuildSeasonFilter()
     VCA.LootPool.WarmCache()
 end
 
@@ -119,15 +116,18 @@ initFrame:SetScript("OnEvent", function(self, event, ...)
         self:UnregisterEvent("ADDON_LOADED")
 
     elseif event == "PLAYER_ENTERING_WORLD" then
-        -- Validate and warm loot caches only on the first world enter and only
-        -- while outside instances so gameplay events never trigger this work.
+        -- Run only once per session. BuildSeasonFilter is called immediately
+        -- (works inside instances); WarmCache is deferred until outside instances.
         if _hasInitializedWorld then
             return
         end
         _hasInitializedWorld = true
 
-        -- Defer warmup so login/zone-load work is not competing with EJ reads.
-        -- Persisted cache remains available immediately from ADDON_LOADED.
+        -- Always build the season filter immediately so the Reminder and other
+        -- features work even when logging in directly inside an instance.
+        VCA.LootPool.BuildSeasonFilter()
+
+        -- Defer the heavy item-cache warmup until outside an instance.
         ScheduleDeferredWarmup(4)
 
         -- Notify any future UI layer that the backend is ready.
@@ -205,6 +205,10 @@ SlashCmdList["VOIDCOREADVISOR"] = function(msg)
 
     elseif cmd == "replaylog" then
         VCA.Detection.ReplayBonusRollLog(true)
+
+    elseif cmd == "reminder" then
+        -- Force-evaluate the reminder, ignoring the already-shown guard.
+        VCA.Reminder.ForceEvaluate()
 
     else
         print("|cff9370DBVoidcoreAdvisor:|r " .. L["HELP_HEADER"])

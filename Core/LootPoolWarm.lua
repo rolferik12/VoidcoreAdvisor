@@ -240,6 +240,7 @@ function LootPool.WarmCache()
                     end
 
                     if allCached then
+                        print("|cff9370DBVoidcoreAdvisor:|r Loot cache ready.")
                         Finish(true)
                     elseif warmRetries < MAX_RETRIES then
                         warmRetries = warmRetries + 1

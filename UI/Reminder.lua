@@ -33,7 +33,8 @@ local function RankCurrentPlayerSpecsForItemsCached(itemIDs, sourceType, sourceI
         local allSpecItemIDs = VCA.LootPool.GetCachedItemsForSpec(sourceType, sourceID, difficultyID, spec.classID,
             spec.specID)
         if not allSpecItemIDs then
-            return nil
+            -- Cache not yet warm (e.g. logged in inside an instance); compute on demand.
+            allSpecItemIDs = VCA.LootPool.GetItemsForSpec(sourceType, sourceID, difficultyID, spec.classID, spec.specID)
         end
 
         local matchCount = 0
@@ -339,9 +340,13 @@ function Reminder.Evaluate()
         return
     end
 
-    -- Suppress if the current spec is tied with the best spec (same odds).
+    -- Suppress if the current spec is tied with the best spec (same odds),
+    -- but never suppress when the best spec covers selected items the current spec doesn't.
     for _, r in ipairs(rankings) do
         if r.specID == currentLootSpecID then
+            if not bestSpec.noItems and r.noItems then
+                break
+            end
             if r.remainingCount <= bestSpec.remainingCount then
                 return
             end
@@ -351,6 +356,11 @@ function Reminder.Evaluate()
 
     lastShownInstanceID = ejInstanceID
     Reminder.Show(currentLootSpecID, bestSpec, #selectedList)
+end
+
+function Reminder.ForceEvaluate()
+    lastShownInstanceID = nil
+    Reminder.Evaluate()
 end
 
 -- ── Event handler ─────────────────────────────────────────────────────────────
