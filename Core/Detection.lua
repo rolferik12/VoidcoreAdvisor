@@ -348,12 +348,13 @@ local function ProcessPendingRewards()
     pendingRewards = remaining
 end
 
-local function ProcessRewardItem(itemID, specID)
+local function ProcessRewardItem(itemID, specID, sourceHint)
     if not itemID then
         return
     end
 
-    local source = GetResolvedSource()
+    -- Prefer a source captured at event time; fall back to live resolution.
+    local source = sourceHint or GetResolvedSource()
     if TryResolveReward(itemID, source, specID) then
         return
     end
@@ -407,13 +408,22 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         specID = VCA.SpecInfo and VCA.SpecInfo.GetEffectiveLootSpecID and VCA.SpecInfo.GetEffectiveLootSpecID()
     end
 
+    -- Capture source immediately at event time — GetInstanceInfo() may return
+    -- a different state one frame later (e.g. after run completion), causing
+    -- ResolveCurrentMythicPlusSource to return nil and silently drop detection.
+    local capturedSource = GetResolvedSource()
+
     -- Persist a raw log entry immediately so the player can manually verify
     -- which items fired if auto-detection later fails to match them.
     if VCA.Data and VCA.Data.LogBonusRoll then
-        VCA.Data.LogBonusRoll(itemID, itemLink, specID, GetResolvedSource())
+        VCA.Data.LogBonusRoll(itemID, itemLink, specID, capturedSource)
     end
 
     C_Timer.After(0, function()
-        ProcessRewardItem(itemID, specID)
+        ProcessRewardItem(itemID, specID, capturedSource)
+        -- Replay the full log as a safety net: if ProcessRewardItem still missed
+        -- the item (e.g. cache was not yet populated), the log entry has the
+        -- correct source and will match now that the cache is warm.
+        Detection.ReplayBonusRollLog(false)
     end)
 end)
