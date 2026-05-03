@@ -7,7 +7,7 @@ local L = VCA.L
 
 -- ── Panel UI ──────────────────────────────────────────────────────────────────
 
-L["PANEL_TITLE"] = "|cffb048f8虛無核心|r|cffdddddd助手|r"
+L["PANEL_TITLE"] = "|cffb048f8虛無之核|r|cffdddddd助手|r"
 
 L["COL_LOOT"] = "拾取"
 L["COL_SPEC_RANKING"] = "專精排名"
@@ -17,22 +17,22 @@ L["COL_LOOT_FILTERED_N"] = "拾取（已篩選 %d 個專精）"
 
 L["CONTENT_RAID_BOSS"] = "團隊首領"
 L["CONTENT_MP_DUNGEON"] = "傳奇鑰石地城"
-L["NEBULOUS_VOIDCORE"] = "星雲虛無核心"
-L["NEBULOUS_VOIDCORES"] = "星雲虛無核心"
+L["NEBULOUS_VOIDCORE"] = "星雲虛無之核"
+L["NEBULOUS_VOIDCORES"] = "星雲虛無之核"
 
 L["NO_ITEMS_FOR_SPEC"] = "此專精沒有可用物品"
 
 L["LOOT_SPEC_LABEL"] = "拾取："
 L["ALL_OBTAINED"] = "✓ 全部"
 
-L["DETECTED_OBTAINED"] = "已自動偵測到 %s 透過星雲虛無核心取得。"
+L["DETECTED_OBTAINED"] = "已自動偵測到 %s 透過星雲虛無之核取得。"
 
 L["CLEAR_SELECTED"] = "清除選擇"
 
 -- ── Slash commands ────────────────────────────────────────────────────────────
 
 L["RESET_CONFIRM"] = "所有已取得物品資料已重設。"
-L["COUNT_FORMAT"] = "已標記 %d 件物品為透過虛無核心取得。"
+L["COUNT_FORMAT"] = "已標記 %d 件物品為透過虛無之核取得。"
 L["SPEC_FORMAT"] = "目前拾取專精 ID：%s%s"
 L["FOLLOWS_ACTIVE_SPEC"] = "（跟隨目前專精）"
 L["SOURCE_FORMAT"] = "目前來源 - 類型：%s  來源ID：%s  難度：%s"
@@ -56,9 +56,9 @@ L["TOGGLE_OVERVIEW_HIDE"] = "點擊隱藏地城概覽。"
 
 -- ── 提醒彈窗（Reminder.lua）──────────────────────────────────────────────────
 
-L["REMINDER_TITLE"] = "|cffb048f8虛無核心|r|cffdddddd助手|r"
-L["REMINDER_SUBTITLE"] = "優化您的拾取專精以獲得星雲虛無核心獎勵！"
-L["REMINDER_VOIDCORE_COUNT"] = "您有 |cffffff00%d|r 個星雲虛無核心"
+L["REMINDER_TITLE"] = "|cffb048f8虛無之核|r|cffdddddd助手|r"
+L["REMINDER_SUBTITLE"] = "優化您的拾取專精以獲得星雲虛無之核獎勵！"
+L["REMINDER_VOIDCORE_COUNT"] = "您有 |cffffff00%d|r 個星雲虛無之核"
 L["REMINDER_CURRENT_SPEC"] = "目前拾取專精："
 L["REMINDER_RECOMMENDED"] = "推薦專精："
 L["REMINDER_ITEMS_SELECTED"] = "已選擇 %d 件物品"
@@ -86,7 +86,7 @@ L["DUNGEON_OVERVIEW_NO_DATA"] = "賽季地城資料暫不可用。"
 
 L["RAID_OVERVIEW_SUBTITLE"] = "團隊首領 — 拾取機率"
 L["RAID_OVERVIEW_COL_BOSS"] = "首領"
-L["RAID_OVERVIEW_NO_DATA"] = "沒有團隊遭遇資料可用。"
+L["RAID_OVERVIEW_NO_DATA"] = "沒有團隊戰鬥資料可用。"
 
 -- ── 專精選擇彈窗（PanelColumns.lua）──────────────────────────────────────────
 
@@ -95,3 +95,4 @@ L["SPEC_PICKER_OK"] = "確定"
 L["OBTAINED_UNKNOWN_SPEC"] = "已取得（專精未知）"
 L["UNKNOWN_KEYLEVEL"] = "未知鑰石等級"
 L["MANUAL_ENTRY"] = "手動輸入"
+
