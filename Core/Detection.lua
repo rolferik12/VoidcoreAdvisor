@@ -10,6 +10,9 @@ local Detection = VCA.Detection
 local sourceOverride = nil -- optional UI-selected source context
 local onDetectedCallback = nil -- function(itemID, source) | nil
 local pendingRewards = {}
+-- Key level captured at CHALLENGE_MODE_START / CHALLENGE_MODE_COMPLETED, before
+-- GetActiveKeystoneInfo() goes stale after the keystone is consumed.
+local cachedKeyLevel = nil
 
 local function CreateSource(sourceType, sourceID, difficultyID, keyLevel)
     return {
@@ -51,9 +54,15 @@ local function ResolveCurrentMythicPlusSource()
         if level and level > 0 then
             keyLevel = level
         end
-        -- Fallback: after run completion GetActiveKeystoneInfo() returns 0/nil
-        -- because the keystone is no longer active.  GetCompletionInfo() retains
-        -- the just-finished run's level while the player is still in the instance.
+        -- Fallback 1: level snapshotted at CHALLENGE_MODE_START / CHALLENGE_MODE_COMPLETED
+        -- before the keystone is consumed and GetActiveKeystoneInfo() returns 0.
+        -- This is the primary fix for the "second run in a session" miss: the first
+        -- run's GetCompletionInfo() data may be stale or cleared by the time the
+        -- second run's BONUS_ROLL_RESULT fires.
+        if not keyLevel and cachedKeyLevel then
+            keyLevel = cachedKeyLevel
+        end
+        -- Fallback 2: GetCompletionInfo() for the just-finished run.
         if not keyLevel then
             local _, completionLevel = C_ChallengeMode.GetCompletionInfo()
             if completionLevel and completionLevel > 0 then
@@ -374,9 +383,35 @@ local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("BONUS_ROLL_RESULT")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+eventFrame:RegisterEvent("CHALLENGE_MODE_START")
+eventFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
+eventFrame:RegisterEvent("CHALLENGE_MODE_RESET")
 
 eventFrame:SetScript("OnEvent", function(_, event, ...)
+    if event == "CHALLENGE_MODE_START" or event == "CHALLENGE_MODE_COMPLETED" then
+        -- Snapshot the key level while GetActiveKeystoneInfo() is still valid.
+        -- This must happen before the keystone is consumed/upgraded so that
+        -- the fallback path in ResolveCurrentMythicPlusSource() has reliable data
+        -- when BONUS_ROLL_RESULT fires after the run ends.
+        if C_ChallengeMode then
+            local level = C_ChallengeMode.GetActiveKeystoneInfo()
+            if level and level > 0 then
+                cachedKeyLevel = level
+                local instanceName = GetInstanceInfo()
+                print(string.format("|cff9370DBVoidcoreAdvisor:|r Key detected - %s +%d.", instanceName or "Unknown",
+                    cachedKeyLevel))
+            end
+        end
+        return
+    end
+
+    if event == "CHALLENGE_MODE_RESET" then
+        cachedKeyLevel = nil
+        return
+    end
+
     if event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
+        cachedKeyLevel = nil
         Detection.ClearActiveSource()
         if not IsInInstancedContent() then
             C_Timer.After(0, ProcessPendingRewards)
