@@ -411,7 +411,14 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     end
 
     if event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
-        cachedKeyLevel = nil
+        -- ZONE_CHANGED_NEW_AREA fires inside a dungeon when challenge mode
+        -- transitions from active → completed, before BONUS_ROLL_RESULT fires.
+        -- Only clear the cached key level once the player has actually left the
+        -- instance; PLAYER_ENTERING_WORLD is an unconditional clear because it
+        -- always represents a full cross-zone load screen.
+        if event == "PLAYER_ENTERING_WORLD" or not IsInInstancedContent() then
+            cachedKeyLevel = nil
+        end
         Detection.ClearActiveSource()
         if not IsInInstancedContent() then
             C_Timer.After(0, ProcessPendingRewards)
