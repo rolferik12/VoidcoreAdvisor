@@ -21,7 +21,7 @@ LootPool._reentryGuard = false
 
 local _cache = {}
 local GetSeasonFingerprint
-local PERSISTED_CACHE_VERSION = 21 -- bumped: mount IDs and housing items filtered from persisted entries
+local PERSISTED_CACHE_VERSION = 22 -- bumped: mount IDs and housing items filtered from persisted entries
 local _persistableCacheTags = {
     eic = true,
     eis = true,
