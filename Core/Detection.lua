@@ -82,11 +82,7 @@ local function ResolveCurrentMythicPlusSource()
 end
 
 local function GetResolvedSource()
-    if sourceOverride then
-        return sourceOverride
-    end
-
-    return ResolveCurrentMythicPlusSource()
+    return sourceOverride or ResolveCurrentMythicPlusSource()
 end
 
 local function IsInInstancedContent()
@@ -216,12 +212,11 @@ end
 
 local function TryResolveReward(itemID, source, specID)
     local matchedItemID = FindDetectedItem(itemID, source)
-    if matchedItemID then
-        OnCandidateItemDetected(matchedItemID, source, specID)
-        return true
+    if not matchedItemID then
+        return false
     end
-
-    return false
+    OnCandidateItemDetected(matchedItemID, source, specID)
+    return true
 end
 
 -- Replays saved bonus roll log entries through the detection pipeline.
@@ -375,69 +370,76 @@ local function ProcessRewardItem(itemID, specID, sourceHint)
         return
     end
 
-    if IsInInstancedContent() then
-        QueuePendingReward(itemID, source, specID)
-        return
-    end
-
+    -- Queue the reward. Outside a dungeon, attempt to flush immediately.
+    -- Inside one, leave it queued until PLAYER_ENTERING_WORLD fires on exit.
     QueuePendingReward(itemID, source, specID)
-    ProcessPendingRewards()
+    if not IsInInstancedContent() then
+        ProcessPendingRewards()
+    end
 end
 
--- -- Event frame --------------------------------------------------------------
+-- -- Event handlers -----------------------------------------------------------
 
-local eventFrame = CreateFrame("Frame")
-eventFrame:RegisterEvent("BONUS_ROLL_RESULT")
-eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-eventFrame:RegisterEvent("CHALLENGE_MODE_START")
-eventFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
-eventFrame:RegisterEvent("CHALLENGE_MODE_RESET")
+local handlers = {}
 
-eventFrame:SetScript("OnEvent", function(_, event, ...)
-    if event == "CHALLENGE_MODE_START" or event == "CHALLENGE_MODE_COMPLETED" then
-        -- Snapshot the key level while GetActiveKeystoneInfo() is still valid.
-        -- This must happen before the keystone is consumed/upgraded so that
-        -- the fallback path in ResolveCurrentMythicPlusSource() has reliable data
-        -- when BONUS_ROLL_RESULT fires after the run ends.
-        if C_ChallengeMode then
-            local level = C_ChallengeMode.GetActiveKeystoneInfo()
-            if level and level > 0 then
-                PersistKeyLevel(level)
-                if event == "CHALLENGE_MODE_START" then
-                    local instanceName = GetInstanceInfo()
-                    print(string.format("|cff9370DBVoidcoreAdvisor:|r Key detected - %s +%d.",
-                        instanceName or "Unknown", cachedKeyLevel))
-                end
-            end
-        end
+-- Snapshot the key level while GetActiveKeystoneInfo() is still valid,
+-- before the timer starts and the keystone is upgraded or consumed.
+function handlers.CHALLENGE_MODE_START()
+    if not C_ChallengeMode then
         return
     end
+    local level = C_ChallengeMode.GetActiveKeystoneInfo()
+    if not level or level <= 0 then
+        return
+    end
+    PersistKeyLevel(level)
+    local instanceName = GetInstanceInfo()
+    print(
+        string.format("|cff9370DBVoidcoreAdvisor:|r Key detected - %s +%d.", instanceName or "Unknown", cachedKeyLevel))
+end
 
-    if event == "CHALLENGE_MODE_RESET" then
+-- Re-snapshot at completion only if the start snapshot was missed (e.g. /reload
+-- during the countdown). If cachedKeyLevel is already set we have nothing to do.
+-- Silent — no message at the end-of-run screen.
+function handlers.CHALLENGE_MODE_COMPLETED()
+    if cachedKeyLevel then
+        return
+    end
+    if not C_ChallengeMode then
+        return
+    end
+    local level = C_ChallengeMode.GetActiveKeystoneInfo()
+    if level and level > 0 then
+        PersistKeyLevel(level)
+    end
+end
+
+-- Key was abandoned or reset — clear the snapshot so stale data cannot bleed
+-- into the next run.
+function handlers.CHALLENGE_MODE_RESET()
+    ClearPersistedKeyLevel()
+end
+
+-- Fired on login and every loading-screen transition.
+function handlers.PLAYER_ENTERING_WORLD()
+    if IsInInstancedContent() then
+        -- /reload inside a dungeon: restore the persisted key level if the local
+        -- variable was wiped by the reload.
+        if not cachedKeyLevel then
+            local db = _G[VCA.CHAR_DB_NAME]
+            cachedKeyLevel = db and db.cachedKeyLevel or nil
+        end
+    else
+        -- Logging in or crossing to a non-instanced zone: clear stale run state
+        -- and flush any rewards that queued inside the instance.
         ClearPersistedKeyLevel()
-        return
+        Detection.ClearActiveSource()
+        C_Timer.After(0, ProcessPendingRewards)
     end
+end
 
-    if event == "PLAYER_ENTERING_WORLD" then
-        if IsInInstancedContent() then
-            -- Reload inside a dungeon: restore the persisted key level if we lost it.
-            if not cachedKeyLevel then
-                local db = _G[VCA.CHAR_DB_NAME]
-                cachedKeyLevel = db and db.cachedKeyLevel or nil
-            end
-        else
-            ClearPersistedKeyLevel()
-            Detection.ClearActiveSource()
-            C_Timer.After(0, ProcessPendingRewards)
-        end
-        return
-    end
-
-    if event ~= "BONUS_ROLL_RESULT" then
-        return
-    end
-
-    local typeIdentifier, itemLink, quantity, specID = ...
+-- Core detection path. Fires when the player receives a bonus roll result.
+function handlers.BONUS_ROLL_RESULT(typeIdentifier, itemLink, quantity, specID)
     if typeIdentifier ~= "item" then
         return
     end
@@ -451,28 +453,42 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         return
     end
 
-    -- specID is provided directly by the event payload.  Fall back to the
-    -- effective loot spec only if the event omits it (future-proofing).
+    -- specID is provided by the event payload. Fall back to the effective loot
+    -- spec only if the event omits it (future-proofing).
     if not specID or specID == 0 then
         specID = VCA.SpecInfo and VCA.SpecInfo.GetEffectiveLootSpecID and VCA.SpecInfo.GetEffectiveLootSpecID()
     end
 
-    -- Capture source immediately at event time — GetInstanceInfo() may return
-    -- a different state one frame later (e.g. after run completion), causing
-    -- ResolveCurrentMythicPlusSource to return nil and silently drop detection.
+    -- Capture the source now — GetInstanceInfo() state may change one frame
+    -- later (e.g. after run completion), which would cause source resolution to fail.
     local capturedSource = GetResolvedSource()
 
-    -- Persist a raw log entry immediately so the player can manually verify
-    -- which items fired if auto-detection later fails to match them.
+    -- Write a raw log entry immediately for post-hoc auditing if matching fails.
     if VCA.Data and VCA.Data.LogBonusRoll then
         VCA.Data.LogBonusRoll(itemID, itemLink, specID, capturedSource)
     end
 
+    -- Defer one frame so item data is populated before pool lookup.
     C_Timer.After(0, function()
         ProcessRewardItem(itemID, specID, capturedSource)
-        -- Replay the full log as a safety net: if ProcessRewardItem still missed
-        -- the item (e.g. cache was not yet populated), the log entry has the
-        -- correct source and will match now that the cache is warm.
+        -- Replay the full log as a safety net: if the pool cache was not warm
+        -- when ProcessRewardItem ran, the log entry now has the correct source.
         Detection.ReplayBonusRollLog(false)
     end)
+end
+
+-- -- Event frame --------------------------------------------------------------
+
+local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("BONUS_ROLL_RESULT")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+eventFrame:RegisterEvent("CHALLENGE_MODE_START")
+eventFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
+eventFrame:RegisterEvent("CHALLENGE_MODE_RESET")
+
+eventFrame:SetScript("OnEvent", function(_, event, ...)
+    local handler = handlers[event]
+    if handler then
+        handler(...)
+    end
 end)
