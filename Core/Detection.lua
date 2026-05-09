@@ -12,7 +12,24 @@ local onDetectedCallback = nil -- function(itemID, source) | nil
 local pendingRewards = {}
 -- Key level captured at CHALLENGE_MODE_START / CHALLENGE_MODE_COMPLETED, before
 -- GetActiveKeystoneInfo() goes stale after the keystone is consumed.
+-- Also persisted to SavedVariables so a /reload inside or after a run survives.
 local cachedKeyLevel = nil
+
+local function PersistKeyLevel(level)
+    cachedKeyLevel = level
+    local db = _G[VCA.CHAR_DB_NAME]
+    if db then
+        db.cachedKeyLevel = level
+    end
+end
+
+local function ClearPersistedKeyLevel()
+    cachedKeyLevel = nil
+    local db = _G[VCA.CHAR_DB_NAME]
+    if db then
+        db.cachedKeyLevel = nil
+    end
+end
 
 local function CreateSource(sourceType, sourceID, difficultyID, keyLevel)
     return {
@@ -54,20 +71,10 @@ local function ResolveCurrentMythicPlusSource()
         if level and level > 0 then
             keyLevel = level
         end
-        -- Fallback 1: level snapshotted at CHALLENGE_MODE_START / CHALLENGE_MODE_COMPLETED
-        -- before the keystone is consumed and GetActiveKeystoneInfo() returns 0.
-        -- This is the primary fix for the "second run in a session" miss: the first
-        -- run's GetCompletionInfo() data may be stale or cleared by the time the
-        -- second run's BONUS_ROLL_RESULT fires.
+        -- Fallback: level snapshotted at CHALLENGE_MODE_START / CHALLENGE_MODE_COMPLETED
+        -- (and persisted to SavedVariables) before the keystone is consumed.
         if not keyLevel and cachedKeyLevel then
             keyLevel = cachedKeyLevel
-        end
-        -- Fallback 2: GetCompletionInfo() for the just-finished run.
-        if not keyLevel then
-            local _, completionLevel = C_ChallengeMode.GetCompletionInfo()
-            if completionLevel and completionLevel > 0 then
-                keyLevel = completionLevel
-            end
         end
     end
 
@@ -382,7 +389,6 @@ end
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("BONUS_ROLL_RESULT")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 eventFrame:RegisterEvent("CHALLENGE_MODE_START")
 eventFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 eventFrame:RegisterEvent("CHALLENGE_MODE_RESET")
@@ -396,31 +402,32 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         if C_ChallengeMode then
             local level = C_ChallengeMode.GetActiveKeystoneInfo()
             if level and level > 0 then
-                cachedKeyLevel = level
-                local instanceName = GetInstanceInfo()
-                print(string.format("|cff9370DBVoidcoreAdvisor:|r Key detected - %s +%d.", instanceName or "Unknown",
-                    cachedKeyLevel))
+                PersistKeyLevel(level)
+                if event == "CHALLENGE_MODE_START" then
+                    local instanceName = GetInstanceInfo()
+                    print(string.format("|cff9370DBVoidcoreAdvisor:|r Key detected - %s +%d.",
+                        instanceName or "Unknown", cachedKeyLevel))
+                end
             end
         end
         return
     end
 
     if event == "CHALLENGE_MODE_RESET" then
-        cachedKeyLevel = nil
+        ClearPersistedKeyLevel()
         return
     end
 
-    if event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
-        -- ZONE_CHANGED_NEW_AREA fires inside a dungeon when challenge mode
-        -- transitions from active → completed, before BONUS_ROLL_RESULT fires.
-        -- Only clear the cached key level once the player has actually left the
-        -- instance; PLAYER_ENTERING_WORLD is an unconditional clear because it
-        -- always represents a full cross-zone load screen.
-        if event == "PLAYER_ENTERING_WORLD" or not IsInInstancedContent() then
-            cachedKeyLevel = nil
-        end
-        Detection.ClearActiveSource()
-        if not IsInInstancedContent() then
+    if event == "PLAYER_ENTERING_WORLD" then
+        if IsInInstancedContent() then
+            -- Reload inside a dungeon: restore the persisted key level if we lost it.
+            if not cachedKeyLevel then
+                local db = _G[VCA.CHAR_DB_NAME]
+                cachedKeyLevel = db and db.cachedKeyLevel or nil
+            end
+        else
+            ClearPersistedKeyLevel()
+            Detection.ClearActiveSource()
             C_Timer.After(0, ProcessPendingRewards)
         end
         return
