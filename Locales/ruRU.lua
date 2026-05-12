@@ -102,6 +102,26 @@ L["MANUAL_ENTRY"] = "ручной ввод"
 
 -- ── Панель слотов (DungeonOverview.lua) ──────────────────────────────────────
 
+L["SLOT_FILTER_TOGGLE"] = "Фильтр по слоту"
+L["SLOT_FILTER_CLEAR"] = "Снять выбор со всех предметов слота"
 L["SLOT_FILTER_CLEAR_CONFIRM"] = "Очистить весь выбор предметов?"
 L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] =
     "Все выбранные предметы будут сняты с выбора."
+
+L["SLOT_head"] = "Голова"
+L["SLOT_neck"] = "Шея"
+L["SLOT_shoulder"] = "Плечи"
+L["SLOT_back"] = "Спина"
+L["SLOT_chest"] = "Грудь"
+L["SLOT_wrist"] = "Запястья"
+L["SLOT_hands"] = "Руки"
+L["SLOT_waist"] = "Пояс"
+L["SLOT_legs"] = "Ноги"
+L["SLOT_feet"] = "Ступни"
+L["SLOT_finger"] = "Палец"
+L["SLOT_trinket"] = "Аксессуар"
+L["SLOT_SELECT_ALL"] = "Выбрать все"
+L["SLOT_DESELECT_ALL"] = "Снять все"
+L["SLOT_NONE_SELECTED"] = "Ничего не выбрано"
+L["SLOT_weapon"] = "Оружие"
+L["SLOT_offhand"] = "Вторая рука"
