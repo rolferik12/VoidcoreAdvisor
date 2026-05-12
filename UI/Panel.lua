@@ -924,6 +924,20 @@ function Panel.SaveItemSelections()
     end
 end
 
+-- Reload in-memory selectedItemIDs from the DB for the current context.
+-- Call this whenever an external system (e.g. slot-drawer) modifies the DB
+-- directly so the Panel does not overwrite those changes on the next SetContext.
+function Panel.ReloadItemSelections()
+    if not (Panel.sourceType and Panel.sourceID and Panel.difficultyID) then
+        return
+    end
+    wipe(selectedItemIDs)
+    local saved = VCA.Data.GetSelectedItems(Panel.sourceType, Panel.sourceID, Panel.difficultyID)
+    for id in pairs(saved) do
+        selectedItemIDs[id] = true
+    end
+end
+
 function Panel.SetContext(sourceType, sourceID, difficultyID, sourceName, isRaid)
     -- Persist outgoing selections before switching context.
     Panel.SaveItemSelections()

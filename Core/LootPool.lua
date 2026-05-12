@@ -600,6 +600,32 @@ function LootPool.GetCachedItemsForSpec(sourceType, sourceID, difficultyID, clas
     return _cache[key]
 end
 
+-- Returns the bySlot table for a dungeon instance (from SeasonData).
+-- { [slotKey] = { itemID, ... } }
+-- slotKey is one of: head, neck, shoulder, back, chest, wrist, hands, waist,
+--   legs, feet, finger, trinket, 1h, 2h, offhand, ranged
+-- Returns nil when SeasonData is absent or instanceID not found.
+function LootPool.GetInstanceSlotMap(instanceID)
+    if not VCA.SeasonData then
+        return nil
+    end
+    local dungeonData = VCA.SeasonData.dungeons[instanceID]
+    if not dungeonData then
+        return nil
+    end
+    return dungeonData.bySlot
+end
+
+-- Returns a flat array of itemIDs for a given slot key across a dungeon instance.
+-- Returns empty table when not found.
+function LootPool.GetInstanceItemsForSlot(instanceID, slotKey)
+    local slotMap = LootPool.GetInstanceSlotMap(instanceID)
+    if not slotMap then
+        return {}
+    end
+    return slotMap[slotKey] or {}
+end
+
 -- ── Internal references for LootPoolWarm.lua ──────────────────────────────────
 
 LootPool._cache = _cache

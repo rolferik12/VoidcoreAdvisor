@@ -5,7 +5,6 @@
 --
 -- A dungeon is omitted when its best spec has no remaining items to obtain.
 -- Sorted by: remainingOdds descending (highest single-item chance first).
-
 local _, VCA = ...
 local L = VCA.L
 
@@ -14,26 +13,34 @@ local Overview = VCA.DungeonOverview
 
 -- ── Sizing ────────────────────────────────────────────────────────────────────
 
-local PANEL_WIDTH  = 480
-local HEADER_H     = 56    -- title + subtitle + divider
-local COL_HEADER_H = 20    -- column label row
-local PADDING      = 12    -- inner horizontal padding
-local ROW_H        = 26    -- height of one dungeon row
-local ICON_SIZE    = 20    -- spec icon size
+local PANEL_WIDTH = 480
+local HEADER_H = 56 -- title + subtitle + divider
+local COL_HEADER_H = 20 -- column label row
+local PADDING = 12 -- inner horizontal padding
+local ROW_H = 26 -- height of one dungeon row
+local ICON_SIZE = 20 -- spec icon size
+
+local DRAWER_WIDTH = 160 -- slot filter drawer width
+
+-- ── Slot filter state ─────────────────────────────────────────────────────────
+
+-- Ordered list of all slot keys the drawer can show.
+local SLOT_ORDER = {"head", "neck", "shoulder", "back", "chest", "wrist", "hands", "waist", "legs", "feet", "finger",
+                    "trinket", "1h", "2h", "offhand", "ranged"}
 
 -- ── Column layout (positions relative to row frame LEFT) ─────────────────────
 --   [DUNGEON name ........... 200px] [icon 20] [SPEC name .. 100px] [...] [LOOTED 53] [CHANCE 50]
 
 local COL_DUNGEON_X = 0
 local COL_DUNGEON_W = 200
-local COL_SPEC_ICON_X = 204          -- COL_DUNGEON_W + 4px gap
-local COL_SPEC_NAME_X = 228          -- COL_SPEC_ICON_X + ICON_SIZE + 4
+local COL_SPEC_ICON_X = 204 -- COL_DUNGEON_W + 4px gap
+local COL_SPEC_NAME_X = 228 -- COL_SPEC_ICON_X + ICON_SIZE + 4
 local COL_SPEC_NAME_W = 100
 -- Right-side columns (offsets from row RIGHT edge):
-local COL_LOOTED_R = -(64 + 4)       -- pct width + gap; RIGHT edge of obtained label
+local COL_LOOTED_R = -(64 + 4) -- pct width + gap; RIGHT edge of obtained label
 local COL_LOOTED_W = 53
-local COL_PCT_R    = 0               -- RIGHT edge of pct label flush with row right
-local COL_PCT_W    = 64
+local COL_PCT_R = 0 -- RIGHT edge of pct label flush with row right
+local COL_PCT_W = 64
 
 -- ── Main frame ────────────────────────────────────────────────────────────────
 
@@ -46,12 +53,17 @@ frame:SetClampedToScreen(true)
 frame:Hide()
 
 frame:SetBackdrop({
-    bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
     edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile     = true,
+    tile = true,
     tileSize = 32,
     edgeSize = 32,
-    insets   = { left = 11, right = 12, top = 12, bottom = 11 },
+    insets = {
+        left = 11,
+        right = 12,
+        top = 12,
+        bottom = 11
+    }
 })
 frame:SetBackdropColor(0.05, 0.02, 0.12, 0.95)
 frame:SetBackdropBorderColor(0.58, 0.0, 0.82, 1)
@@ -61,9 +73,11 @@ frame:SetBackdropBorderColor(0.58, 0.0, 0.82, 1)
 -- Positions the panel flush against the right edge of EncounterJournal.
 function Overview.AnchorToEJ()
     local ej = EncounterJournal
-    if not ej then return end
+    if not ej then
+        return
+    end
     frame:ClearAllPoints()
-    frame:SetPoint("TOPLEFT",    ej, "TOPRIGHT",    52, 0)
+    frame:SetPoint("TOPLEFT", ej, "TOPRIGHT", 52, 0)
     frame:SetPoint("BOTTOMLEFT", ej, "BOTTOMRIGHT", 52, 0)
 end
 
@@ -75,7 +89,264 @@ titleText:SetText(L["PANEL_TITLE"])
 
 local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 closeBtn:SetPoint("TOPRIGHT", -4, -4)
-closeBtn:SetScript("OnClick", function() frame:Hide() end)
+closeBtn:SetScript("OnClick", function()
+    frame:Hide()
+end)
+
+-- Slot filter toggle button (funnel icon, left of close button)
+local filterToggleBtn = CreateFrame("Button", nil, frame)
+filterToggleBtn:SetSize(24, 24)
+filterToggleBtn:SetPoint("TOPRIGHT", closeBtn, "TOPLEFT", -2, 0)
+filterToggleBtn:SetNormalFontObject("GameFontNormal")
+filterToggleBtn:SetText("|cffb048f8⧉|r") -- filter symbol
+
+-- ── Slot filter drawer ────────────────────────────────────────────────────────
+
+local drawer = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+drawer:SetWidth(DRAWER_WIDTH)
+drawer:SetFrameStrata("HIGH")
+drawer:SetClampedToScreen(true)
+drawer:Hide()
+
+drawer:SetBackdrop({
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+    tile = true,
+    tileSize = 32,
+    edgeSize = 32,
+    insets = {
+        left = 8,
+        right = 8,
+        top = 8,
+        bottom = 8
+    }
+})
+drawer:SetBackdropColor(0.05, 0.02, 0.12, 0.95)
+drawer:SetBackdropBorderColor(0.58, 0.0, 0.82, 0.8)
+
+local drawerTitle = drawer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+drawerTitle:SetPoint("TOPLEFT", 10, -10)
+drawerTitle:SetText("|cffb048f8" .. L["SLOT_FILTER_TOGGLE"] .. "|r")
+
+-- Clear-all button in drawer
+local drawerClearBtn = CreateFrame("Button", nil, drawer)
+drawerClearBtn:SetSize(14, 14)
+drawerClearBtn:SetNormalFontObject("GameFontNormal")
+drawerClearBtn:SetText("|cffff4444x|r")
+drawerClearBtn:SetPoint("TOPRIGHT", -8, -8)
+drawerClearBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L["SLOT_FILTER_CLEAR"])
+    GameTooltip:Show()
+end)
+drawerClearBtn:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
+
+-- Slot buttons grid: 2 columns × 8 rows
+local SLOT_BTN_W = 64
+local SLOT_BTN_H = 20
+local SLOT_BTN_PAD_X = 6
+local SLOT_BTN_PAD_Y = 4
+local SLOT_GRID_TOP = 28 -- y offset from drawer top
+
+-- Returns true if any season dungeon has at least one item of this slot selected.
+local function IsSlotSelected(slotKey)
+    local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
+    for _, instanceID in ipairs(instanceIDs) do
+        local selected = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty)
+        for _, itemID in ipairs(VCA.LootPool.GetInstanceItemsForSlot(instanceID, slotKey)) do
+            if selected[itemID] then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local slotButtons = {} -- [slotKey] = button frame (forward declared; populated in the loop below)
+
+local function UpdateSlotButtonVisual(btn, slotKey)
+    if IsSlotSelected(slotKey) then
+        btn:SetBackdropColor(0.4, 0.0, 0.6, 0.8)
+    else
+        btn:SetBackdropColor(0.1, 0.05, 0.15, 0.6)
+    end
+end
+
+local function RefreshSlotButtons()
+    for _, slotKey in ipairs(SLOT_ORDER) do
+        if slotButtons[slotKey] then
+            UpdateSlotButtonVisual(slotButtons[slotKey], slotKey)
+        end
+    end
+end
+
+-- Adds all items for a slot to the persisted selection for every season dungeon.
+local function SelectSlotItems(slotKey)
+    local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
+    for _, instanceID in ipairs(instanceIDs) do
+        local current = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty)
+        local updated = {}
+        for id in pairs(current) do
+            updated[id] = true
+        end
+        for _, itemID in ipairs(VCA.LootPool.GetInstanceItemsForSlot(instanceID, slotKey)) do
+            updated[itemID] = true
+        end
+        VCA.Data.SaveSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty, updated)
+    end
+    -- Keep Panel's in-memory selection in sync so it doesn't overwrite DB on next context switch.
+    if VCA.Panel and VCA.Panel.ReloadItemSelections then
+        VCA.Panel.ReloadItemSelections()
+    end
+end
+
+-- Removes all items for a slot from the persisted selection for every season dungeon.
+local function DeselectSlotItems(slotKey)
+    local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
+    for _, instanceID in ipairs(instanceIDs) do
+        local slotItems = VCA.LootPool.GetInstanceItemsForSlot(instanceID, slotKey)
+        if #slotItems > 0 then
+            local current = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID,
+                VCA.MythicPlusEJDifficulty)
+            local updated = {}
+            for id in pairs(current) do
+                updated[id] = true
+            end
+            for _, itemID in ipairs(slotItems) do
+                updated[itemID] = nil
+            end
+            VCA.Data.SaveSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty, updated)
+        end
+    end
+    -- Keep Panel's in-memory selection in sync so it doesn't overwrite DB on next context switch.
+    if VCA.Panel and VCA.Panel.ReloadItemSelections then
+        VCA.Panel.ReloadItemSelections()
+    end
+end
+
+-- Forward-declare Populate so slot buttons can call it
+local Populate
+
+local function BuildSlotTooltip(slotKey)
+    -- Collect all season dungeon instances and list items per dungeon for this slot.
+    local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
+    GameTooltip:AddLine(L["SLOT_" .. slotKey] or slotKey, 0.85, 0.3, 1)
+    GameTooltip:AddLine(" ")
+    local anyDungeon = false
+    for _, instanceID in ipairs(instanceIDs) do
+        local dungeonName = EJ_GetInstanceInfo(instanceID)
+        if dungeonName then
+            local itemIDs = VCA.LootPool.GetInstanceItemsForSlot(instanceID, slotKey)
+            if #itemIDs > 0 then
+                anyDungeon = true
+                GameTooltip:AddLine("|cffdddddd" .. dungeonName .. "|r")
+                for _, itemID in ipairs(itemIDs) do
+                    local itemName = GetItemInfo(itemID)
+                    if itemName then
+                        -- Dim obtained items
+                        local obtained = VCA.Data.IsObtained(VCA.ContentType.MYTHIC_PLUS, instanceID,
+                            VCA.MythicPlusEJDifficulty, VCA.SpecInfo.GetEffectiveLootSpecID(), itemID)
+                        local color = obtained and "|cff888888" or "|cffaaaaaa"
+                        GameTooltip:AddLine("  " .. color .. itemName .. "|r")
+                    end
+                end
+            end
+        end
+    end
+    if not anyDungeon then
+        GameTooltip:AddLine("|cff888888(no items this season)|r")
+    end
+end
+
+for i, slotKey in ipairs(SLOT_ORDER) do
+    local col = (i - 1) % 2 -- 0 or 1
+    local row = math.floor((i - 1) / 2) -- 0-based
+
+    local btn = CreateFrame("Frame", nil, drawer, "BackdropTemplate")
+    btn:SetSize(SLOT_BTN_W, SLOT_BTN_H)
+    btn:SetPoint("TOPLEFT", drawer, "TOPLEFT", SLOT_BTN_PAD_X + col * (SLOT_BTN_W + SLOT_BTN_PAD_X),
+        -(SLOT_GRID_TOP + row * (SLOT_BTN_H + SLOT_BTN_PAD_Y)))
+    btn:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1
+    })
+    btn:SetBackdropBorderColor(0.5, 0.0, 0.7, 0.6)
+    btn:EnableMouse(true)
+
+    local label = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    label:SetAllPoints(btn)
+    label:SetJustifyH("CENTER")
+    label:SetText(L["SLOT_" .. slotKey] or slotKey)
+
+    btn:SetScript("OnMouseDown", function()
+        if IsSlotSelected(slotKey) then
+            DeselectSlotItems(slotKey)
+        else
+            SelectSlotItems(slotKey)
+        end
+        UpdateSlotButtonVisual(btn, slotKey)
+        if Populate then
+            Populate()
+        end
+    end)
+    btn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:ClearLines()
+        BuildSlotTooltip(slotKey)
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+
+    slotButtons[slotKey] = btn
+    -- Visual set after loop when IsSlotSelected is callable (data may not be ready at frame-creation
+    -- time, but RefreshSlotButtons is called when the drawer opens instead).
+end
+
+-- Compute drawer height from grid
+local drawerContentH = SLOT_GRID_TOP + math.ceil(#SLOT_ORDER / 2) * (SLOT_BTN_H + SLOT_BTN_PAD_Y) + 8
+drawer:SetHeight(drawerContentH)
+
+drawerClearBtn:SetScript("OnClick", function()
+    for _, slotKey in ipairs(SLOT_ORDER) do
+        if IsSlotSelected(slotKey) then
+            DeselectSlotItems(slotKey)
+        end
+    end
+    RefreshSlotButtons()
+    if Populate then
+        Populate()
+    end
+end)
+
+-- Anchor drawer to left side of main frame
+local function AnchorDrawer()
+    drawer:ClearAllPoints()
+    drawer:SetPoint("TOPRIGHT", frame, "TOPLEFT", -4, 0)
+    drawer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", -4, 0)
+end
+
+filterToggleBtn:SetScript("OnClick", function()
+    if drawer:IsShown() then
+        drawer:Hide()
+    else
+        AnchorDrawer()
+        RefreshSlotButtons()
+        drawer:Show()
+    end
+end)
+filterToggleBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
+    GameTooltip:SetText(L["SLOT_FILTER_TOGGLE"])
+    GameTooltip:Show()
+end)
+filterToggleBtn:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
 
 local subtitleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 subtitleText:SetPoint("TOPLEFT", 18, -40)
@@ -83,14 +354,14 @@ subtitleText:SetText("|cff888888" .. L["DUNGEON_OVERVIEW_SUBTITLE"] .. "|r")
 
 local divider = frame:CreateTexture(nil, "ARTWORK")
 divider:SetColorTexture(0.58, 0.0, 0.82, 0.4)
-divider:SetPoint("TOPLEFT",  frame, "TOPLEFT",  16, -HEADER_H)
+divider:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -HEADER_H)
 divider:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -HEADER_H)
 divider:SetHeight(1)
 
 -- ── Content area ─────────────────────────────────────────────────────────────
 
 local contentArea = CreateFrame("Frame", nil, frame)
-contentArea:SetPoint("TOPLEFT",     frame, "TOPLEFT",     0, -(HEADER_H + 1))
+contentArea:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -(HEADER_H + 1))
 contentArea:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 11)
 
 -- ── Column headers ────────────────────────────────────────────────────────────
@@ -127,7 +398,7 @@ hdrChance:SetText("|cffb048f8" .. L["DUNGEON_OVERVIEW_COL_CHANCE"] .. "|r")
 -- Horizontal rule below column headers
 local colHeaderRule = contentArea:CreateTexture(nil, "ARTWORK")
 colHeaderRule:SetColorTexture(0.4, 0.4, 0.4, 0.3)
-colHeaderRule:SetPoint("TOPLEFT",  contentArea, "TOPLEFT",  PADDING, -(COL_HEADER_H + 2))
+colHeaderRule:SetPoint("TOPLEFT", contentArea, "TOPLEFT", PADDING, -(COL_HEADER_H + 2))
 colHeaderRule:SetPoint("TOPRIGHT", contentArea, "TOPRIGHT", -PADDING, -(COL_HEADER_H + 2))
 colHeaderRule:SetHeight(1)
 
@@ -185,19 +456,21 @@ local function GetOrCreateDungeonRow(parent)
     hoverHighlight:SetColorTexture(0.58, 0.0, 0.82, 0.12)
 
     local row = {
-        frame         = rowFrame,
-        dungeonLabel  = dungeonLabel,
-        specIcon      = specIcon,
-        specLabel     = specLabel,
+        frame = rowFrame,
+        dungeonLabel = dungeonLabel,
+        specIcon = specIcon,
+        specLabel = specLabel,
         obtainedLabel = obtainedLabel,
-        pctLabel      = pctLabel,
+        pctLabel = pctLabel
     }
     dungeonRows[#dungeonRows + 1] = row
     return row
 end
 
 local function HideAllRows()
-    for _, row in ipairs(dungeonRows) do row.frame:Hide() end
+    for _, row in ipairs(dungeonRows) do
+        row.frame:Hide()
+    end
 end
 
 -- ── Scroll frame ──────────────────────────────────────────────────────────────
@@ -208,20 +481,20 @@ scrollFrame:SetScrollChild(scrollChild)
 
 scrollFrame:EnableMouseWheel(true)
 scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-    local current   = self:GetVerticalScroll()
+    local current = self:GetVerticalScroll()
     local maxScroll = math.max(0, scrollChild:GetHeight() - self:GetHeight())
     self:SetVerticalScroll(math.max(0, math.min(maxScroll, current - delta * ROW_H * 3)))
 end)
 
 -- ── Populate ──────────────────────────────────────────────────────────────────
 
-local function Populate()
+Populate = function()
     HideAllRows()
 
     local contentW = frame:GetWidth() - PADDING * 2
 
     scrollFrame:ClearAllPoints()
-    scrollFrame:SetPoint("TOPLEFT",     contentArea, "TOPLEFT",     PADDING, -(COL_HEADER_H + 8))
+    scrollFrame:SetPoint("TOPLEFT", contentArea, "TOPLEFT", PADDING, -(COL_HEADER_H + 8))
     scrollFrame:SetPoint("BOTTOMRIGHT", contentArea, "BOTTOMRIGHT", -PADDING, 4)
     scrollChild:SetWidth(contentW)
 
@@ -250,12 +523,8 @@ local function Populate()
     for _, instanceID in ipairs(instanceIDs) do
         local name = EJ_GetInstanceInfo(instanceID)
         if name then
-            local selectedItems = VCA.Data.GetSelectedItems(
-                VCA.ContentType.MYTHIC_PLUS,
-                instanceID,
-                VCA.MythicPlusEJDifficulty
-            )
-
+            local selectedItems = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID,
+                VCA.MythicPlusEJDifficulty)
             local selectedList = {}
             for itemID in pairs(selectedItems) do
                 selectedList[#selectedList + 1] = itemID
@@ -264,37 +533,31 @@ local function Populate()
             local hasSelected = #selectedList > 0
             if hasSelected then
                 -- CHANCE should reflect selected-item odds for this dungeon.
-                local rankings = VCA.Probability.RankCurrentPlayerSpecsForItems(
-                    selectedList,
-                    VCA.ContentType.MYTHIC_PLUS,
-                    instanceID,
-                    VCA.MythicPlusEJDifficulty
-                )
+                local rankings = VCA.Probability.RankCurrentPlayerSpecsForItems(selectedList,
+                    VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty)
 
                 -- rankings[1] is the best spec by the module sort policy.
                 local best = rankings and rankings[1]
-                if best and not best.noItems and best.remainingCount > 0 then
-                    entries[#entries + 1] = {
-                        name           = name,
-                        specName       = best.specName,
-                        specIcon       = best.specIcon,
-                        baseCount      = best.baseCount,
-                        remainingCount = best.remainingCount,
-                        remainingOdds  = best.remainingOdds,
-                        hasSelected    = true,
-                        selectedOdds   = best.selectedOdds,
-                    }
-                end
+                entries[#entries + 1] = {
+                    name = name,
+                    specName = best and best.specName,
+                    specIcon = best and best.specIcon,
+                    baseCount = best and best.baseCount or 0,
+                    remainingCount = best and best.remainingCount or 0,
+                    remainingOdds = best and best.remainingOdds or 0,
+                    hasSelected = true,
+                    selectedOdds = best and best.selectedOdds
+                }
             else
                 entries[#entries + 1] = {
-                    name           = name,
-                    specName       = nil,
-                    specIcon       = nil,
-                    baseCount      = 0,
+                    name = name,
+                    specName = nil,
+                    specIcon = nil,
+                    baseCount = 0,
                     remainingCount = 0,
-                    remainingOdds  = 0,
-                    hasSelected    = false,
-                    selectedOdds   = nil,
+                    remainingOdds = 0,
+                    hasSelected = false,
+                    selectedOdds = nil
                 }
             end
         end
@@ -372,7 +635,7 @@ local function Populate()
         -- Loot chance: selected-item chance if this dungeon has selections,
         -- otherwise show a dash as requested.
         if entry.hasSelected and entry.selectedOdds then
-            local pct      = math.floor(entry.selectedOdds * 100 + 0.5)
+            local pct = math.floor(entry.selectedOdds * 100 + 0.5)
             local pctColor = pct >= 20 and "|cffffff00" or "|cffdddddd"
             row.pctLabel:SetText(pctColor .. pct .. "%|r")
         else
@@ -391,11 +654,15 @@ end
 function Overview.Show()
     Overview.AnchorToEJ()
     frame:Show()
+    if drawer:IsShown() then
+        AnchorDrawer()
+    end
     Populate()
 end
 
 function Overview.Hide()
     frame:Hide()
+    drawer:Hide()
 end
 
 function Overview.IsShown()
