@@ -906,16 +906,30 @@ end)
 slotClearBtn:SetScript("OnLeave", function()
     GameTooltip:Hide()
 end)
-slotClearBtn:SetScript("OnClick", function()
-    for _, slotKey in ipairs(SLOT_ORDER) do
-        if IsSlotSelected(slotKey) then
-            DeselectSlotItems(slotKey)
+-- Confirm popup for clearing slot filters
+StaticPopupDialogs["VOIDCORE_CLEAR_SLOT_FILTERS"] = {
+    text = "%s",
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function()
+        for _, slotKey in ipairs(SLOT_ORDER) do
+            if IsSlotSelected(slotKey) then
+                DeselectSlotItems(slotKey)
+            end
         end
-    end
-    RefreshSlotButtons()
-    if Populate then
-        Populate()
-    end
+        RefreshSlotButtons()
+        if Populate then
+            Populate()
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+slotClearBtn:SetScript("OnClick", function()
+    StaticPopup_Show("VOIDCORE_CLEAR_SLOT_FILTERS", L["SLOT_FILTER_CLEAR_CONFIRM"] .. "\n\n|cffaaaaaa" .. L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] .. "|r")
 end)
 
 local subtitleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")

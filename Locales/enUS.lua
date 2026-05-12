@@ -85,6 +85,8 @@ L["DUNGEON_OVERVIEW_NO_DATA"] = "Season dungeon data not yet available."
 -- ── Slot Filter Drawer ────────────────────────────────────────────────────────
 L["SLOT_FILTER_TOGGLE"] = "Select by slot"
 L["SLOT_FILTER_CLEAR"] = "Deselect all slot items"
+L["SLOT_FILTER_CLEAR_CONFIRM"] = "Clear all item selections?"
+L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] = "All selected items will be deselected."
 
 L["SLOT_head"] = "Head"
 L["SLOT_neck"] = "Neck"
