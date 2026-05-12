@@ -157,7 +157,7 @@ local function UpdateSlotButtonVisual(entry, slotKey)
         entry.glow:SetAlpha(1)
         entry.border:Show()
     else
-        entry.icon:SetVertexColor(0.7, 0.7, 0.7, 0.9)
+        entry.icon:SetVertexColor(0.9, 0.9, 0.9, 1.0)
         entry.glow:SetAlpha(0)
         entry.border:Hide()
     end
@@ -870,7 +870,7 @@ for i, slotKey in ipairs(SLOT_ORDER) do
             icon:SetTexture(textureName)
         end
     end
-    icon:SetVertexColor(0.7, 0.7, 0.7, 0.9) -- dimmed by default
+    icon:SetVertexColor(0.9, 0.9, 0.9, 1.0) -- dimmed by default
 
     -- Hover highlight
     local hover = btn:CreateTexture(nil, "HIGHLIGHT")
