@@ -20,13 +20,54 @@ local PADDING = 12 -- inner horizontal padding
 local ROW_H = 26 -- height of one dungeon row
 local ICON_SIZE = 20 -- spec icon size
 
-local DRAWER_WIDTH = 160 -- slot filter drawer width
+-- ── Slot section sizing ───────────────────────────────────────────────────────
+local SLOT_BTN_SIZE = 48 -- icon button size (square)
+local SLOT_BTN_GAP = 8 -- horizontal gap between buttons
+local SLOT_ROWS_GAP = 6 -- vertical gap between the two button rows
+local SLOT_SECTION_TITLE_H = 22
+local SLOT_SECTION_H = 8 + SLOT_SECTION_TITLE_H + 6 + SLOT_BTN_SIZE + SLOT_ROWS_GAP + SLOT_BTN_SIZE + 10
+-- 9 visible dungeon rows in the scroll area (gives headroom so all 8 season dungeons fit without scrolling)
+local VISIBLE_ROWS = 9
+local SCROLL_AREA_H = VISIBLE_ROWS * (ROW_H + 2)
+-- Total panel height: header + col-header area + scroll area + divider + slot section + bottom inset
+local PANEL_HEIGHT = HEADER_H + 1 + (COL_HEADER_H + 8) + SCROLL_AREA_H + 2 + SLOT_SECTION_H + 11
 
 -- ── Slot filter state ─────────────────────────────────────────────────────────
 
--- Ordered list of all slot keys the drawer can show.
+-- Ordered list of display slot keys (7 per row × 2 rows = 14 total).
 local SLOT_ORDER = {"head", "neck", "shoulder", "back", "chest", "wrist", "hands", "waist", "legs", "feet", "finger",
-                    "trinket", "1h", "2h", "offhand", "ranged"}
+                    "trinket", "weapon", "offhand"}
+
+-- Weapon display slot maps to these LootPool slot keys (includes ranged).
+local WEAPON_SUBSLOTS = {"1h", "2h", "ranged"}
+
+-- Returns the LootPool slot key(s) for a display slot key.
+local function GetLootSlotKeys(slotKey)
+    if slotKey == "weapon" then
+        return WEAPON_SUBSLOTS
+    end
+    return {slotKey}
+end
+
+-- Paperdoll texture per display slot.
+-- Maps display slot key → inventory slot name for GetInventorySlotInfo().
+-- GetInventorySlotInfo returns the correct paperdoll empty-slot texture for every slot.
+local SLOT_INV_NAME = {
+    head = "HEADSLOT",
+    neck = "NECKSLOT",
+    shoulder = "SHOULDERSLOT",
+    back = "BACKSLOT",
+    chest = "CHESTSLOT",
+    wrist = "WRISTSLOT",
+    hands = "HANDSSLOT",
+    waist = "WAISTSLOT",
+    legs = "LEGSSLOT",
+    feet = "FEETSLOT",
+    finger = "FINGER0SLOT",
+    trinket = "TRINKET0SLOT",
+    weapon = "MAINHANDSLOT",
+    offhand = "SECONDARYHANDSLOT"
+}
 
 -- ── Column layout (positions relative to row frame LEFT) ─────────────────────
 --   [DUNGEON name ........... 200px] [icon 20] [SPEC name .. 100px] [...] [LOOTED 53] [CHANCE 50]
@@ -47,7 +88,7 @@ local COL_PCT_W = 64
 local frame = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
 Overview.frame = frame
 
-frame:SetWidth(PANEL_WIDTH)
+frame:SetSize(PANEL_WIDTH, PANEL_HEIGHT)
 frame:SetFrameStrata("HIGH")
 frame:SetClampedToScreen(true)
 frame:Hide()
@@ -78,7 +119,6 @@ function Overview.AnchorToEJ()
     end
     frame:ClearAllPoints()
     frame:SetPoint("TOPLEFT", ej, "TOPRIGHT", 52, 0)
-    frame:SetPoint("BOTTOMLEFT", ej, "BOTTOMRIGHT", 52, 0)
 end
 
 -- ── Header ────────────────────────────────────────────────────────────────────
@@ -93,84 +133,33 @@ closeBtn:SetScript("OnClick", function()
     frame:Hide()
 end)
 
--- Slot filter toggle button (funnel icon, left of close button)
-local filterToggleBtn = CreateFrame("Button", nil, frame)
-filterToggleBtn:SetSize(24, 24)
-filterToggleBtn:SetPoint("TOPRIGHT", closeBtn, "TOPLEFT", -2, 0)
-filterToggleBtn:SetNormalFontObject("GameFontNormal")
-filterToggleBtn:SetText("|cffb048f8⧉|r") -- filter symbol
-
--- ── Slot filter drawer ────────────────────────────────────────────────────────
-
-local drawer = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-drawer:SetWidth(DRAWER_WIDTH)
-drawer:SetFrameStrata("HIGH")
-drawer:SetClampedToScreen(true)
-drawer:Hide()
-
-drawer:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
-    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile = true,
-    tileSize = 32,
-    edgeSize = 32,
-    insets = {
-        left = 8,
-        right = 8,
-        top = 8,
-        bottom = 8
-    }
-})
-drawer:SetBackdropColor(0.05, 0.02, 0.12, 0.95)
-drawer:SetBackdropBorderColor(0.58, 0.0, 0.82, 0.8)
-
-local drawerTitle = drawer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-drawerTitle:SetPoint("TOPLEFT", 10, -10)
-drawerTitle:SetText("|cffb048f8" .. L["SLOT_FILTER_TOGGLE"] .. "|r")
-
--- Clear-all button in drawer
-local drawerClearBtn = CreateFrame("Button", nil, drawer)
-drawerClearBtn:SetSize(14, 14)
-drawerClearBtn:SetNormalFontObject("GameFontNormal")
-drawerClearBtn:SetText("|cffff4444x|r")
-drawerClearBtn:SetPoint("TOPRIGHT", -8, -8)
-drawerClearBtn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText(L["SLOT_FILTER_CLEAR"])
-    GameTooltip:Show()
-end)
-drawerClearBtn:SetScript("OnLeave", function()
-    GameTooltip:Hide()
-end)
-
--- Slot buttons grid: 2 columns × 8 rows
-local SLOT_BTN_W = 64
-local SLOT_BTN_H = 20
-local SLOT_BTN_PAD_X = 6
-local SLOT_BTN_PAD_Y = 4
-local SLOT_GRID_TOP = 28 -- y offset from drawer top
-
 -- Returns true if any season dungeon has at least one item of this slot selected.
 local function IsSlotSelected(slotKey)
     local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
     for _, instanceID in ipairs(instanceIDs) do
         local selected = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty)
-        for _, itemID in ipairs(VCA.LootPool.GetInstanceItemsForSlot(instanceID, slotKey)) do
-            if selected[itemID] then
-                return true
+        for _, lootKey in ipairs(GetLootSlotKeys(slotKey)) do
+            for _, itemID in ipairs(VCA.LootPool.GetInstanceItemsForSlot(instanceID, lootKey)) do
+                if selected[itemID] then
+                    return true
+                end
             end
         end
     end
     return false
 end
 
-local slotButtons = {} -- [slotKey] = button frame (forward declared; populated in the loop below)
+local slotButtons = {} -- [slotKey] = { icon = Texture, glow = Texture, border = Frame }
 
-local function UpdateSlotButtonVisual(btn, slotKey)
+local function UpdateSlotButtonVisual(entry, slotKey)
     if IsSlotSelected(slotKey) then
-        btn:SetBackdropColor(0.4, 0.0, 0.6, 0.8)
+        entry.icon:SetVertexColor(1, 1, 1, 1)
+        entry.glow:SetAlpha(1)
+        entry.border:Show()
     else
-        btn:SetBackdropColor(0.1, 0.05, 0.15, 0.6)
+        entry.icon:SetVertexColor(0.4, 0.4, 0.4, 0.7)
+        entry.glow:SetAlpha(0)
+        entry.border:Hide()
     end
 end
 
@@ -182,6 +171,32 @@ local function RefreshSlotButtons()
     end
 end
 
+-- ── Slot section (always-visible panel at the bottom of frame) ────────────────
+
+local slotSection = CreateFrame("Frame", nil, frame)
+slotSection:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 11)
+slotSection:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 11)
+slotSection:SetHeight(SLOT_SECTION_H)
+
+-- Divider above slot section
+local slotDivider = slotSection:CreateTexture(nil, "ARTWORK")
+slotDivider:SetColorTexture(0.58, 0.0, 0.82, 0.4)
+slotDivider:SetPoint("TOPLEFT", slotSection, "TOPLEFT", 16, 0)
+slotDivider:SetPoint("TOPRIGHT", slotSection, "TOPRIGHT", -16, 0)
+slotDivider:SetHeight(1)
+
+-- Title label
+local slotTitle = slotSection:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+slotTitle:SetPoint("TOPLEFT", slotSection, "TOPLEFT", PADDING, -8)
+slotTitle:SetText("|cffb048f8" .. L["SLOT_FILTER_TOGGLE"] .. "|r")
+
+-- Clear-all button
+local slotClearBtn = CreateFrame("Button", nil, slotSection)
+slotClearBtn:SetSize(14, 14)
+slotClearBtn:SetNormalFontObject("GameFontNormal")
+slotClearBtn:SetText("|cffff4444x|r")
+slotClearBtn:SetPoint("TOPRIGHT", slotSection, "TOPRIGHT", -PADDING, -8)
+
 -- Adds all items for a slot to the persisted selection for every season dungeon.
 local function SelectSlotItems(slotKey)
     local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
@@ -191,8 +206,10 @@ local function SelectSlotItems(slotKey)
         for id in pairs(current) do
             updated[id] = true
         end
-        for _, itemID in ipairs(VCA.LootPool.GetInstanceItemsForSlot(instanceID, slotKey)) do
-            updated[itemID] = true
+        for _, lootKey in ipairs(GetLootSlotKeys(slotKey)) do
+            for _, itemID in ipairs(VCA.LootPool.GetInstanceItemsForSlot(instanceID, lootKey)) do
+                updated[itemID] = true
+            end
         end
         VCA.Data.SaveSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty, updated)
     end
@@ -206,19 +223,17 @@ end
 local function DeselectSlotItems(slotKey)
     local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
     for _, instanceID in ipairs(instanceIDs) do
-        local slotItems = VCA.LootPool.GetInstanceItemsForSlot(instanceID, slotKey)
-        if #slotItems > 0 then
-            local current = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID,
-                VCA.MythicPlusEJDifficulty)
-            local updated = {}
-            for id in pairs(current) do
-                updated[id] = true
-            end
-            for _, itemID in ipairs(slotItems) do
+        local current = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty)
+        local updated = {}
+        for id in pairs(current) do
+            updated[id] = true
+        end
+        for _, lootKey in ipairs(GetLootSlotKeys(slotKey)) do
+            for _, itemID in ipairs(VCA.LootPool.GetInstanceItemsForSlot(instanceID, lootKey)) do
                 updated[itemID] = nil
             end
-            VCA.Data.SaveSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty, updated)
         end
+        VCA.Data.SaveSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty, updated)
     end
     -- Keep Panel's in-memory selection in sync so it doesn't overwrite DB on next context switch.
     if VCA.Panel and VCA.Panel.ReloadItemSelections then
@@ -238,11 +253,16 @@ local function BuildSlotTooltip(slotKey)
     for _, instanceID in ipairs(instanceIDs) do
         local dungeonName = EJ_GetInstanceInfo(instanceID)
         if dungeonName then
-            local itemIDs = VCA.LootPool.GetInstanceItemsForSlot(instanceID, slotKey)
-            if #itemIDs > 0 then
+            local allItemIDs = {}
+            for _, lootKey in ipairs(GetLootSlotKeys(slotKey)) do
+                for _, itemID in ipairs(VCA.LootPool.GetInstanceItemsForSlot(instanceID, lootKey)) do
+                    allItemIDs[#allItemIDs + 1] = itemID
+                end
+            end
+            if #allItemIDs > 0 then
                 anyDungeon = true
                 GameTooltip:AddLine("|cffdddddd" .. dungeonName .. "|r")
-                for _, itemID in ipairs(itemIDs) do
+                for _, itemID in ipairs(allItemIDs) do
                     local itemName = GetItemInfo(itemID)
                     if itemName then
                         -- Dim obtained items
@@ -260,26 +280,64 @@ local function BuildSlotTooltip(slotKey)
     end
 end
 
-for i, slotKey in ipairs(SLOT_ORDER) do
-    local col = (i - 1) % 2 -- 0 or 1
-    local row = math.floor((i - 1) / 2) -- 0-based
+-- 8 buttons per row; two rows of 8 = 16 slots total.
+-- Buttons are centred within the inner content width.
+local BTNS_PER_ROW = 7
+local innerW = PANEL_WIDTH - 2 * PADDING
+local totalBtnW = BTNS_PER_ROW * SLOT_BTN_SIZE + (BTNS_PER_ROW - 1) * SLOT_BTN_GAP
+local rowStartX = PADDING + math.floor((innerW - totalBtnW) / 2)
+local gridTopY = -(8 + SLOT_SECTION_TITLE_H + 6) -- below divider+title+gap
 
-    local btn = CreateFrame("Frame", nil, drawer, "BackdropTemplate")
-    btn:SetSize(SLOT_BTN_W, SLOT_BTN_H)
-    btn:SetPoint("TOPLEFT", drawer, "TOPLEFT", SLOT_BTN_PAD_X + col * (SLOT_BTN_W + SLOT_BTN_PAD_X),
-        -(SLOT_GRID_TOP + row * (SLOT_BTN_H + SLOT_BTN_PAD_Y)))
-    btn:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1
-    })
-    btn:SetBackdropBorderColor(0.5, 0.0, 0.7, 0.6)
+for i, slotKey in ipairs(SLOT_ORDER) do
+    local col = (i - 1) % BTNS_PER_ROW
+    local row = math.floor((i - 1) / BTNS_PER_ROW)
+
+    local btn = CreateFrame("Frame", nil, slotSection)
+    btn:SetSize(SLOT_BTN_SIZE, SLOT_BTN_SIZE)
+    btn:SetPoint("TOPLEFT", slotSection, "TOPLEFT", rowStartX + col * (SLOT_BTN_SIZE + SLOT_BTN_GAP),
+        gridTopY - row * (SLOT_BTN_SIZE + SLOT_ROWS_GAP))
     btn:EnableMouse(true)
 
-    local label = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    label:SetAllPoints(btn)
-    label:SetJustifyH("CENTER")
-    label:SetText(L["SLOT_" .. slotKey] or slotKey)
+    -- Purple glow behind the icon (visible when selected)
+    local glow = btn:CreateTexture(nil, "BACKGROUND")
+    glow:SetAllPoints(btn)
+    glow:SetColorTexture(0.45, 0.0, 0.7, 0.85)
+    glow:SetAlpha(0)
+
+    -- Slot icon — use the paperdoll empty-slot texture from the game client
+    local icon = btn:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints(btn)
+    local invName = SLOT_INV_NAME[slotKey]
+    if invName then
+        local _, textureName = GetInventorySlotInfo(invName)
+        if textureName then
+            icon:SetTexture(textureName)
+        end
+    end
+    icon:SetVertexColor(0.4, 0.4, 0.4, 0.7) -- dimmed by default
+
+    -- Hover highlight
+    local hover = btn:CreateTexture(nil, "HIGHLIGHT")
+    hover:SetAllPoints(btn)
+    hover:SetColorTexture(1, 1, 1, 0.18)
+
+    -- Gold border shown when selected
+    local border = CreateFrame("Frame", nil, btn, "BackdropTemplate")
+    border:SetPoint("TOPLEFT", btn, "TOPLEFT", -2, 2)
+    border:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 2, -2)
+    border:SetBackdrop({
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 2
+    })
+    border:SetBackdropBorderColor(0.95, 0.78, 0.1, 1)
+    border:Hide()
+
+    local entry = {
+        icon = icon,
+        glow = glow,
+        border = border
+    }
+    slotButtons[slotKey] = entry
 
     btn:SetScript("OnMouseDown", function()
         if IsSlotSelected(slotKey) then
@@ -287,7 +345,7 @@ for i, slotKey in ipairs(SLOT_ORDER) do
         else
             SelectSlotItems(slotKey)
         end
-        UpdateSlotButtonVisual(btn, slotKey)
+        UpdateSlotButtonVisual(entry, slotKey)
         if Populate then
             Populate()
         end
@@ -301,17 +359,17 @@ for i, slotKey in ipairs(SLOT_ORDER) do
     btn:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
-
-    slotButtons[slotKey] = btn
-    -- Visual set after loop when IsSlotSelected is callable (data may not be ready at frame-creation
-    -- time, but RefreshSlotButtons is called when the drawer opens instead).
 end
 
--- Compute drawer height from grid
-local drawerContentH = SLOT_GRID_TOP + math.ceil(#SLOT_ORDER / 2) * (SLOT_BTN_H + SLOT_BTN_PAD_Y) + 8
-drawer:SetHeight(drawerContentH)
-
-drawerClearBtn:SetScript("OnClick", function()
+slotClearBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L["SLOT_FILTER_CLEAR"])
+    GameTooltip:Show()
+end)
+slotClearBtn:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
+slotClearBtn:SetScript("OnClick", function()
     for _, slotKey in ipairs(SLOT_ORDER) do
         if IsSlotSelected(slotKey) then
             DeselectSlotItems(slotKey)
@@ -321,31 +379,6 @@ drawerClearBtn:SetScript("OnClick", function()
     if Populate then
         Populate()
     end
-end)
-
--- Anchor drawer to left side of main frame
-local function AnchorDrawer()
-    drawer:ClearAllPoints()
-    drawer:SetPoint("TOPRIGHT", frame, "TOPLEFT", -4, 0)
-    drawer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", -4, 0)
-end
-
-filterToggleBtn:SetScript("OnClick", function()
-    if drawer:IsShown() then
-        drawer:Hide()
-    else
-        AnchorDrawer()
-        RefreshSlotButtons()
-        drawer:Show()
-    end
-end)
-filterToggleBtn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
-    GameTooltip:SetText(L["SLOT_FILTER_TOGGLE"])
-    GameTooltip:Show()
-end)
-filterToggleBtn:SetScript("OnLeave", function()
-    GameTooltip:Hide()
 end)
 
 local subtitleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -362,7 +395,7 @@ divider:SetHeight(1)
 
 local contentArea = CreateFrame("Frame", nil, frame)
 contentArea:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -(HEADER_H + 1))
-contentArea:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 11)
+contentArea:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, SLOT_SECTION_H + 11 + 2)
 
 -- ── Column headers ────────────────────────────────────────────────────────────
 -- Positioned to align with their corresponding row widgets.
@@ -654,15 +687,12 @@ end
 function Overview.Show()
     Overview.AnchorToEJ()
     frame:Show()
-    if drawer:IsShown() then
-        AnchorDrawer()
-    end
+    RefreshSlotButtons()
     Populate()
 end
 
 function Overview.Hide()
     frame:Hide()
-    drawer:Hide()
 end
 
 function Overview.IsShown()
