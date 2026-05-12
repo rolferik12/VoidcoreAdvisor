@@ -21,8 +21,8 @@ local ROW_H = 26 -- height of one dungeon row
 local ICON_SIZE = 20 -- spec icon size
 
 -- ── Slot section sizing ───────────────────────────────────────────────────────
-local SLOT_BTN_SIZE = 48 -- icon button size (square)
-local SLOT_BTN_GAP = 8 -- horizontal gap between buttons
+local SLOT_BTN_SIZE = 32 -- icon button size (square)
+local SLOT_BTN_GAP = 6 -- horizontal gap between buttons
 local SLOT_ROWS_GAP = 6 -- vertical gap between the two button rows
 local SLOT_SECTION_TITLE_H = 22
 local SLOT_SECTION_H = 8 + SLOT_SECTION_TITLE_H + 6 + SLOT_BTN_SIZE + SLOT_ROWS_GAP + SLOT_BTN_SIZE + 10
@@ -157,7 +157,7 @@ local function UpdateSlotButtonVisual(entry, slotKey)
         entry.glow:SetAlpha(1)
         entry.border:Show()
     else
-        entry.icon:SetVertexColor(0.4, 0.4, 0.4, 0.7)
+        entry.icon:SetVertexColor(0.7, 0.7, 0.7, 0.9)
         entry.glow:SetAlpha(0)
         entry.border:Hide()
     end
@@ -825,13 +825,23 @@ local function OpenSlotPicker(slotKey, anchorBtn)
     pickerPopup:Show()
 end
 
--- 7 buttons per row; two rows of 7 = 14 slots total.
--- Buttons are centred within the inner content width.
-local BTNS_PER_ROW = 7
+-- Row 1: 10 armor slots (head→feet); row 2: finger, trinket, weapon, offhand.
+-- Each row is centred independently within the inner content width.
+local BTNS_PER_ROW = 10
 local innerW = PANEL_WIDTH - 2 * PADDING
-local totalBtnW = BTNS_PER_ROW * SLOT_BTN_SIZE + (BTNS_PER_ROW - 1) * SLOT_BTN_GAP
-local rowStartX = PADDING + math.floor((innerW - totalBtnW) / 2)
 local gridTopY = -(8 + SLOT_SECTION_TITLE_H + 6) -- below divider+title+gap
+
+-- Pre-compute per-row button counts so each row can be centred separately.
+local rowCounts = {}
+for i = 1, #SLOT_ORDER do
+    local r = math.floor((i - 1) / BTNS_PER_ROW) + 1
+    rowCounts[r] = (rowCounts[r] or 0) + 1
+end
+local function RowStartX(r)
+    local count = rowCounts[r] or BTNS_PER_ROW
+    local w = count * SLOT_BTN_SIZE + (count - 1) * SLOT_BTN_GAP
+    return PADDING + math.floor((innerW - w) / 2)
+end
 
 for i, slotKey in ipairs(SLOT_ORDER) do
     local col = (i - 1) % BTNS_PER_ROW
@@ -839,7 +849,8 @@ for i, slotKey in ipairs(SLOT_ORDER) do
 
     local btn = CreateFrame("Frame", nil, slotSection)
     btn:SetSize(SLOT_BTN_SIZE, SLOT_BTN_SIZE)
-    btn:SetPoint("TOPLEFT", slotSection, "TOPLEFT", rowStartX + col * (SLOT_BTN_SIZE + SLOT_BTN_GAP),
+    btn:SetPoint("TOPLEFT", slotSection, "TOPLEFT",
+        RowStartX(row + 1) + col * (SLOT_BTN_SIZE + SLOT_BTN_GAP),
         gridTopY - row * (SLOT_BTN_SIZE + SLOT_ROWS_GAP))
     btn:EnableMouse(true)
 
@@ -859,7 +870,7 @@ for i, slotKey in ipairs(SLOT_ORDER) do
             icon:SetTexture(textureName)
         end
     end
-    icon:SetVertexColor(0.4, 0.4, 0.4, 0.7) -- dimmed by default
+    icon:SetVertexColor(0.7, 0.7, 0.7, 0.9) -- dimmed by default
 
     -- Hover highlight
     local hover = btn:CreateTexture(nil, "HIGHLIGHT")
