@@ -280,7 +280,453 @@ local function BuildSlotTooltip(slotKey)
     end
 end
 
--- 8 buttons per row; two rows of 8 = 16 slots total.
+-- ── Slot item picker popup ─────────────────────────────────────────────────────────────
+local PICKER_W = 300
+local PICKER_ROW_H = 22
+local PICKER_HDR_H = 18
+local PICKER_MAX_H = 320
+local PICKER_PAD = 10
+local PICKER_ICON_SZ = 16
+
+-- Builds an item link with Myth 1/6 bonus IDs injected so tooltips show the
+-- correct item level for the Nebulous Voidcore reward track.
+local function BuildMyth1ItemLink(itemID)
+    local _, itemLink = GetItemInfo(itemID)
+    if not itemLink then
+        return nil
+    end
+    local itemString = itemLink:match("item[%-?%d:]+")
+    if not itemString then
+        return nil
+    end
+
+    local fields = {}
+    for field in (itemString .. ":"):gmatch("([^:]*):") do
+        fields[#fields + 1] = field
+    end
+    while #fields < 14 do
+        fields[#fields + 1] = ""
+    end
+    fields[13] = "35" -- M+ context
+
+    local numBonuses = tonumber(fields[14]) or 0
+    local newBonuses = {}
+    for bi = 15, 14 + numBonuses do
+        if fields[bi] ~= "3524" then
+            newBonuses[#newBonuses + 1] = fields[bi]
+        end
+    end
+    for _, b in ipairs(VCA.MythicPlusBonusIDs) do
+        newBonuses[#newBonuses + 1] = tostring(b)
+    end
+    newBonuses[#newBonuses + 1] = tostring(VCA.VoidcoreTrackBonusID)
+
+    for _ = 1, numBonuses do
+        table.remove(fields, 15)
+    end
+    fields[14] = tostring(#newBonuses)
+    for i, b in ipairs(newBonuses) do
+        table.insert(fields, 14 + i, b)
+    end
+    return table.concat(fields, ":")
+end
+
+-- Click-catcher: transparent full-screen frame that closes the popup when the
+-- user clicks anywhere outside it.  Lives at FULLSCREEN strata so the popup
+-- (FULLSCREEN_DIALOG) still receives its own clicks normally.
+local pickerCatcher = CreateFrame("Frame", nil, UIParent)
+pickerCatcher:SetAllPoints(UIParent)
+pickerCatcher:SetFrameStrata("FULLSCREEN")
+pickerCatcher:EnableMouse(true)
+pickerCatcher:Hide()
+
+local pickerPopup = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+pickerPopup:SetWidth(PICKER_W)
+pickerPopup:SetFrameStrata("FULLSCREEN_DIALOG")
+pickerPopup:SetClampedToScreen(true)
+pickerPopup:Hide()
+
+pickerPopup:SetBackdrop({
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+    tile = true,
+    tileSize = 32,
+    edgeSize = 24,
+    insets = {
+        left = 8,
+        right = 8,
+        top = 8,
+        bottom = 8
+    }
+})
+pickerPopup:SetBackdropColor(0.05, 0.02, 0.12, 0.97)
+pickerPopup:SetBackdropBorderColor(0.58, 0.0, 0.82, 1)
+
+local function ClosePicker()
+    pickerPopup:Hide()
+    pickerCatcher:Hide()
+end
+
+pickerCatcher:SetScript("OnMouseDown", ClosePicker)
+
+local pickerCloseBtn = CreateFrame("Button", nil, pickerPopup, "UIPanelCloseButton")
+pickerCloseBtn:SetSize(20, 20)
+pickerCloseBtn:SetPoint("TOPRIGHT", -2, -2)
+pickerCloseBtn:SetScript("OnClick", ClosePicker)
+
+local pickerTitle = pickerPopup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+pickerTitle:SetPoint("TOPLEFT", PICKER_PAD, -PICKER_PAD)
+pickerTitle:SetPoint("TOPRIGHT", -(PICKER_PAD + 22), -PICKER_PAD)
+pickerTitle:SetJustifyH("LEFT")
+
+-- Divider under the title
+local pickerTitleRule = pickerPopup:CreateTexture(nil, "ARTWORK")
+pickerTitleRule:SetColorTexture(0.58, 0.0, 0.82, 0.4)
+pickerTitleRule:SetHeight(1)
+
+local pickerScrollFrame = CreateFrame("ScrollFrame", nil, pickerPopup)
+local pickerScrollChild = CreateFrame("Frame", nil, pickerScrollFrame)
+pickerScrollFrame:SetScrollChild(pickerScrollChild)
+pickerScrollFrame:EnableMouseWheel(true)
+pickerScrollFrame:SetScript("OnMouseWheel", function(self, delta)
+    local cur = self:GetVerticalScroll()
+    local maxS = math.max(0, pickerScrollChild:GetHeight() - self:GetHeight())
+    self:SetVerticalScroll(math.max(0, math.min(maxS, cur - delta * PICKER_ROW_H * 3)))
+end)
+
+-- ---- Row pools ----
+
+local pickerItemPool = {} -- interactive item rows and the "All" row
+local pickerHeaderPool = {} -- dungeon name header rows
+
+local function GetOrCreatePickerItem()
+    for _, r in ipairs(pickerItemPool) do
+        if not r.frame:IsShown() then
+            return r
+        end
+    end
+    local rf = CreateFrame("Button", nil, pickerScrollChild)
+    rf:SetHeight(PICKER_ROW_H)
+    rf:RegisterForClicks("LeftButtonUp")
+
+    local hl = rf:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints(rf)
+    hl:SetColorTexture(0.58, 0.0, 0.82, 0.25)
+
+    local check = rf:CreateTexture(nil, "OVERLAY")
+    check:SetSize(14, 14)
+    check:SetPoint("LEFT", rf, "LEFT", 2, 0)
+    check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+
+    local iconBtn = CreateFrame("Button", nil, rf)
+    iconBtn:SetSize(PICKER_ICON_SZ, PICKER_ICON_SZ)
+    iconBtn:SetPoint("LEFT", rf, "LEFT", 20, 0)
+
+    local iconTex = iconBtn:CreateTexture(nil, "ARTWORK")
+    iconTex:SetAllPoints(iconBtn)
+    iconTex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+    local lbl = rf:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    lbl:SetPoint("LEFT", iconBtn, "RIGHT", 4, 0)
+    lbl:SetPoint("RIGHT", rf, "RIGHT", 0, 0)
+    lbl:SetJustifyH("LEFT")
+    lbl:SetWordWrap(false)
+
+    local r = {
+        frame = rf,
+        iconButton = iconBtn,
+        check = check,
+        icon = iconTex,
+        label = lbl
+    }
+    pickerItemPool[#pickerItemPool + 1] = r
+    return r
+end
+
+local function GetOrCreatePickerHeader()
+    for _, h in ipairs(pickerHeaderPool) do
+        if not h:IsShown() then
+            return h
+        end
+    end
+    local f = CreateFrame("Frame", nil, pickerScrollChild)
+    f:SetHeight(PICKER_HDR_H)
+    local lbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    lbl:SetAllPoints(f)
+    lbl:SetJustifyH("LEFT")
+    f.label = lbl
+    pickerHeaderPool[#pickerHeaderPool + 1] = f
+    return f
+end
+
+-- ---- Helpers ----
+
+local pickerCurrentSlot = nil
+
+local function IsItemSelected(instanceID, itemID)
+    local sel = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty)
+    return sel[itemID] == true
+end
+
+local function ToggleSingleItem(instanceID, itemID)
+    local current = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty)
+    local updated = {}
+    for id in pairs(current) do
+        updated[id] = true
+    end
+    if current[itemID] then
+        updated[itemID] = nil
+    else
+        updated[itemID] = true
+    end
+    VCA.Data.SaveSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty, updated)
+    if VCA.Panel and VCA.Panel.ReloadItemSelections then
+        VCA.Panel.ReloadItemSelections()
+    end
+end
+
+local function RefreshPickerRows()
+    for _, r in ipairs(pickerItemPool) do
+        if r.frame:IsShown() then
+            if r.isAll then
+                r.check:SetAlpha(IsSlotSelected(pickerCurrentSlot) and 1 or 0)
+            elseif r.itemID then
+                -- Checked if selected in ANY dungeon that carries this item
+                local any = false
+                if r.instanceIDs then
+                    for _, iid in ipairs(r.instanceIDs) do
+                        if IsItemSelected(iid, r.itemID) then
+                            any = true;
+                            break
+                        end
+                    end
+                end
+                r.check:SetAlpha(any and 1 or 0)
+            end
+        end
+    end
+end
+
+local function OpenSlotPicker(slotKey, anchorBtn)
+    -- If the same button is clicked while open, just close
+    if pickerPopup:IsShown() and pickerCurrentSlot == slotKey then
+        ClosePicker()
+        return
+    end
+    pickerCurrentSlot = slotKey
+
+    -- Reset pool
+    for _, r in ipairs(pickerItemPool) do
+        r.frame:Hide()
+    end
+    for _, h in ipairs(pickerHeaderPool) do
+        h:Hide()
+    end
+
+    pickerTitle:SetText("|cffb048f8" .. (L["SLOT_" .. slotKey] or slotKey) .. "|r")
+
+    local childW = PICKER_W - PICKER_PAD * 2
+    pickerScrollChild:SetWidth(childW)
+
+    local y = 0
+
+    -- " All" row
+    local allRow = GetOrCreatePickerItem()
+    allRow.isAll = true
+    allRow.instanceID = nil
+    allRow.itemID = nil
+    allRow.frame:SetWidth(childW)
+    allRow.frame:ClearAllPoints()
+    allRow.frame:SetPoint("TOPLEFT", pickerScrollChild, "TOPLEFT", 0, -y)
+    allRow.icon:Hide()
+    allRow.label:SetPoint("LEFT", allRow.frame, "LEFT", 20, 0)
+    allRow.label:SetText(L["SLOT_SELECT_ALL"] or "Select All")
+    allRow.label:SetTextColor(1, 1, 1, 1)
+    allRow.check:SetAlpha(IsSlotSelected(slotKey) and 1 or 0)
+    allRow.frame:SetScript("OnClick", function()
+        if IsSlotSelected(slotKey) then
+            DeselectSlotItems(slotKey)
+        else
+            SelectSlotItems(slotKey)
+        end
+        RefreshPickerRows()
+        RefreshSlotButtons()
+        if Populate then
+            Populate()
+        end
+    end)
+    allRow.frame:SetScript("OnEnter", nil)
+    allRow.frame:SetScript("OnLeave", nil)
+    allRow.frame:Show()
+    y = y + PICKER_ROW_H + 6 -- extra gap after "All"
+
+    -- Flat deduplicated item list — only items lootable by the player's class.
+    -- Each unique itemID gets one row; instanceIDs tracks every dungeon
+    -- that carries that item so toggle can act on all of them.
+    local classID = VCA.SpecInfo.GetPlayerClassID()
+    local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
+
+    -- itemID -> {instanceID, ...}
+    local itemInstances = {}
+    -- preserve insertion order
+    local orderedItems = {}
+
+    for _, instanceID in ipairs(instanceIDs) do
+        local dungeonData = VCA.SeasonData and VCA.SeasonData.dungeons[instanceID]
+        local classItems = {}
+        if dungeonData and dungeonData.byClass and dungeonData.byClass[classID] then
+            for _, id in ipairs(dungeonData.byClass[classID]) do
+                classItems[id] = true
+            end
+        end
+        for _, lootKey in ipairs(GetLootSlotKeys(slotKey)) do
+            for _, itemID in ipairs(VCA.LootPool.GetInstanceItemsForSlot(instanceID, lootKey)) do
+                if classItems[itemID] then
+                    if not itemInstances[itemID] then
+                        itemInstances[itemID] = {}
+                        orderedItems[#orderedItems + 1] = itemID
+                    end
+                    itemInstances[itemID][#itemInstances[itemID] + 1] = instanceID
+                end
+            end
+        end
+    end
+
+    for _, itemID in ipairs(orderedItems) do
+        local iids = itemInstances[itemID]
+        local row = GetOrCreatePickerItem()
+        row.isAll = false
+        row.instanceID = nil -- not used for flat items
+        row.instanceIDs = iids
+        row.itemID = itemID
+        row.frame:SetWidth(childW)
+        row.frame:ClearAllPoints()
+        row.frame:SetPoint("TOPLEFT", pickerScrollChild, "TOPLEFT", 0, -y)
+
+        local bonusedLink = BuildMyth1ItemLink(itemID)
+        local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = GetItemInfo(bonusedLink or itemID)
+        if itemTexture then
+            row.icon:SetTexture(itemTexture)
+            row.icon:Show()
+            row.label:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
+        else
+            row.icon:Hide()
+            row.label:SetPoint("LEFT", row.frame, "LEFT", 20, 0)
+        end
+        if itemName then
+            row.label:SetText("|cnIQ" .. (itemQuality or 1) .. ":" .. itemName .. "|r")
+        else
+            row.label:SetText("|cff888888[" .. itemID .. "]|r")
+        end
+
+        -- Check: item selected in any carrying dungeon
+        local anySelected = false
+        for _, iid in ipairs(iids) do
+            if IsItemSelected(iid, itemID) then
+                anySelected = true;
+                break
+            end
+        end
+        row.check:SetAlpha(anySelected and 1 or 0)
+
+        local capturedItem = itemID
+        local capturedIIDs = iids
+        row.frame:SetScript("OnClick", function()
+            -- Selected if active in ANY dungeon carrying this item
+            local isSelected = false
+            for _, iid in ipairs(capturedIIDs) do
+                if IsItemSelected(iid, capturedItem) then
+                    isSelected = true;
+                    break
+                end
+            end
+            local targetSelected = not isSelected
+            for _, iid in ipairs(capturedIIDs) do
+                local current = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, iid, VCA.MythicPlusEJDifficulty)
+                local updated = {}
+                for id in pairs(current) do
+                    updated[id] = true
+                end
+                if targetSelected then
+                    updated[capturedItem] = true
+                else
+                    updated[capturedItem] = nil
+                end
+                VCA.Data.SaveSelectedItems(VCA.ContentType.MYTHIC_PLUS, iid, VCA.MythicPlusEJDifficulty, updated)
+            end
+            if VCA.Panel and VCA.Panel.ReloadItemSelections then
+                VCA.Panel.ReloadItemSelections()
+            end
+            RefreshPickerRows()
+            if slotButtons[slotKey] then
+                UpdateSlotButtonVisual(slotButtons[slotKey], slotKey)
+            end
+            if Populate then
+                Populate()
+            end
+        end)
+        row.frame:SetScript("OnEnter", function(self)
+            -- Refresh label color/icon lazily (GetItemInfo may have been empty at open time)
+            local bLink = BuildMyth1ItemLink(capturedItem)
+            local iName, _, iQuality, _, _, _, _, _, _, iTexture = GetItemInfo(bLink or capturedItem)
+            if iName then
+                row.label:SetText("|cnIQ" .. (iQuality or 1) .. ":" .. iName .. "|r")
+                if iTexture and not row.icon:IsShown() then
+                    row.icon:SetTexture(iTexture)
+                    row.icon:Show()
+                    row.label:ClearAllPoints()
+                    row.label:SetPoint("LEFT", row.iconButton, "RIGHT", 4, 0)
+                end
+            end
+        end)
+        row.iconButton:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            local link = BuildMyth1ItemLink(capturedItem)
+            local shown = false
+            if link then
+                local ok = pcall(GameTooltip.SetHyperlink, GameTooltip, link)
+                if ok and GameTooltip:NumLines() and GameTooltip:NumLines() > 0 then
+                    shown = true
+                end
+            end
+            if not shown then
+                GameTooltip:SetHyperlink("item:" .. capturedItem)
+            end
+            GameTooltip:Show()
+        end)
+        row.iconButton:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        row.frame:Show()
+        y = y + PICKER_ROW_H + 1
+    end
+
+    pickerScrollChild:SetHeight(math.max(y, 1))
+
+    -- Size popup
+    local titleH = PICKER_PAD + 20 + 6 -- padding + title + rule gap
+    local scrollH = math.min(y, PICKER_MAX_H)
+    local totalH = titleH + scrollH + PICKER_PAD
+    pickerPopup:SetHeight(totalH)
+
+    pickerTitleRule:ClearAllPoints()
+    pickerTitleRule:SetPoint("TOPLEFT", pickerPopup, "TOPLEFT", PICKER_PAD, -(PICKER_PAD + 20 + 3))
+    pickerTitleRule:SetPoint("TOPRIGHT", pickerPopup, "TOPRIGHT", -PICKER_PAD, -(PICKER_PAD + 20 + 3))
+
+    pickerScrollFrame:ClearAllPoints()
+    pickerScrollFrame:SetPoint("TOPLEFT", pickerPopup, "TOPLEFT", PICKER_PAD, -(titleH))
+    pickerScrollFrame:SetPoint("BOTTOMRIGHT", pickerPopup, "BOTTOMRIGHT", -PICKER_PAD, PICKER_PAD)
+    pickerScrollFrame:SetVerticalScroll(0)
+
+    -- Anchor above the button, clamped to screen
+    pickerPopup:ClearAllPoints()
+    pickerPopup:SetPoint("BOTTOMLEFT", anchorBtn, "TOPLEFT", 0, 6)
+
+    pickerCatcher:Show()
+    pickerPopup:Show()
+end
+
+-- 7 buttons per row; two rows of 7 = 14 slots total.
 -- Buttons are centred within the inner content width.
 local BTNS_PER_ROW = 7
 local innerW = PANEL_WIDTH - 2 * PADDING
@@ -339,16 +785,8 @@ for i, slotKey in ipairs(SLOT_ORDER) do
     }
     slotButtons[slotKey] = entry
 
-    btn:SetScript("OnMouseDown", function()
-        if IsSlotSelected(slotKey) then
-            DeselectSlotItems(slotKey)
-        else
-            SelectSlotItems(slotKey)
-        end
-        UpdateSlotButtonVisual(entry, slotKey)
-        if Populate then
-            Populate()
-        end
+    btn:SetScript("OnMouseDown", function(self)
+        OpenSlotPicker(slotKey, self)
     end)
     btn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -693,6 +1131,7 @@ end
 
 function Overview.Hide()
     frame:Hide()
+    ClosePicker()
 end
 
 function Overview.IsShown()
