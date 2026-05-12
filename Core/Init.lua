@@ -220,5 +220,6 @@ SlashCmdList["VOIDCOREADVISOR"] = function(msg)
         print(L["HELP_SPEC"])
         print(L["HELP_SOURCE"])
         print(L["HELP_VERSION"])
+        print(L["HELP_REPLAYLOG"])
     end
 end

@@ -50,7 +50,8 @@ L["HELP_RESET"] = "  /vca reset    – clear all obtained-item data"
 L["HELP_COUNT"] = "  /vca count    – show total items marked as obtained"
 L["HELP_SPEC"] = "  /vca spec     – show effective loot spec ID"
 L["HELP_SOURCE"] = "  /vca source   – show active detection source"
-L["HELP_VERSION"] = "  /vca version  – show addon version"
+L["HELP_VERSION"] = "  /vca version   – show addon version"
+L["HELP_REPLAYLOG"] = "  /vca replaylog – re-apply all roll log entries as obtained"
 
 -- ── Reminder popup (Reminder.lua) ─────────────────────────────────────────────
 

@@ -100,28 +100,32 @@ local function OnPickerOK()
                 VCA.Data.SetObtainedForKeyTier(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID,
                     ctx.isHighTier, true)
                 -- Mirror the manual check into the roll log so /vca rolls shows it.
-                local logLink = ctx.itemLink
-                if ctx.sourceType == VCA.ContentType.MYTHIC_PLUS and logLink and logLink ~= "" and
-                    _s.BuildMythicPlusTooltipLink then
-                    local rawItemStr = _s.BuildMythicPlusTooltipLink(logLink)
-                    if rawItemStr then
-                        local name = logLink:match("|h%[(.-)%]|h") or
-                                         C_Item.GetItemNameByID(ctx.itemID) or ""
-                        local tempLink = "|H" .. rawItemStr .. "|h[" .. name .. "]|h"
-                        local _, enrichedLink = GetItemInfo(tempLink)
-                        if enrichedLink then
-                            logLink = enrichedLink
-                        else
-                            -- Item data not yet cached for these bonus IDs; color as epic.
-                            logLink = "|cffa335ee|H" .. rawItemStr .. "|h[" .. name .. "]|h|r"
+                -- Skip logging for specs that were already obtained when the picker
+                -- was opened (auto-detected or previously saved) to avoid creating
+                -- spurious manual entries that persist after the spec is unchecked.
+                if not row.wasObtained then
+                    local logLink = ctx.itemLink
+                    if ctx.sourceType == VCA.ContentType.MYTHIC_PLUS and logLink and logLink ~= "" and
+                        _s.BuildMythicPlusTooltipLink then
+                        local rawItemStr = _s.BuildMythicPlusTooltipLink(logLink)
+                        if rawItemStr then
+                            local name = logLink:match("|h%[(.-)%]|h") or C_Item.GetItemNameByID(ctx.itemID) or ""
+                            local tempLink = "|H" .. rawItemStr .. "|h[" .. name .. "]|h"
+                            local _, enrichedLink = GetItemInfo(tempLink)
+                            if enrichedLink then
+                                logLink = enrichedLink
+                            else
+                                -- Item data not yet cached for these bonus IDs; color as epic.
+                                logLink = "|cffa335ee|H" .. rawItemStr .. "|h[" .. name .. "]|h|r"
+                            end
                         end
                     end
+                    VCA.Data.LogManualObtained(ctx.itemID, row.specID, {
+                        sourceType = ctx.sourceType,
+                        sourceID = ctx.sourceID,
+                        difficultyID = ctx.diffID
+                    }, ctx.isHighTier, logLink)
                 end
-                VCA.Data.LogManualObtained(ctx.itemID, row.specID, {
-                    sourceType = ctx.sourceType,
-                    sourceID = ctx.sourceID,
-                    difficultyID = ctx.diffID
-                }, ctx.isHighTier, logLink)
                 anyChecked = true
             else
                 if ctx.isHighTier ~= nil then
@@ -244,6 +248,9 @@ local function BuildPickerRows(specs, sourceType, sourceID, diffID, itemID, isHi
                                         .IsObtainedForKeyTier(sourceType, sourceID, diffID, spec.specID, itemID,
                 isHighTier)
         row.checkbox:SetChecked(alreadyObtained or false)
+        -- Remember the initial state so OnPickerOK can skip logging for specs
+        -- that were already obtained before the picker was opened.
+        row.wasObtained = alreadyObtained or false
         row.frame:Show()
     end
 
