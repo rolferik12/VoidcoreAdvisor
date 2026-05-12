@@ -208,6 +208,10 @@ SlashCmdList["VOIDCOREADVISOR"] = function(msg)
 
     elseif cmd == "replaylog" then
         VCA.Detection.ReplayBonusRollLog(true)
+        -- Refresh the panel so newly-marked items are immediately hidden.
+        if VCA.Panel and VCA.Panel.Refresh then
+            VCA.Panel.Refresh()
+        end
 
     elseif cmd == "reminder" then
         -- Force-evaluate the reminder, ignoring the already-shown guard.

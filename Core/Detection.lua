@@ -414,10 +414,12 @@ function handlers.CHALLENGE_MODE_COMPLETED()
     end
 end
 
--- Key was abandoned or reset — clear the snapshot so stale data cannot bleed
--- into the next run.
+-- Key was abandoned or reset — do NOT clear cachedKeyLevel here.
+-- BONUS_ROLL_RESULT may fire after the key is consumed but before the player
+-- leaves the instance, so the level must stay available until PLAYER_ENTERING_WORLD
+-- clears it on zone transition.  A fresh CHALLENGE_MODE_START for the next run
+-- will overwrite it with the correct new level.
 function handlers.CHALLENGE_MODE_RESET()
-    ClearPersistedKeyLevel()
 end
 
 -- Fired on login and every loading-screen transition.
