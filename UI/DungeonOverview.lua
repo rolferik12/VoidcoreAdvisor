@@ -583,7 +583,10 @@ local function RefreshPickerRows()
     for _, r in ipairs(pickerItemPool) do
         if r.frame:IsShown() then
             if r.isAll then
-                r.check:SetAlpha(IsSlotSelected(pickerCurrentSlot) and 1 or 0)
+                local allSelected = IsSlotSelected(pickerCurrentSlot)
+                r.check:SetAlpha(allSelected and 1 or 0)
+                r.label:SetText(allSelected and (L["SLOT_DESELECT_ALL"] or "Deselect All") or
+                                    (L["SLOT_SELECT_ALL"] or "Select All"))
             elseif r.itemID then
                 -- Checked if selected in ANY dungeon that carries this item
                 local any = false
@@ -634,9 +637,11 @@ local function OpenSlotPicker(slotKey, anchorBtn)
     allRow.frame:SetPoint("TOPLEFT", pickerScrollChild, "TOPLEFT", 0, -y)
     allRow.icon:Hide()
     allRow.label:SetPoint("LEFT", allRow.frame, "LEFT", 20, 0)
-    allRow.label:SetText(L["SLOT_SELECT_ALL"] or "Select All")
+    local allSelected = IsSlotSelected(slotKey)
+    allRow.label:SetText(allSelected and (L["SLOT_DESELECT_ALL"] or "Deselect All") or
+                             (L["SLOT_SELECT_ALL"] or "Select All"))
     allRow.label:SetTextColor(1, 1, 1, 1)
-    allRow.check:SetAlpha(IsSlotSelected(slotKey) and 1 or 0)
+    allRow.check:SetAlpha(allSelected and 1 or 0)
     allRow.frame:SetScript("OnClick", function()
         if IsSlotSelected(slotKey) then
             DeselectSlotItems(slotKey)
