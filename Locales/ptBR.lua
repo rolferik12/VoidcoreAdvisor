@@ -95,3 +95,8 @@ L["SPEC_PICKER_OK"] = "OK"
 L["OBTAINED_UNKNOWN_SPEC"] = "Obtido (especialização desconhecida)"
 L["UNKNOWN_KEYLEVEL"] = "nível de chave desconhecido"
 L["MANUAL_ENTRY"] = "entrada manual"
+
+-- ── Gaveta de slots (DungeonOverview.lua) ────────────────────────────────────
+
+L["SLOT_FILTER_CLEAR_CONFIRM"] = "Limpar todas as seleções de itens?"
+L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] = "Todos os itens selecionados serão desmarcados."

@@ -95,3 +95,8 @@ L["SPEC_PICKER_OK"] = "OK"
 L["OBTAINED_UNKNOWN_SPEC"] = "Erhalten (Spezialisierung unbekannt)"
 L["UNKNOWN_KEYLEVEL"] = "Unbekannte Schlüsselstufe"
 L["MANUAL_ENTRY"] = "Manueller Eintrag"
+
+-- ── Slot-Filter-Schublade (DungeonOverview.lua) ──────────────────────────────
+
+L["SLOT_FILTER_CLEAR_CONFIRM"] = "Alle Gegenstandsauswahlen aufheben?"
+L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] = "Alle ausgewählten Gegenstände werden abgewählt."

@@ -96,3 +96,8 @@ L["SPEC_PICKER_OK"] = "Aceptar"
 L["OBTAINED_UNKNOWN_SPEC"] = "Obtenido (especialización desconocida)"
 L["UNKNOWN_KEYLEVEL"] = "nivel de clave desconocido"
 L["MANUAL_ENTRY"] = "entrada manual"
+
+-- ── Cajón de ranuras (DungeonOverview.lua) ───────────────────────────────────
+
+L["SLOT_FILTER_CLEAR_CONFIRM"] = "¿Borrar todas las selecciones de objetos?"
+L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] = "Se anulará la selección de todos los objetos seleccionados."

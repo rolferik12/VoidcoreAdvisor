@@ -925,11 +925,12 @@ StaticPopupDialogs["VOIDCORE_CLEAR_SLOT_FILTERS"] = {
     timeout = 0,
     whileDead = true,
     hideOnEscape = true,
-    preferredIndex = 3,
+    preferredIndex = 3
 }
 
 slotClearBtn:SetScript("OnClick", function()
-    StaticPopup_Show("VOIDCORE_CLEAR_SLOT_FILTERS", L["SLOT_FILTER_CLEAR_CONFIRM"] .. "\n\n|cffaaaaaa" .. L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] .. "|r")
+    StaticPopup_Show("VOIDCORE_CLEAR_SLOT_FILTERS",
+        L["SLOT_FILTER_CLEAR_CONFIRM"] .. "\n\n|cffaaaaaa" .. L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] .. "|r")
 end)
 
 local subtitleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")

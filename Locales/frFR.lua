@@ -95,3 +95,8 @@ L["SPEC_PICKER_OK"] = "OK"
 L["OBTAINED_UNKNOWN_SPEC"] = "Obtenu (spécialisation inconnue)"
 L["UNKNOWN_KEYLEVEL"] = "niveau de clé inconnu"
 L["MANUAL_ENTRY"] = "entrée manuelle"
+
+-- ── Tiroir d'emplacements (DungeonOverview.lua) ──────────────────────────────
+
+L["SLOT_FILTER_CLEAR_CONFIRM"] = "Effacer toutes les sélections d'objets ?"
+L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] = "Tous les objets sélectionnés seront désélectionnés."

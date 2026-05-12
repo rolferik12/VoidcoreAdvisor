@@ -95,3 +95,8 @@ L["SPEC_PICKER_OK"] = "OK"
 L["OBTAINED_UNKNOWN_SPEC"] = "Ottenuto (specializzazione sconosciuta)"
 L["UNKNOWN_KEYLEVEL"] = "livello chiave sconosciuto"
 L["MANUAL_ENTRY"] = "inserimento manuale"
+
+-- ── Cassetto slot (DungeonOverview.lua) ──────────────────────────────────────
+
+L["SLOT_FILTER_CLEAR_CONFIRM"] = "Cancellare tutte le selezioni di oggetti?"
+L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] = "Tutti gli oggetti selezionati verranno deselezionati."

@@ -99,3 +99,9 @@ L["SPEC_PICKER_OK"] = "OK"
 L["OBTAINED_UNKNOWN_SPEC"] = "Получено (специализация неизвестна)"
 L["UNKNOWN_KEYLEVEL"] = "неизвестный уровень ключа"
 L["MANUAL_ENTRY"] = "ручной ввод"
+
+-- ── Панель слотов (DungeonOverview.lua) ──────────────────────────────────────
+
+L["SLOT_FILTER_CLEAR_CONFIRM"] = "Очистить весь выбор предметов?"
+L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] =
+    "Все выбранные предметы будут сняты с выбора."

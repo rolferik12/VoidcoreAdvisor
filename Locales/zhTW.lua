@@ -95,3 +95,8 @@ L["SPEC_PICKER_OK"] = "確定"
 L["OBTAINED_UNKNOWN_SPEC"] = "已取得（專精未知）"
 L["UNKNOWN_KEYLEVEL"] = "未知鑰石等級"
 L["MANUAL_ENTRY"] = "手動輸入"
+
+-- ── 欄位抽屜（DungeonOverview.lua）──────────────────────────────────────────
+
+L["SLOT_FILTER_CLEAR_CONFIRM"] = "清除所有物品選擇？"
+L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] = "所有已選擇的物品將被取消選擇。"

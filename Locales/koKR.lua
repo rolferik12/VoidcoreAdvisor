@@ -95,3 +95,8 @@ L["SPEC_PICKER_OK"] = "확인"
 L["OBTAINED_UNKNOWN_SPEC"] = "획득 (전문화 알 수 없음)"
 L["UNKNOWN_KEYLEVEL"] = "알 수 없는 열쇠 레벨"
 L["MANUAL_ENTRY"] = "수동 입력"
+
+-- ── 슬롯 서랍 (DungeonOverview.lua) ─────────────────────────────────────────
+
+L["SLOT_FILTER_CLEAR_CONFIRM"] = "모든 아이템 선택을 초기화할까요?"
+L["SLOT_FILTER_CLEAR_CONFIRM_BODY"] = "선택된 모든 아이템이 해제됩니다."
