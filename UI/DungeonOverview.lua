@@ -297,6 +297,83 @@ local function BuildSlotTooltip(slotKey)
     end
 end
 
+local EQUIP_LOC_ORDER = {
+    INVTYPE_HEAD = 1,
+    INVTYPE_NECK = 2,
+    INVTYPE_SHOULDER = 3,
+    INVTYPE_CLOAK = 4,
+    INVTYPE_CHEST = 5,
+    INVTYPE_ROBE = 5,
+    INVTYPE_WRIST = 6,
+    INVTYPE_HAND = 7,
+    INVTYPE_WAIST = 8,
+    INVTYPE_LEGS = 9,
+    INVTYPE_FEET = 10,
+    INVTYPE_FINGER = 11,
+    INVTYPE_TRINKET = 12,
+    INVTYPE_WEAPON = 13,
+    INVTYPE_WEAPONMAINHAND = 13,
+    INVTYPE_2HWEAPON = 13,
+    INVTYPE_WEAPONOFFHAND = 14,
+    INVTYPE_SHIELD = 14,
+    INVTYPE_HOLDABLE = 14,
+    INVTYPE_RANGED = 15,
+    INVTYPE_RANGEDRIGHT = 15
+}
+
+local function BuildDungeonTooltip(instanceID)
+    local dungeonName = EJ_GetInstanceInfo(instanceID)
+    GameTooltip:AddLine(dungeonName or tostring(instanceID), 0.85, 0.3, 1)
+
+    local classID = VCA.SpecInfo.GetPlayerClassID()
+    local dungeonData = VCA.SeasonData and VCA.SeasonData.dungeons[instanceID]
+    local classItems = {}
+    if dungeonData and dungeonData.byClass and dungeonData.byClass[classID] then
+        for _, id in ipairs(dungeonData.byClass[classID]) do
+            classItems[id] = true
+        end
+    end
+
+    local selected = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty)
+    local rows = {}
+    for itemID in pairs(selected) do
+        if classItems[itemID] then
+            local bonusedLink = BuildMyth1ItemLink(itemID)
+            local itemName, _, itemQuality, _, _, _, _, _, equipLoc, itemTexture = GetItemInfo(bonusedLink or itemID)
+            if itemName then
+                rows[#rows + 1] = {
+                    itemName = itemName,
+                    itemQuality = itemQuality,
+                    equipLoc = equipLoc,
+                    itemTexture = itemTexture,
+                    sortKey = EQUIP_LOC_ORDER[equipLoc] or 99
+                }
+            end
+        end
+    end
+
+    if #rows == 0 then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("|cff888888" .. (L["SLOT_NONE_SELECTED"] or "Nothing selected") .. "|r")
+        return
+    end
+
+    table.sort(rows, function(a, b)
+        if a.sortKey ~= b.sortKey then
+            return a.sortKey < b.sortKey
+        end
+        return (a.itemName or "") < (b.itemName or "")
+    end)
+
+    for _, row in ipairs(rows) do
+        local iconMarkup = row.itemTexture and ("|T" .. row.itemTexture .. ":14:14:0:0:64:64:4:60:4:60|t ") or "  "
+        local slotText = (row.equipLoc and _G[row.equipLoc] and _G[row.equipLoc] ~= "") and
+                             (" |cff888888[" .. _G[row.equipLoc] .. "]|r") or ""
+        local nameColored = "|cnIQ" .. (row.itemQuality or 4) .. ":" .. row.itemName .. "|r"
+        GameTooltip:AddLine("  " .. iconMarkup .. nameColored .. slotText)
+    end
+end
+
 -- ── Slot item picker popup ─────────────────────────────────────────────────────────────
 local PICKER_W = 300
 local PICKER_ROW_H = 22
@@ -1027,6 +1104,7 @@ Populate = function()
                 -- rankings[1] is the best spec by the module sort policy.
                 local best = rankings and rankings[1]
                 entries[#entries + 1] = {
+                    instanceID = instanceID,
                     name = name,
                     specName = best and best.specName,
                     specIcon = best and best.specIcon,
@@ -1038,6 +1116,7 @@ Populate = function()
                 }
             else
                 entries[#entries + 1] = {
+                    instanceID = instanceID,
                     name = name,
                     specName = nil,
                     specIcon = nil,
@@ -1131,6 +1210,19 @@ Populate = function()
         end
 
         rowTop = rowTop + ROW_H + 2
+
+        local capturedInstanceID = entry.instanceID
+        row.frame:SetScript("OnEnter", function(self)
+            if capturedInstanceID then
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:ClearLines()
+                BuildDungeonTooltip(capturedInstanceID)
+                GameTooltip:Show()
+            end
+        end)
+        row.frame:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
     end
 
     scrollChild:SetHeight(math.max(rowTop, 1))
