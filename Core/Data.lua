@@ -312,6 +312,50 @@ function Data.LogBonusRoll(itemID, itemLink, specID, source)
     end
 end
 
+-- Records a manually-checked obtained entry in the roll log so /vca rolls
+-- reflects manual panel selections.  isHighTier mirrors the tier context of
+-- the checkbox that was ticked (nil for raids / non-tiered sources).
+function Data.LogManualObtained(itemID, specID, source, isHighTier, itemLink)
+    local db = _G[VCA.CHAR_DB_NAME]
+    if not db then
+        return
+    end
+    db.bonusRollLog = db.bonusRollLog or {}
+    local log = db.bonusRollLog
+    log[#log + 1] = {
+        timestamp = time(),
+        itemID = itemID,
+        itemLink = (itemLink ~= nil and itemLink ~= "") and itemLink or nil,
+        specID = specID,
+        sourceType = source and source.sourceType or nil,
+        sourceID = source and source.sourceID or nil,
+        difficultyID = source and source.difficultyID or nil,
+        keyLevel = nil,
+        manual = true,
+        isHighTier = isHighTier
+    }
+    while #log > BONUS_ROLL_LOG_MAX do
+        table.remove(log, 1)
+    end
+end
+
+-- Removes all manual log entries that match the given item + source + spec +
+-- tier.  Called when a player unchecks an item in the spec picker.
+function Data.RemoveManualLogEntries(itemID, sourceType, sourceID, difficultyID, specID, isHighTier)
+    local db = _G[VCA.CHAR_DB_NAME]
+    if not db or not db.bonusRollLog then
+        return
+    end
+    local log = db.bonusRollLog
+    for i = #log, 1, -1 do
+        local e = log[i]
+        if e.manual and e.itemID == itemID and e.sourceType == sourceType and e.sourceID == sourceID and e.difficultyID ==
+            difficultyID and e.specID == specID and e.isHighTier == isHighTier then
+            table.remove(log, i)
+        end
+    end
+end
+
 -- Returns the saved bonus roll log (array, oldest first), or an empty table.
 function Data.GetBonusRollLog()
     local db = _G[VCA.CHAR_DB_NAME]

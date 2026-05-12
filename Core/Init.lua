@@ -194,6 +194,9 @@ SlashCmdList["VOIDCOREADVISOR"] = function(msg)
                         src = src .. " key=" .. entry.keyLevel
                     end
                 end
+                if entry.manual then
+                    src = src .. " [manual]"
+                end
                 local spec = entry.specID and ("spec=" .. entry.specID) or "spec=?"
                 print(string.format("  [%d] %s  %s  %s  %s", i, ts,
                     entry.itemLink or ("itemID=" .. tostring(entry.itemID)), spec, src))

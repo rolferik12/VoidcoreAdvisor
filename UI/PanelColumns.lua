@@ -99,12 +99,38 @@ local function OnPickerOK()
                 -- Write tier-specific obtained flag for M+, tier-less for raids.
                 VCA.Data.SetObtainedForKeyTier(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID,
                     ctx.isHighTier, true)
+                -- Mirror the manual check into the roll log so /vca rolls shows it.
+                local logLink = ctx.itemLink
+                if ctx.sourceType == VCA.ContentType.MYTHIC_PLUS and logLink and logLink ~= "" and
+                    _s.BuildMythicPlusTooltipLink then
+                    local rawItemStr = _s.BuildMythicPlusTooltipLink(logLink)
+                    if rawItemStr then
+                        local name = logLink:match("|h%[(.-)%]|h") or
+                                         C_Item.GetItemNameByID(ctx.itemID) or ""
+                        local tempLink = "|H" .. rawItemStr .. "|h[" .. name .. "]|h"
+                        local _, enrichedLink = GetItemInfo(tempLink)
+                        if enrichedLink then
+                            logLink = enrichedLink
+                        else
+                            -- Item data not yet cached for these bonus IDs; color as epic.
+                            logLink = "|cffa335ee|H" .. rawItemStr .. "|h[" .. name .. "]|h|r"
+                        end
+                    end
+                end
+                VCA.Data.LogManualObtained(ctx.itemID, row.specID, {
+                    sourceType = ctx.sourceType,
+                    sourceID = ctx.sourceID,
+                    difficultyID = ctx.diffID
+                }, ctx.isHighTier, logLink)
                 anyChecked = true
             else
                 if ctx.isHighTier ~= nil then
                     -- M+: only clear the currently viewed tier's key.
                     VCA.Data.SetObtainedForKeyTier(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID,
                         ctx.isHighTier, false)
+                    -- Remove any matching manual log entries for this tier.
+                    VCA.Data.RemoveManualLogEntries(ctx.itemID, ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID,
+                        ctx.isHighTier)
                     -- If a bare (unknown-tier) key exists it falls back as obtained for
                     -- BOTH tiers, so unchecking from here would have no visible effect.
                     -- Promote it to the opposite tier first so the other list keeps its
@@ -123,6 +149,9 @@ local function OnPickerOK()
                 else
                     -- Non-M+ (raids): no tier concept, clear all variants as before.
                     VCA.Data.SetObtained(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID, false)
+                    -- Remove any matching manual log entries (tier-less / nil isHighTier).
+                    VCA.Data.RemoveManualLogEntries(ctx.itemID, ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID,
+                        nil)
                 end
             end
         end
@@ -231,12 +260,13 @@ local function BuildPickerRows(specs, sourceType, sourceID, diffID, itemID, isHi
     _pickerOkBtn:Show()
 end
 
-local function ShowSpecPickerFor(anchorWidget, sourceType, sourceID, diffID, itemID, isHighTier)
+local function ShowSpecPickerFor(anchorWidget, sourceType, sourceID, diffID, itemID, isHighTier, itemLink)
     _pickerContext.sourceType = sourceType
     _pickerContext.sourceID = sourceID
     _pickerContext.diffID = diffID
     _pickerContext.itemID = itemID
     _pickerContext.isHighTier = isHighTier
+    _pickerContext.itemLink = itemLink
 
     -- Only show specs that can actually loot this item.
     local classID = VCA.SpecInfo.GetPlayerClassID()
@@ -480,6 +510,7 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID, isHighTier
         -- Obtained checkbox
         row.checkbox:SetChecked(obtainedMigrated and "migrated" or obtained)
         row.checkbox.itemID = item.itemID
+        row.checkbox.itemLink = item.link or ""
         row.checkbox.sourceType = sourceType
         row.checkbox.sourceID = sourceID
         row.checkbox.diffID = difficultyID
@@ -537,7 +568,8 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID, isHighTier
         row.checkbox:SetScript("OnClick", function(self)
             -- Always open the spec picker, pre-checked to the current obtained state.
             -- OK saves whatever is checked; clicking outside dismisses without changes.
-            ShowSpecPickerFor(self, self.sourceType, self.sourceID, self.diffID, self.itemID, self.isHighTier)
+            ShowSpecPickerFor(self, self.sourceType, self.sourceID, self.diffID, self.itemID, self.isHighTier,
+                self.itemLink)
         end)
 
         -- Dim row if obtained, filtered out by spec selection, or

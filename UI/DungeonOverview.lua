@@ -849,8 +849,7 @@ for i, slotKey in ipairs(SLOT_ORDER) do
 
     local btn = CreateFrame("Frame", nil, slotSection)
     btn:SetSize(SLOT_BTN_SIZE, SLOT_BTN_SIZE)
-    btn:SetPoint("TOPLEFT", slotSection, "TOPLEFT",
-        RowStartX(row + 1) + col * (SLOT_BTN_SIZE + SLOT_BTN_GAP),
+    btn:SetPoint("TOPLEFT", slotSection, "TOPLEFT", RowStartX(row + 1) + col * (SLOT_BTN_SIZE + SLOT_BTN_GAP),
         gridTopY - row * (SLOT_BTN_SIZE + SLOT_ROWS_GAP))
     btn:EnableMouse(true)
 
