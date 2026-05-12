@@ -99,6 +99,7 @@ L["SLOT_feet"] = "Feet"
 L["SLOT_finger"] = "Finger"
 L["SLOT_trinket"] = "Trinket"
 L["SLOT_SELECT_ALL"] = "Select All"
+L["SLOT_NONE_SELECTED"] = "Nothing selected"
 L["SLOT_weapon"] = "Weapon"
 L["SLOT_offhand"] = "Off-Hand"
 

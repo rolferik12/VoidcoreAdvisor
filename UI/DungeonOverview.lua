@@ -244,39 +244,56 @@ end
 -- Forward-declare Populate so slot buttons can call it
 local Populate
 
+-- Forward-declare BuildMyth1ItemLink so BuildSlotTooltip can call it
+local BuildMyth1ItemLink
+
 local function BuildSlotTooltip(slotKey)
-    -- Collect all season dungeon instances and list items per dungeon for this slot.
-    local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
     GameTooltip:AddLine(L["SLOT_" .. slotKey] or slotKey, 0.85, 0.3, 1)
-    GameTooltip:AddLine(" ")
-    local anyDungeon = false
+    local classID = VCA.SpecInfo.GetPlayerClassID()
+    local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
+    local anyShown = false
     for _, instanceID in ipairs(instanceIDs) do
-        local dungeonName = EJ_GetInstanceInfo(instanceID)
-        if dungeonName then
-            local allItemIDs = {}
-            for _, lootKey in ipairs(GetLootSlotKeys(slotKey)) do
-                for _, itemID in ipairs(VCA.LootPool.GetInstanceItemsForSlot(instanceID, lootKey)) do
-                    allItemIDs[#allItemIDs + 1] = itemID
-                end
+        -- Build class-lootable set for this dungeon
+        local dungeonData = VCA.SeasonData and VCA.SeasonData.dungeons[instanceID]
+        local classItems = {}
+        if dungeonData and dungeonData.byClass and dungeonData.byClass[classID] then
+            for _, id in ipairs(dungeonData.byClass[classID]) do
+                classItems[id] = true
             end
-            if #allItemIDs > 0 then
-                anyDungeon = true
-                GameTooltip:AddLine("|cffdddddd" .. dungeonName .. "|r")
-                for _, itemID in ipairs(allItemIDs) do
-                    local itemName = GetItemInfo(itemID)
+        end
+        -- Collect selected + class-lootable items for this dungeon/slot
+        local selected = VCA.Data.GetSelectedItems(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty)
+        local rows = {}
+        for _, lootKey in ipairs(GetLootSlotKeys(slotKey)) do
+            for _, itemID in ipairs(VCA.LootPool.GetInstanceItemsForSlot(instanceID, lootKey)) do
+                if selected[itemID] and classItems[itemID] then
+                    local bonusedLink = BuildMyth1ItemLink(itemID)
+                    local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = GetItemInfo(bonusedLink or itemID)
                     if itemName then
-                        -- Dim obtained items
-                        local obtained = VCA.Data.IsObtained(VCA.ContentType.MYTHIC_PLUS, instanceID,
-                            VCA.MythicPlusEJDifficulty, VCA.SpecInfo.GetEffectiveLootSpecID(), itemID)
-                        local color = obtained and "|cff888888" or "|cffaaaaaa"
-                        GameTooltip:AddLine("  " .. color .. itemName .. "|r")
+                        rows[#rows + 1] = {
+                            name = itemName,
+                            quality = itemQuality,
+                            texture = itemTexture
+                        }
                     end
                 end
             end
         end
+        if #rows > 0 then
+            local dungeonName = EJ_GetInstanceInfo(instanceID)
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine("|cffdddddd" .. (dungeonName or tostring(instanceID)) .. "|r")
+            for _, row in ipairs(rows) do
+                local iconMarkup = row.texture and ("|T" .. row.texture .. ":14:14:0:0:64:64:4:60:4:60|t ") or "  "
+                local nameColored = "|cnIQ" .. (row.quality or 4) .. ":" .. row.name .. "|r"
+                GameTooltip:AddLine("  " .. iconMarkup .. nameColored)
+            end
+            anyShown = true
+        end
     end
-    if not anyDungeon then
-        GameTooltip:AddLine("|cff888888(no items this season)|r")
+    if not anyShown then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("|cff888888" .. (L["SLOT_NONE_SELECTED"] or "Nothing selected") .. "|r")
     end
 end
 
@@ -290,7 +307,7 @@ local PICKER_ICON_SZ = 16
 
 -- Builds an item link with Myth 1/6 bonus IDs injected so tooltips show the
 -- correct item level for the Nebulous Voidcore reward track.
-local function BuildMyth1ItemLink(itemID)
+BuildMyth1ItemLink = function(itemID)
     local _, itemLink = GetItemInfo(itemID)
     if not itemLink then
         return nil
