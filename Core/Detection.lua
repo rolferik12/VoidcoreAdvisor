@@ -14,6 +14,10 @@ local pendingRewards = {}
 -- GetActiveKeystoneInfo() goes stale after the keystone is consumed.
 -- Also persisted to SavedVariables so a /reload inside or after a run survives.
 local cachedKeyLevel = nil
+-- Raid instance context captured at PLAYER_ENTERING_WORLD when inside a current-season
+-- eligible raid, so BONUS_ROLL_RESULT can attribute the item without a live GetInstanceInfo().
+local cachedRaidInstanceID = nil
+local cachedRaidDifficultyID = nil
 
 local function PersistKeyLevel(level)
     cachedKeyLevel = level
@@ -28,6 +32,26 @@ local function ClearPersistedKeyLevel()
     local db = _G[VCA.CHAR_DB_NAME]
     if db then
         db.cachedKeyLevel = nil
+    end
+end
+
+local function PersistRaidContext(instanceID, difficultyID)
+    cachedRaidInstanceID = instanceID
+    cachedRaidDifficultyID = difficultyID
+    local db = _G[VCA.CHAR_DB_NAME]
+    if db then
+        db.cachedRaidInstanceID = instanceID
+        db.cachedRaidDifficultyID = difficultyID
+    end
+end
+
+local function ClearPersistedRaidContext()
+    cachedRaidInstanceID = nil
+    cachedRaidDifficultyID = nil
+    local db = _G[VCA.CHAR_DB_NAME]
+    if db then
+        db.cachedRaidInstanceID = nil
+        db.cachedRaidDifficultyID = nil
     end
 end
 
@@ -81,8 +105,50 @@ local function ResolveCurrentMythicPlusSource()
     return CreateSource(VCA.ContentType.MYTHIC_PLUS, sourceID, VCA.MythicPlusEJDifficulty, keyLevel)
 end
 
+-- Resolves the current source when the player is inside a current-season raid.
+-- Prefers the cached context snapshotted at zone entry; falls back to a live
+-- GetInstanceInfo() call for safety (e.g. if the cache was not yet populated).
+-- Returns a partial source with raidInstanceID (EJ) + difficultyID but no sourceID
+-- (encounterID is unknown at bonus-roll time).  Detection uses this to scan all
+-- encounters in the raid for the item rather than a single encounter lookup.
+local function ResolveCurrentRaidSource()
+    -- Use the pre-snapshotted context when available.
+    if cachedRaidInstanceID and cachedRaidDifficultyID then
+        return {
+            sourceType = nil,
+            sourceID = nil,
+            difficultyID = cachedRaidDifficultyID,
+            raidInstanceID = cachedRaidInstanceID,
+            keyLevel = nil
+        }
+    end
+    -- Fallback: live resolution using WoW mapID → EJ instanceID mapping.
+    local instanceName, instanceType, difficultyID, _, _, _, _, mapID = GetInstanceInfo()
+    if instanceType ~= "raid" then
+        return nil
+    end
+    if not VCA.EligibleRaidDifficulties or not VCA.EligibleRaidDifficulties[difficultyID] then
+        return nil
+    end
+    if not VCA.LootPool then
+        return nil
+    end
+    local ejInstanceID = (VCA.LootPool.GetSeasonRaidByMapID and VCA.LootPool.GetSeasonRaidByMapID(mapID)) or
+                             (VCA.LootPool.GetSeasonRaidByName and VCA.LootPool.GetSeasonRaidByName(instanceName))
+    if not ejInstanceID then
+        return nil
+    end
+    return {
+        sourceType = nil,
+        sourceID = nil,
+        difficultyID = difficultyID,
+        raidInstanceID = ejInstanceID,
+        keyLevel = nil
+    }
+end
+
 local function GetResolvedSource()
-    return sourceOverride or ResolveCurrentMythicPlusSource()
+    return sourceOverride or ResolveCurrentMythicPlusSource() or ResolveCurrentRaidSource()
 end
 
 local function IsInInstancedContent()
@@ -219,6 +285,108 @@ local function TryResolveReward(itemID, source, specID)
     return true
 end
 
+-- Scans every encounter in raidInstanceID+difficultyID and marks itemID as
+-- obtained in each encounter whose class pool contains it.  Used when the
+-- encounterID is unknown at bonus-roll time (BONUS_ROLL_RESULT fires without
+-- context for which boss the roll was on).
+-- Returns true if the item was found and marked in at least one encounter.
+local function TryMarkItemInAllRaidEncounters(itemID, raidInstanceID, difficultyID, specID)
+    if not (VCA.SeasonData and VCA.SeasonData.raids) then
+        return false
+    end
+    local classID = VCA.SpecInfo and VCA.SpecInfo.GetPlayerClassID and VCA.SpecInfo.GetPlayerClassID()
+    if not classID then
+        return false
+    end
+    local anyMarked = false
+    for encounterID, raidData in pairs(VCA.SeasonData.raids) do
+        if raidData.instanceID == raidInstanceID then
+            local source = CreateSource(VCA.ContentType.RAID, encounterID, difficultyID, nil)
+            local pool = VCA.LootPool and VCA.LootPool.GetCachedItemsForClass and
+                             VCA.LootPool
+                                 .GetCachedItemsForClass(VCA.ContentType.RAID, encounterID, difficultyID, classID)
+            if pool then
+                for _, id in ipairs(pool) do
+                    if id == itemID then
+                        OnCandidateItemDetected(itemID, source, specID)
+                        anyMarked = true
+                        break
+                    end
+                end
+            end
+        end
+    end
+    return anyMarked
+end
+
+-- Last-resort recovery for log entries with only itemID+specID and no source
+-- context at all (pre-raid-detection logs).  Searches every SeasonData raid
+-- encounter (all eligible difficulties) first; if found there, returns without
+-- checking dungeons (item pools are mutually exclusive).  If not found in raids,
+-- falls back to dungeon instances.
+-- Returns a descriptor on success so the caller can patch the log entry:
+--   { kind="raid",    raidInstanceID=N }                   — found in a raid
+--   { kind="dungeon", sourceType=T, sourceID=N, difficultyID=D } — found in a dungeon
+-- Returns nil on failure.
+local function TryMarkItemAcrossAllSources(itemID, specID)
+    if not (VCA.SeasonData and itemID and specID) then
+        return nil
+    end
+    -- Raid encounters — mark across all eligible difficulties.
+    -- Pool is disjoint from dungeons, so stop here if found.
+    if VCA.SeasonData.raids then
+        local foundInRaid = false
+        local resolvedRaidInstanceID = nil
+        for encounterID, raidData in pairs(VCA.SeasonData.raids) do
+            for _, diffID in
+                ipairs({VCA.Difficulty.RAID_NORMAL, VCA.Difficulty.RAID_HEROIC, VCA.Difficulty.RAID_MYTHIC}) do
+                local pool = raidData[diffID]
+                if pool then
+                    for _, id in ipairs(pool) do
+                        if id == itemID then
+                            local source = CreateSource(VCA.ContentType.RAID, encounterID, diffID, nil)
+                            OnCandidateItemDetected(itemID, source, specID)
+                            if not foundInRaid then
+                                foundInRaid = true
+                                resolvedRaidInstanceID = raidData.instanceID
+                            end
+                            break
+                        end
+                    end
+                end
+            end
+        end
+        if foundInRaid then
+            return {
+                kind = "raid",
+                raidInstanceID = resolvedRaidInstanceID
+            }
+        end
+    end
+    -- Dungeon instances — only reached if the item was not in any raid pool.
+    if VCA.SeasonData.dungeons then
+        for instanceID, dungeonData in pairs(VCA.SeasonData.dungeons) do
+            local pool = dungeonData.all
+            if pool then
+                for _, id in ipairs(pool) do
+                    if id == itemID then
+                        local source = CreateSource(VCA.ContentType.MYTHIC_PLUS, instanceID, VCA.MythicPlusEJDifficulty,
+                            nil)
+                        OnCandidateItemDetected(itemID, source, specID)
+                        return {
+                            kind = "dungeon",
+                            sourceType = VCA.ContentType.MYTHIC_PLUS,
+                            sourceID = instanceID,
+                            difficultyID = VCA.MythicPlusEJDifficulty
+                        }
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
 -- Replays saved bonus roll log entries through the detection pipeline.
 -- Marks any unmatched items as obtained if they belong to the known pool.
 -- Safe to call multiple times; IsObtained guards against double-marking.
@@ -233,13 +401,96 @@ function Detection.ReplayBonusRollLog(verbose)
     end
     local marked, skipped, nomatch, incomplete = 0, 0, 0, 0
     for i, entry in ipairs(log) do
+        -- A raid bonus roll has raidInstanceID+difficultyID but no sourceType/sourceID.
+        -- Try the all-encounters path before treating the entry as incomplete.
         if not (entry.itemID and entry.sourceType and entry.sourceID and entry.difficultyID and entry.specID) then
-            incomplete = incomplete + 1
-            if verbose then
-                print(string.format(
-                    "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: skipped — incomplete entry (itemID=%s specID=%s source=%s:%s diff=%s)",
-                    i, tostring(entry.itemID), tostring(entry.specID), tostring(entry.sourceType),
-                    tostring(entry.sourceID), tostring(entry.difficultyID)))
+            if entry.itemID and entry.raidInstanceID and entry.difficultyID and entry.specID then
+                if TryMarkItemInAllRaidEncounters(entry.itemID, entry.raidInstanceID, entry.difficultyID, entry.specID) then
+                    marked = marked + 1
+                    if verbose then
+                        local name = C_Item.GetItemNameByID(entry.itemID) or tostring(entry.itemID)
+                        print(string.format(
+                            "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: marked across all raid encounters — %s (spec=%s)",
+                            i, name, tostring(entry.specID)))
+                    end
+                else
+                    incomplete = incomplete + 1
+                    if verbose then
+                        print(string.format(
+                            "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: skipped — incomplete entry (itemID=%s specID=%s source=%s:%s diff=%s)",
+                            i, tostring(entry.itemID), tostring(entry.specID), tostring(entry.sourceType),
+                            tostring(entry.sourceID), tostring(entry.difficultyID)))
+                    end
+                end
+            else
+                -- No raidInstanceID/difficultyID — check if a previous replay
+                -- already resolved this entry and stored enough info to skip the
+                -- full SeasonData scan.
+                if entry.itemID and entry.raidInstanceID and entry.resolvedAllRaidDifficulties and entry.specID then
+                    -- Fast re-execution: iterate all 3 eligible difficulties.
+                    -- OnCandidateItemDetected short-circuits for already-obtained
+                    -- items, so this is cheap on repeat replays.
+                    local anyMarked = false
+                    for _, diffID in ipairs({VCA.Difficulty.RAID_NORMAL, VCA.Difficulty.RAID_HEROIC,
+                                             VCA.Difficulty.RAID_MYTHIC}) do
+                        if TryMarkItemInAllRaidEncounters(entry.itemID, entry.raidInstanceID, diffID, entry.specID) then
+                            anyMarked = true
+                        end
+                    end
+                    if anyMarked then
+                        marked = marked + 1
+                        if verbose then
+                            local name = C_Item.GetItemNameByID(entry.itemID) or tostring(entry.itemID)
+                            print(string.format(
+                                "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: re-marked across all raid difficulties — %s (spec=%s)",
+                                i, name, tostring(entry.specID)))
+                        end
+                    else
+                        incomplete = incomplete + 1
+                        if verbose then
+                            print(string.format(
+                                "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: skipped — item no longer in season pool (itemID=%s)",
+                                i, tostring(entry.itemID)))
+                        end
+                    end
+                elseif entry.itemID and entry.specID then
+                    -- Full scan — no prior resolution on this entry.
+                    local resolved = TryMarkItemAcrossAllSources(entry.itemID, entry.specID)
+                    if resolved then
+                        marked = marked + 1
+                        -- Patch the log entry so future replays skip this scan.
+                        if resolved.kind == "dungeon" then
+                            entry.sourceType = resolved.sourceType
+                            entry.sourceID = resolved.sourceID
+                            entry.difficultyID = resolved.difficultyID
+                        else -- "raid"
+                            entry.raidInstanceID = resolved.raidInstanceID
+                            entry.resolvedAllRaidDifficulties = true
+                        end
+                        if verbose then
+                            local name = C_Item.GetItemNameByID(entry.itemID) or tostring(entry.itemID)
+                            print(string.format(
+                                "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: marked across all sources — %s (spec=%s)",
+                                i, name, tostring(entry.specID)))
+                        end
+                    else
+                        incomplete = incomplete + 1
+                        if verbose then
+                            print(string.format(
+                                "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: skipped — incomplete entry (itemID=%s specID=%s source=%s:%s diff=%s)",
+                                i, tostring(entry.itemID), tostring(entry.specID), tostring(entry.sourceType),
+                                tostring(entry.sourceID), tostring(entry.difficultyID)))
+                        end
+                    end
+                else
+                    incomplete = incomplete + 1
+                    if verbose then
+                        print(string.format(
+                            "|cff9370DBVoidcoreAdvisor:|r Replay [%d]: skipped — incomplete entry (itemID=%s specID=%s source=%s:%s diff=%s)",
+                            i, tostring(entry.itemID), tostring(entry.specID), tostring(entry.sourceType),
+                            tostring(entry.sourceID), tostring(entry.difficultyID)))
+                    end
+                end
             end
         else
             local source = {
@@ -347,7 +598,14 @@ local function ProcessPendingRewards()
     local remaining = {}
     for _, entry in ipairs(pendingRewards) do
         local source = entry.source or GetResolvedSource()
-        if not TryResolveReward(entry.itemID, source, entry.specID) then
+        local resolved = false
+        if source and source.raidInstanceID and not source.sourceType then
+            resolved = TryMarkItemInAllRaidEncounters(entry.itemID, source.raidInstanceID, source.difficultyID,
+                entry.specID)
+        else
+            resolved = TryResolveReward(entry.itemID, source, entry.specID)
+        end
+        if not resolved then
             remaining[#remaining + 1] = {
                 itemID = entry.itemID,
                 source = source,
@@ -366,7 +624,14 @@ local function ProcessRewardItem(itemID, specID, sourceHint)
 
     -- Prefer a source captured at event time; fall back to live resolution.
     local source = sourceHint or GetResolvedSource()
-    if TryResolveReward(itemID, source, specID) then
+
+    -- Raid bonus rolls: source has raidInstanceID but no sourceType/sourceID.
+    -- Scan all encounters in the raid for the item.
+    if source and source.raidInstanceID and not source.sourceType then
+        if TryMarkItemInAllRaidEncounters(itemID, source.raidInstanceID, source.difficultyID, specID) then
+            return
+        end
+    elseif TryResolveReward(itemID, source, specID) then
         return
     end
 
@@ -425,16 +690,42 @@ end
 -- Fired on login and every loading-screen transition.
 function handlers.PLAYER_ENTERING_WORLD()
     if IsInInstancedContent() then
+        local _, instanceType, difficultyID, _, _, _, _, instanceID = GetInstanceInfo()
         -- /reload inside a dungeon: restore the persisted key level if the local
         -- variable was wiped by the reload.
         if not cachedKeyLevel then
             local db = _G[VCA.CHAR_DB_NAME]
             cachedKeyLevel = db and db.cachedKeyLevel or nil
         end
+        -- Snapshot raid context on every zone entry so BONUS_ROLL_RESULT does
+        -- not need a live GetInstanceInfo() call.  Also restores after /reload.
+        -- Deferred one frame so Init.lua's PLAYER_ENTERING_WORLD (which calls
+        -- BuildSeasonFilter) has already run before we check the season filter.
+        if instanceType == "raid" and VCA.EligibleRaidDifficulties and VCA.EligibleRaidDifficulties[difficultyID] then
+            C_Timer.After(0, function()
+                local instanceName2, _, _, difficultyName = GetInstanceInfo()
+                local ejInstanceID = (VCA.LootPool and VCA.LootPool.GetSeasonRaidByMapID and
+                                         VCA.LootPool.GetSeasonRaidByMapID(instanceID)) or
+                                         (VCA.LootPool and VCA.LootPool.GetSeasonRaidByName and
+                                             VCA.LootPool.GetSeasonRaidByName(instanceName2))
+                if ejInstanceID then
+                    PersistRaidContext(ejInstanceID, difficultyID)
+                    print(string.format("|cff9370DBVoidcoreAdvisor:|r Raid detected - %s (%s).",
+                        instanceName2 or "Unknown", difficultyName or tostring(difficultyID)))
+                else
+                    ClearPersistedRaidContext()
+                end
+            end)
+        else
+            -- Entered a non-raid or ineligible instance — clear any stale raid cache
+            -- so it does not bleed into M+ or open-world bonus rolls.
+            ClearPersistedRaidContext()
+        end
     else
         -- Logging in or crossing to a non-instanced zone: clear stale run state
         -- and flush any rewards that queued inside the instance.
         ClearPersistedKeyLevel()
+        ClearPersistedRaidContext()
         Detection.ClearActiveSource()
         C_Timer.After(0, ProcessPendingRewards)
     end

@@ -347,7 +347,8 @@ syncFrame:SetScript("OnEvent", function(self, event)
     -- the user show/hide the VoidcoreAdvisor panel.
     local toggleBtn = CreateFrame("Button", nil, EncounterJournal)
     toggleBtn:SetSize(36, 36)
-    toggleBtn:SetPoint("TOPRIGHT", EncounterJournal, "TOPRIGHT", -12, -110)
+    toggleBtn:SetFrameStrata("HIGH")
+    toggleBtn:SetPoint("RIGHT", EncounterJournal.CloseButton, "LEFT", -4, 0)
 
     local toggleIcon = toggleBtn:CreateTexture(nil, "ARTWORK")
     toggleIcon:SetAllPoints()
@@ -390,7 +391,8 @@ syncFrame:SetScript("OnEvent", function(self, event)
     -- Chest icon near the panel toggle; controls dungeon overview visibility.
     local overviewToggleBtn = CreateFrame("Button", nil, EncounterJournal)
     overviewToggleBtn:SetSize(36, 36)
-    overviewToggleBtn:SetPoint("TOPRIGHT", EncounterJournal, "TOPRIGHT", -34, -90)
+    overviewToggleBtn:SetFrameStrata("HIGH")
+    overviewToggleBtn:SetPoint("RIGHT", EncounterJournal.CloseButton, "LEFT", -4, 0)
 
     local overviewIcon = overviewToggleBtn:CreateTexture(nil, "ARTWORK")
     overviewIcon:SetAllPoints()
