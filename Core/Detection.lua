@@ -742,20 +742,61 @@ function handlers.CHALLENGE_MODE_RESET()
     UpdateKeystoneRunStatus("abandoned")
 end
 
+-- Tracks whether a vote-to-abandon is in progress so LFG_VOTE_KICK_COMPLETED
+-- can be scoped to M+ abandon votes rather than regular LFG kick votes.
+local pendingAbandonVote = false
+
+-- Fires when the group initiates a vote to abandon the M+ run.  Record that
+-- a vote is in flight so LFG_VOTE_KICK_COMPLETED knows to check it.
+function handlers.CHALLENGE_MODE_VOTE_TO_ABANDON_STARTED()
+    pendingAbandonVote = true
+end
+
+-- Fires when any LFG vote (kick or abandon) resolves.  The first argument is
+-- true if the vote passed.  Only act if we were tracking an abandon vote.
+function handlers.LFG_VOTE_KICK_COMPLETED(success)
+    if not pendingAbandonVote then
+        return
+    end
+    pendingAbandonVote = false
+    if success then
+        UpdateKeystoneRunStatus("abandoned")
+    end
+end
+
+-- Tracks whether a leaver timer is active (player left while key was running).
+local pendingLeaverTimer = false
+
+-- Fires the moment a player leaves the instance while a keystone is active.
+-- We flag it but do not mark abandoned yet — the player may still return.
+function handlers.CHALLENGE_MODE_LEAVER_TIMER_STARTED()
+    pendingLeaverTimer = true
+end
+
+-- Fires when the leaver penalty timer expires: the player did not return.
+-- Mark the run abandoned now, before PLAYER_ENTERING_WORLD fires.
+function handlers.CHALLENGE_MODE_LEAVER_TIMER_ENDED()
+    if pendingLeaverTimer then
+        pendingLeaverTimer = false
+        UpdateKeystoneRunStatus("abandoned")
+    end
+end
+
 -- Fired on login and every loading-screen transition.
 function handlers.PLAYER_ENTERING_WORLD()
-    -- Restore run log from SavedVariables after /reload (both inside and outside instances).
-    if not lastKeystoneRun then
-        local db = _G[VCA.CHAR_DB_NAME]
-        lastKeystoneRun = db and db.lastKeystoneRun or nil
-    end
     if IsInInstancedContent() then
         local _, instanceType, difficultyID, _, _, _, _, instanceID = GetInstanceInfo()
-        -- /reload inside a dungeon: restore the persisted key level if the local
-        -- variable was wiped by the reload.
-        if not cachedKeyLevel then
-            local db = _G[VCA.CHAR_DB_NAME]
-            cachedKeyLevel = db and db.cachedKeyLevel or nil
+        -- /reload inside a dungeon: restore the persisted key level and run log if
+        -- the local variables were wiped by the reload.
+        if instanceType == "party" then
+            if not cachedKeyLevel then
+                local db = _G[VCA.CHAR_DB_NAME]
+                cachedKeyLevel = db and db.cachedKeyLevel or nil
+            end
+            if not lastKeystoneRun then
+                local db = _G[VCA.CHAR_DB_NAME]
+                lastKeystoneRun = db and db.lastKeystoneRun or nil
+            end
         end
         -- Snapshot raid context on every zone entry so BONUS_ROLL_RESULT does
         -- not need a live GetInstanceInfo() call.  Also restores after /reload.
@@ -787,6 +828,12 @@ function handlers.PLAYER_ENTERING_WORLD()
         ClearPersistedKeyLevel()
         ClearPersistedRaidContext()
         Detection.ClearActiveSource()
+        -- If the leaver timer started but CHALLENGE_MODE_LEAVER_TIMER_ENDED never fired
+        -- (e.g. the client skipped it), treat zoning out as the confirmed abandon.
+        if pendingLeaverTimer then
+            pendingLeaverTimer = false
+            UpdateKeystoneRunStatus("abandoned")
+        end
         C_Timer.After(0, ProcessPendingRewards)
     end
 end
@@ -838,6 +885,10 @@ eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("CHALLENGE_MODE_START")
 eventFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 eventFrame:RegisterEvent("CHALLENGE_MODE_RESET")
+eventFrame:RegisterEvent("CHALLENGE_MODE_VOTE_TO_ABANDON_STARTED")
+eventFrame:RegisterEvent("LFG_VOTE_KICK_COMPLETED")
+eventFrame:RegisterEvent("CHALLENGE_MODE_LEAVER_TIMER_STARTED")
+eventFrame:RegisterEvent("CHALLENGE_MODE_LEAVER_TIMER_ENDED")
 
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     local handler = handlers[event]
