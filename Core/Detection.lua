@@ -18,12 +18,37 @@ local cachedKeyLevel = nil
 -- eligible raid, so BONUS_ROLL_RESULT can attribute the item without a live GetInstanceInfo().
 local cachedRaidInstanceID = nil
 local cachedRaidDifficultyID = nil
+-- Keystone run log: full source snapshot from CHALLENGE_MODE_START, status updated at
+-- CHALLENGE_MODE_COMPLETED / CHALLENGE_MODE_RESET.  Survives zone exit so BONUS_ROLL_RESULT
+-- that fires in the open world after leaving the dungeon can still find the right source.
+-- Overwritten when a new key starts.  Persisted to SavedVariables to survive /reload.
+-- status: "running" | "completed" | "abandoned"
+local lastKeystoneRun = nil
 
 local function PersistKeyLevel(level)
     cachedKeyLevel = level
     local db = _G[VCA.CHAR_DB_NAME]
     if db then
         db.cachedKeyLevel = level
+    end
+end
+
+local function PersistKeystoneRun(run)
+    lastKeystoneRun = run
+    local db = _G[VCA.CHAR_DB_NAME]
+    if db then
+        db.lastKeystoneRun = run
+    end
+end
+
+local function UpdateKeystoneRunStatus(status)
+    if not lastKeystoneRun then
+        return
+    end
+    lastKeystoneRun.status = status
+    local db = _G[VCA.CHAR_DB_NAME]
+    if db and db.lastKeystoneRun then
+        db.lastKeystoneRun.status = status
     end
 end
 
@@ -147,8 +172,23 @@ local function ResolveCurrentRaidSource()
     }
 end
 
+-- Fallback: returns the source from the most recent keystone run when the player
+-- is no longer inside the instance (e.g. BONUS_ROLL_RESULT fires in open world).
+-- Abandoned runs are excluded; running and completed runs both qualify.
+local function ResolveFromLastKeystoneRun()
+    if not lastKeystoneRun then
+        return nil
+    end
+    if lastKeystoneRun.status == "abandoned" then
+        return nil
+    end
+    return CreateSource(lastKeystoneRun.sourceType, lastKeystoneRun.sourceID, lastKeystoneRun.difficultyID,
+        lastKeystoneRun.keyLevel)
+end
+
 local function GetResolvedSource()
-    return sourceOverride or ResolveCurrentMythicPlusSource() or ResolveCurrentRaidSource()
+    return sourceOverride or ResolveCurrentMythicPlusSource() or ResolveCurrentRaidSource() or
+               ResolveFromLastKeystoneRun()
 end
 
 local function IsInInstancedContent()
@@ -647,8 +687,8 @@ end
 
 local handlers = {}
 
--- Snapshot the key level while GetActiveKeystoneInfo() is still valid,
--- before the timer starts and the keystone is upgraded or consumed.
+-- Snapshot the key level and full run context while GetActiveKeystoneInfo() is still
+-- valid, before the timer starts and the keystone is consumed.
 function handlers.CHALLENGE_MODE_START()
     if not C_ChallengeMode then
         return
@@ -658,15 +698,30 @@ function handlers.CHALLENGE_MODE_START()
         return
     end
     PersistKeyLevel(level)
-    local instanceName = GetInstanceInfo()
-    print(
-        string.format("|cff9370DBVoidcoreAdvisor:|r Key detected - %s +%d.", instanceName or "Unknown", cachedKeyLevel))
+    -- Snapshot the full dungeon source so BONUS_ROLL_RESULT can attribute rewards
+    -- that fire after the player has already left the instance.
+    local instanceName, _, _, _, _, _, _, instanceID = GetInstanceInfo()
+    local sourceID = (instanceID and VCA.LootPool and VCA.LootPool.GetSeasonDungeonByInstanceID and
+                         VCA.LootPool.GetSeasonDungeonByInstanceID(instanceID)) or
+                         (VCA.LootPool and VCA.LootPool.GetSeasonDungeonByName and
+                             VCA.LootPool.GetSeasonDungeonByName(instanceName))
+    if sourceID then
+        PersistKeystoneRun({
+            sourceType = VCA.ContentType.MYTHIC_PLUS,
+            sourceID = sourceID,
+            difficultyID = VCA.MythicPlusEJDifficulty,
+            keyLevel = level,
+            status = "running"
+        })
+    end
+    print(string.format("|cff9370DBVoidcoreAdvisor:|r Key detected - %s +%d.", instanceName or "Unknown", level))
 end
 
--- Re-snapshot at completion only if the start snapshot was missed (e.g. /reload
--- during the countdown). If cachedKeyLevel is already set we have nothing to do.
+-- Mark the run as completed.  Also re-snapshot the key level if CHALLENGE_MODE_START
+-- was missed (e.g. /reload during the countdown).
 -- Silent — no message at the end-of-run screen.
 function handlers.CHALLENGE_MODE_COMPLETED()
+    UpdateKeystoneRunStatus("completed")
     if cachedKeyLevel then
         return
     end
@@ -679,16 +734,21 @@ function handlers.CHALLENGE_MODE_COMPLETED()
     end
 end
 
--- Key was abandoned or reset — do NOT clear cachedKeyLevel here.
--- BONUS_ROLL_RESULT may fire after the key is consumed but before the player
--- leaves the instance, so the level must stay available until PLAYER_ENTERING_WORLD
--- clears it on zone transition.  A fresh CHALLENGE_MODE_START for the next run
--- will overwrite it with the correct new level.
+-- Key was abandoned or reset.  Mark the run log accordingly so the fallback
+-- resolver does not attribute post-reset bonus rolls to the abandoned run.
+-- Do NOT clear cachedKeyLevel here — BONUS_ROLL_RESULT may still fire before
+-- the player leaves the instance.  A fresh CHALLENGE_MODE_START will overwrite.
 function handlers.CHALLENGE_MODE_RESET()
+    UpdateKeystoneRunStatus("abandoned")
 end
 
 -- Fired on login and every loading-screen transition.
 function handlers.PLAYER_ENTERING_WORLD()
+    -- Restore run log from SavedVariables after /reload (both inside and outside instances).
+    if not lastKeystoneRun then
+        local db = _G[VCA.CHAR_DB_NAME]
+        lastKeystoneRun = db and db.lastKeystoneRun or nil
+    end
     if IsInInstancedContent() then
         local _, instanceType, difficultyID, _, _, _, _, instanceID = GetInstanceInfo()
         -- /reload inside a dungeon: restore the persisted key level if the local
