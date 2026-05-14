@@ -687,9 +687,9 @@ end
 
 local handlers = {}
 
--- Snapshot the key level and full run context while GetActiveKeystoneInfo() is still
--- valid, before the timer starts and the keystone is consumed.
-function handlers.CHALLENGE_MODE_START()
+-- Detects and caches the active keystone context.  Called from both
+-- CHALLENGE_MODE_START (new key) and PLAYER_ENTERING_WORLD (re-entry).
+local function CacheActiveKeystoneRun()
     if not C_ChallengeMode then
         return
     end
@@ -698,8 +698,6 @@ function handlers.CHALLENGE_MODE_START()
         return
     end
     PersistKeyLevel(level)
-    -- Snapshot the full dungeon source so BONUS_ROLL_RESULT can attribute rewards
-    -- that fire after the player has already left the instance.
     local instanceName, _, _, _, _, _, _, instanceID = GetInstanceInfo()
     local sourceID = (instanceID and VCA.LootPool and VCA.LootPool.GetSeasonDungeonByInstanceID and
                          VCA.LootPool.GetSeasonDungeonByInstanceID(instanceID)) or
@@ -717,9 +715,12 @@ function handlers.CHALLENGE_MODE_START()
     print(string.format("|cff9370DBVoidcoreAdvisor:|r Key detected - %s +%d.", instanceName or "Unknown", level))
 end
 
--- Mark the run as completed.  Also re-snapshot the key level if CHALLENGE_MODE_START
--- was missed (e.g. /reload during the countdown).
--- Silent — no message at the end-of-run screen.
+function handlers.CHALLENGE_MODE_START()
+    CacheActiveKeystoneRun()
+end
+
+-- Silent — no message at end-of-run.  Also captures the key level if
+-- CHALLENGE_MODE_START was missed (e.g. /reload during the countdown).
 function handlers.CHALLENGE_MODE_COMPLETED()
     UpdateKeystoneRunStatus("completed")
     if cachedKeyLevel then
@@ -734,69 +735,14 @@ function handlers.CHALLENGE_MODE_COMPLETED()
     end
 end
 
--- Key was abandoned or reset.  Mark the run log accordingly so the fallback
--- resolver does not attribute post-reset bonus rolls to the abandoned run.
--- Do NOT clear cachedKeyLevel here — BONUS_ROLL_RESULT may still fire before
--- the player leaves the instance.  A fresh CHALLENGE_MODE_START will overwrite.
-function handlers.CHALLENGE_MODE_RESET()
-    UpdateKeystoneRunStatus("abandoned")
-end
-
--- Tracks whether a vote-to-abandon is in progress so LFG_VOTE_KICK_COMPLETED
--- can be scoped to M+ abandon votes rather than regular LFG kick votes.
-local pendingAbandonVote = false
-
--- Fires when the group initiates a vote to abandon the M+ run.  Record that
--- a vote is in flight so LFG_VOTE_KICK_COMPLETED knows to check it.
-function handlers.CHALLENGE_MODE_VOTE_TO_ABANDON_STARTED()
-    pendingAbandonVote = true
-end
-
--- Fires when any LFG vote (kick or abandon) resolves.  The first argument is
--- true if the vote passed.  Only act if we were tracking an abandon vote.
-function handlers.LFG_VOTE_KICK_COMPLETED(success)
-    if not pendingAbandonVote then
-        return
-    end
-    pendingAbandonVote = false
-    if success then
-        UpdateKeystoneRunStatus("abandoned")
-    end
-end
-
--- Tracks whether a leaver timer is active (player left while key was running).
-local pendingLeaverTimer = false
-
--- Fires the moment a player leaves the instance while a keystone is active.
--- We flag it but do not mark abandoned yet — the player may still return.
-function handlers.CHALLENGE_MODE_LEAVER_TIMER_STARTED()
-    pendingLeaverTimer = true
-end
-
--- Fires when the leaver penalty timer expires: the player did not return.
--- Mark the run abandoned now, before PLAYER_ENTERING_WORLD fires.
-function handlers.CHALLENGE_MODE_LEAVER_TIMER_ENDED()
-    if pendingLeaverTimer then
-        pendingLeaverTimer = false
-        UpdateKeystoneRunStatus("abandoned")
-    end
-end
-
 -- Fired on login and every loading-screen transition.
 function handlers.PLAYER_ENTERING_WORLD()
     if IsInInstancedContent() then
         local _, instanceType, difficultyID, _, _, _, _, instanceID = GetInstanceInfo()
-        -- /reload inside a dungeon: restore the persisted key level and run log if
-        -- the local variables were wiped by the reload.
+        -- On every party instance entry, re-detect an active keystone.
+        -- Covers /reload and re-entries; fresh starts are handled by CHALLENGE_MODE_START.
         if instanceType == "party" then
-            if not cachedKeyLevel then
-                local db = _G[VCA.CHAR_DB_NAME]
-                cachedKeyLevel = db and db.cachedKeyLevel or nil
-            end
-            if not lastKeystoneRun then
-                local db = _G[VCA.CHAR_DB_NAME]
-                lastKeystoneRun = db and db.lastKeystoneRun or nil
-            end
+            CacheActiveKeystoneRun()
         end
         -- Snapshot raid context on every zone entry so BONUS_ROLL_RESULT does
         -- not need a live GetInstanceInfo() call.  Also restores after /reload.
@@ -823,17 +769,11 @@ function handlers.PLAYER_ENTERING_WORLD()
             ClearPersistedRaidContext()
         end
     else
-        -- Logging in or crossing to a non-instanced zone: clear stale run state
-        -- and flush any rewards that queued inside the instance.
+        -- Left instance: clear all cached M+ and raid run state.
         ClearPersistedKeyLevel()
+        PersistKeystoneRun(nil)
         ClearPersistedRaidContext()
         Detection.ClearActiveSource()
-        -- If the leaver timer started but CHALLENGE_MODE_LEAVER_TIMER_ENDED never fired
-        -- (e.g. the client skipped it), treat zoning out as the confirmed abandon.
-        if pendingLeaverTimer then
-            pendingLeaverTimer = false
-            UpdateKeystoneRunStatus("abandoned")
-        end
         C_Timer.After(0, ProcessPendingRewards)
     end
 end
@@ -884,12 +824,6 @@ eventFrame:RegisterEvent("BONUS_ROLL_RESULT")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("CHALLENGE_MODE_START")
 eventFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
-eventFrame:RegisterEvent("CHALLENGE_MODE_RESET")
-eventFrame:RegisterEvent("CHALLENGE_MODE_VOTE_TO_ABANDON_STARTED")
-eventFrame:RegisterEvent("LFG_VOTE_KICK_COMPLETED")
-eventFrame:RegisterEvent("CHALLENGE_MODE_LEAVER_TIMER_STARTED")
-eventFrame:RegisterEvent("CHALLENGE_MODE_LEAVER_TIMER_ENDED")
-
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     local handler = handlers[event]
     if handler then
