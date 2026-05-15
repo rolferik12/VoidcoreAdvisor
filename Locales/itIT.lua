@@ -120,3 +120,18 @@ L["SLOT_DESELECT_ALL"] = "Deseleziona tutto"
 L["SLOT_NONE_SELECTED"] = "Nessuna selezione"
 L["SLOT_weapon"] = "Arma"
 L["SLOT_offhand"] = "Mano secondaria"
+
+-- ── Scansione Voidcache (VoidcacheScan.lua / DungeonOverview.lua) ─────────────
+
+L["SCAN_BTN"] = "Scansione spec. bottino"
+L["SCAN_PROGRESS"] = "Scansione %d/%d..."
+L["SCAN_COMPLETE"] = "✓ Scansione completata"
+L["SCAN_ABORTED"] = "Scansione annullata"
+L["SCAN_CONFIRM_TITLE"] = "Scansionare spec. di bottino?"
+L["SCAN_CONFIRM_BODY"] =
+    "Verranno analizzati i tooltip del Voidcache Nebuloso per ogni specializzazione bottino in tutti i dungeon della stagione.\n\nI dati esistenti sugli oggetti ottenuti saranno reimpostati.\n\nNon entrare in combattimento o in un dungeon durante la scansione."
+L["SCAN_UNAVAILABLE_COMBAT"] = "Impossibile eseguire la scansione in combattimento."
+L["SCAN_UNAVAILABLE_INSTANCE"] = "Impossibile eseguire la scansione all'interno di un dungeon."
+L["RAID_SCAN_CONFIRM_TITLE"] = "Scansionare spec. di bottino dell'incursione?"
+L["RAID_SCAN_CONFIRM_BODY"] =
+    "Verranno analizzati i tooltip del Voidcache Nebuloso per ogni specializzazione bottino in tutti gli scontri Mitico dell'incursione.\n\nI dati esistenti degli oggetti Mitico dell'incursione saranno reimpostati.\n\nNon entrare in combattimento durante la scansione."

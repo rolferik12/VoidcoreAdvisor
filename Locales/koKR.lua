@@ -120,3 +120,18 @@ L["SLOT_DESELECT_ALL"] = "모두 선택 해제"
 L["SLOT_NONE_SELECTED"] = "선택된 항목 없음"
 L["SLOT_weapon"] = "무기"
 L["SLOT_offhand"] = "보조 손"
+
+-- ── 허공 캐시 스캔 (VoidcacheScan.lua / DungeonOverview.lua) ──────────────────
+
+L["SCAN_BTN"] = "전리품 특성 스캔"
+L["SCAN_PROGRESS"] = "스캔 중 %d/%d..."
+L["SCAN_COMPLETE"] = "✓ 스캔 완료"
+L["SCAN_ABORTED"] = "스캔 취소됨"
+L["SCAN_CONFIRM_TITLE"] = "전리품 특성을 스캔하시겠습니까?"
+L["SCAN_CONFIRM_BODY"] =
+    "이 시즌의 모든 던전에서 각 전리품 특성에 대한 성운 허공 캐시 툴팁을 스캔합니다.\n\n기존 던전 획득 데이터가 초기화됩니다.\n\n스캔 중 전투에 참여하거나 던전에 입장하지 마십시오."
+L["SCAN_UNAVAILABLE_COMBAT"] = "전투 중에는 스캔할 수 없습니다."
+L["SCAN_UNAVAILABLE_INSTANCE"] = "던전 안에서는 스캔할 수 없습니다."
+L["RAID_SCAN_CONFIRM_TITLE"] = "공격대 전리품 특성을 스캔하시겠습니까?"
+L["RAID_SCAN_CONFIRM_BODY"] =
+    "모든 신화 공격대 전투에서 각 전리품 특성에 대한 성운 허공 캐시 툴팁을 스캔합니다.\n\n기존 신화 공격대 획득 데이터가 초기화됩니다.\n\n스캔 중 전투에 참여하지 마십시오."

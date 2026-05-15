@@ -120,3 +120,18 @@ L["SLOT_DESELECT_ALL"] = "Desmarcar tudo"
 L["SLOT_NONE_SELECTED"] = "Nada selecionado"
 L["SLOT_weapon"] = "Arma"
 L["SLOT_offhand"] = "Mão secundária"
+
+-- ── Escaneamento de Voidcache (VoidcacheScan.lua / DungeonOverview.lua) ───────
+
+L["SCAN_BTN"] = "Escanear Specs de Saque"
+L["SCAN_PROGRESS"] = "Escaneando %d/%d..."
+L["SCAN_COMPLETE"] = "✓ Escaneamento Concluído"
+L["SCAN_ABORTED"] = "Escaneamento Cancelado"
+L["SCAN_CONFIRM_TITLE"] = "Escanear Specs de Saque?"
+L["SCAN_CONFIRM_BODY"] =
+    "Isso irá escanear o tooltip do Voidcache Nebuloso para cada uma de suas especializações de saque em todas as masmorras da temporada.\n\nOs dados de saque existentes serão redefinidos.\n\nNão entre em combate ou em uma masmorra durante o escaneamento."
+L["SCAN_UNAVAILABLE_COMBAT"] = "Não é possível escanear em combate."
+L["SCAN_UNAVAILABLE_INSTANCE"] = "Não é possível escanear dentro de uma masmorra."
+L["RAID_SCAN_CONFIRM_TITLE"] = "Escanear Specs de Saque de Raide?"
+L["RAID_SCAN_CONFIRM_BODY"] =
+    "Isso irá escanear o tooltip do Voidcache Nebuloso para cada uma de suas especializações de saque em todos os encontros de Raide Mítico.\n\nOs dados de Raide Mítico existentes serão redefinidos.\n\nNão entre em combate durante o escaneamento."

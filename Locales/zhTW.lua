@@ -120,3 +120,18 @@ L["SLOT_DESELECT_ALL"] = "取消全選"
 L["SLOT_NONE_SELECTED"] = "未選擇任何內容"
 L["SLOT_weapon"] = "武器"
 L["SLOT_offhand"] = "副手"
+
+-- ── 虛空緩存掃描 (VoidcacheScan.lua / DungeonOverview.lua) ────────────────────
+
+L["SCAN_BTN"] = "掃描拾取專精"
+L["SCAN_PROGRESS"] = "掃描中 %d/%d..."
+L["SCAN_COMPLETE"] = "✓ 掃描完成"
+L["SCAN_ABORTED"] = "掃描已取消"
+L["SCAN_CONFIRM_TITLE"] = "掃描拾取專精？"
+L["SCAN_CONFIRM_BODY"] =
+    "將掃描本賽季所有副本中每個拾取專精的星雲虛空緩存提示。\n\n現有副本已獲得數據將被重置。\n\n掃描期間請勿進入戰鬥或副本。"
+L["SCAN_UNAVAILABLE_COMBAT"] = "戰鬥中無法掃描。"
+L["SCAN_UNAVAILABLE_INSTANCE"] = "副本中無法掃描。"
+L["RAID_SCAN_CONFIRM_TITLE"] = "掃描團隊副本拾取專精？"
+L["RAID_SCAN_CONFIRM_BODY"] =
+    "將掃描所有神話團隊副本遭遇中每個拾取專精的星雲虛空緩存提示。\n\n現有神話團隊副本已獲得數據將被重置。\n\n掃描期間請勿進入戰鬥。"

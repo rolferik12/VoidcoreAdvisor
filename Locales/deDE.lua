@@ -120,3 +120,18 @@ L["SLOT_DESELECT_ALL"] = "Alle abwählen"
 L["SLOT_NONE_SELECTED"] = "Nichts ausgewählt"
 L["SLOT_weapon"] = "Waffe"
 L["SLOT_offhand"] = "Nebenhand"
+
+-- ── Voidcache-Scan (VoidcacheScan.lua / DungeonOverview.lua) ──────────────────
+
+L["SCAN_BTN"] = "Beutespeccs scannen"
+L["SCAN_PROGRESS"] = "Scanne %d/%d..."
+L["SCAN_COMPLETE"] = "✓ Scan abgeschlossen"
+L["SCAN_ABORTED"] = "Scan abgebrochen"
+L["SCAN_CONFIRM_TITLE"] = "Beutespeccs scannen?"
+L["SCAN_CONFIRM_BODY"] =
+    "Dabei wird der Nebulöse-Leerencache-Tooltip für jede Beutespezialisierung in allen Saisondungeons gescannt.\n\nVorhandene Dungeon-Beutedaten werden zurückgesetzt.\n\nWähre des Scans nicht in Kampf oder Dungeon eintreten."
+L["SCAN_UNAVAILABLE_COMBAT"] = "Scan während des Kampfes nicht möglich."
+L["SCAN_UNAVAILABLE_INSTANCE"] = "Scan innerhalb eines Dungeons nicht möglich."
+L["RAID_SCAN_CONFIRM_TITLE"] = "Raidbeutespeccs scannen?"
+L["RAID_SCAN_CONFIRM_BODY"] =
+    "Dabei wird der Nebulöse-Leerencache-Tooltip für jede Beutespezialisierung in allen mythischen Raidbegegnungen gescannt.\n\nVorhandene mythische Raid-Beutedaten werden zurückgesetzt.\n\nWähre des Scans nicht in den Kampf eintreten."
