@@ -125,7 +125,7 @@ L["RAID_OVERVIEW_NO_DATA"] = "No raid encounter data available."
 
 -- ── Spec Picker Popup (PanelColumns.lua) ──────────────────────────────────────
 
-L["SPEC_PICKER_TITLE"] = "Obtained as:"
+L["SPEC_PICKER_TITLE"] = "Mark as Looted"
 L["SPEC_PICKER_OK"] = "OK"
 L["OBTAINED_UNKNOWN_SPEC"] = "Obtained (spec unknown)"
 L["UNKNOWN_KEYLEVEL"] = "unknown keylevel"
