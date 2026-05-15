@@ -92,6 +92,20 @@ VCA.MythicPlusVaultRewards = {
 }
 -- ── Nebulous Voidcore currency ─────────────────────────────────────────────
 VCA.VOIDCORE_CURRENCY_ID = 3418 -- Nebulous Voidcore (Season 1)
+-- ── Nebulous Voidcache item IDs ───────────────────────────────────────────────
+-- Maps current-season M+ dungeon EJ instanceID → its Nebulous Voidcache item ID.
+-- Used by VoidcacheScan to read per-spec loot lists from the Voidcache tooltip.
+VCA.DungeonVoidcacheIDs = {
+    [1201] = 268465, -- Algeth'ar Academy
+    [1300] = 268466, -- Magisters' Terrace
+    [1316] = 268467, -- Nexus-Point Xenas
+    [278] = 268468, -- Pit of Saron
+    [945] = 268469, -- Seat of the Triumvirate
+    [476] = 268470, -- Skyreach
+    [1299] = 268471, -- Windrunner Spire
+    [1315] = 268473 -- Maisara Caverns
+}
+
 -- ── Detection ─────────────────────────────────────────────────────────────────
 -- How long (seconds) after a successful encounter the addon watches for loot
 -- appearing in bags from a Voidcore bonus prompt.

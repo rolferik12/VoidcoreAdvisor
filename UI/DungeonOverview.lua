@@ -133,6 +133,64 @@ closeBtn:SetScript("OnClick", function()
     frame:Hide()
 end)
 
+-- ── Scan button ───────────────────────────────────────────────────────────────
+
+local scanBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+scanBtn:SetSize(130, 22)
+scanBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -38, -30)
+scanBtn:SetText(VCA.L["SCAN_BTN"])
+
+local function UpdateScanButton()
+    local L = VCA.L
+    if VCA.VoidcacheScan.IsRunning() then
+        scanBtn:Disable()
+        return -- text managed by the progress callback while scanning
+    end
+    local canScan = VCA.VoidcacheScan.CanScan()
+    scanBtn:SetText(L["SCAN_BTN"])
+    if canScan then
+        scanBtn:Enable()
+    else
+        scanBtn:Disable()
+    end
+end
+
+scanBtn:SetScript("OnClick", function()
+    local L = VCA.L
+    local canScan, reason = VCA.VoidcacheScan.CanScan()
+    if not canScan then
+        if reason == "COMBAT" then
+            DEFAULT_CHAT_FRAME:AddMessage(L["SCAN_UNAVAILABLE_COMBAT"])
+        elseif reason == "INSTANCE" then
+            DEFAULT_CHAT_FRAME:AddMessage(L["SCAN_UNAVAILABLE_INSTANCE"])
+        end
+        return
+    end
+    StaticPopup_Show("VOIDCORE_SCAN_CONFIRM")
+end)
+
+VCA.VoidcacheScan.SetProgressCallback(function(specIdx, specCount, _, _, status)
+    local L = VCA.L
+    if status == "COMPLETE" then
+        scanBtn:SetText(L["SCAN_COMPLETE"])
+        scanBtn:Disable()
+        C_Timer.After(3, UpdateScanButton)
+    elseif status == "ABORTED" or status == "COMBAT" then
+        scanBtn:SetText(L["SCAN_ABORTED"])
+        scanBtn:Disable()
+        C_Timer.After(3, UpdateScanButton)
+    elseif specIdx then
+        scanBtn:SetText(string.format(L["SCAN_PROGRESS"], specIdx, specCount))
+        scanBtn:Disable()
+    end
+end)
+
+local scanBtnStateFrame = CreateFrame("Frame")
+scanBtnStateFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+scanBtnStateFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+scanBtnStateFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+scanBtnStateFrame:SetScript("OnEvent", UpdateScanButton)
+
 -- Returns true if any season dungeon has at least one item of this slot selected.
 local function IsSlotSelected(slotKey)
     local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
@@ -916,6 +974,20 @@ end)
 slotClearBtn:SetScript("OnLeave", function()
     GameTooltip:Hide()
 end)
+-- Confirm popup for Voidcache spec scan
+StaticPopupDialogs["VOIDCORE_SCAN_CONFIRM"] = {
+    text = "%s",
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function()
+        VCA.VoidcacheScan.Start()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3
+}
+
 -- Confirm popup for clearing slot filters
 StaticPopupDialogs["VOIDCORE_CLEAR_SLOT_FILTERS"] = {
     text = "%s",
@@ -1265,7 +1337,14 @@ function Overview.Show()
     Overview.AnchorToEJ()
     frame:Show()
     RefreshSlotButtons()
+    UpdateScanButton()
     Populate()
+end
+
+function Overview.Refresh()
+    if frame:IsShown() then
+        Populate()
+    end
 end
 
 function Overview.Hide()
@@ -1296,5 +1375,16 @@ specChangeFrame:RegisterEvent("PLAYER_LOOT_SPEC_UPDATED")
 specChangeFrame:SetScript("OnEvent", function()
     if frame:IsShown() then
         Populate()
+    end
+end)
+
+-- Show the scan confirmation with the body text at display time.
+local scanConfirmFrame = CreateFrame("Frame")
+scanConfirmFrame:RegisterEvent("ADDON_LOADED")
+scanConfirmFrame:SetScript("OnEvent", function(self, event, name)
+    if name == VCA.ADDON_NAME then
+        StaticPopupDialogs["VOIDCORE_SCAN_CONFIRM"].text = VCA.L["SCAN_CONFIRM_TITLE"] .. "\n\n|cffaaaaaa" ..
+                                                               VCA.L["SCAN_CONFIRM_BODY"] .. "|r"
+        self:UnregisterAllEvents()
     end
 end)

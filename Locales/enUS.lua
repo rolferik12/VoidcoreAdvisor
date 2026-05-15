@@ -107,6 +107,18 @@ L["SLOT_NONE_SELECTED"] = "Nothing selected"
 L["SLOT_weapon"] = "Weapon"
 L["SLOT_offhand"] = "Off-Hand"
 
+-- ── Voidcache Scan (VoidcacheScan.lua / DungeonOverview.lua) ─────────────────
+
+L["SCAN_BTN"] = "Scan Loot Specs"
+L["SCAN_PROGRESS"] = "Scanning %d/%d..."
+L["SCAN_COMPLETE"] = "✓ Scan Done"
+L["SCAN_ABORTED"] = "Scan Cancelled"
+L["SCAN_CONFIRM_TITLE"] = "Scan Loot Specs?"
+L["SCAN_CONFIRM_BODY"] =
+    "This will scan the Nebulous Voidcache tooltip for each of your loot specializations across all season dungeons.\n\nExisting dungeon obtained data will be backed up and reset.\n\nDo not enter combat or a dungeon during the scan."
+L["SCAN_UNAVAILABLE_COMBAT"] = "Cannot scan while in combat."
+L["SCAN_UNAVAILABLE_INSTANCE"] = "Cannot scan while inside a dungeon."
+
 L["RAID_OVERVIEW_SUBTITLE"] = "Raid Bosses — Loot Chance"
 L["RAID_OVERVIEW_COL_BOSS"] = "BOSS"
 L["RAID_OVERVIEW_NO_DATA"] = "No raid encounter data available."

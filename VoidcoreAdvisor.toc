@@ -25,6 +25,7 @@ Core\SpecInfo.lua
 Core\SeasonData.lua
 Core\LootPool.lua
 Core\LootPoolWarm.lua
+Core\VoidcacheScan.lua
 Core\Probability.lua
 Core\Detection.lua
 Core\Init.lua
