@@ -174,21 +174,15 @@ local function FinalizeScan()
     local diffID = VCA.MythicPlusEJDifficulty
     local contentType = VCA.ContentType.MYTHIC_PLUS
 
-    -- 1. Backup all existing MYTHIC_PLUS obtained entries.
+    -- 1. Clear all existing MYTHIC_PLUS obtained entries — the scan result is now authoritative.
     db.obtained = db.obtained or {}
-    db.scanBackupObtained = {}
-    for key, val in pairs(db.obtained) do
+    for key in pairs(db.obtained) do
         if key:sub(1, 12) == "MYTHIC_PLUS:" then
-            db.scanBackupObtained[key] = val
+            db.obtained[key] = nil
         end
     end
 
-    -- 2. Clear those entries from the live obtained table.
-    for key in pairs(db.scanBackupObtained) do
-        db.obtained[key] = nil
-    end
-
-    -- 3. Apply scan results for every season dungeon.
+    -- 2. Apply scan results for every season dungeon.
     local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
     local totalMarked = 0
 
@@ -238,20 +232,12 @@ local function FinalizeScan()
                 end
             end
 
-            -- Propagation: if this item was already obtained before the scan, keep it.
-            for itemName, itemID in pairs(nameCache) do
-                local base = VCA.Data.BuildKey(contentType, instanceID, diffID, specID, itemID)
-                if db.scanBackupObtained[base] or db.scanBackupObtained[base .. ":H"] or
-                    db.scanBackupObtained[base .. ":L"] then
-                    VCA.Data.SetObtained(contentType, instanceID, diffID, specID, itemID, true)
-                end
-            end
         end
     end
 
     Log(string.format("Finalize complete: %d spec/item combos marked as obtained.", totalMarked))
 
-    -- 4. Restore original loot spec.
+    -- 3. Restore original loot spec.
     SetLootSpecialization(_state.originalLootSpec or 0)
     _combatFrame:UnregisterEvent("PLAYER_REGEN_DISABLED")
 
