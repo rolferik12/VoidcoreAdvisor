@@ -494,7 +494,7 @@ local function FinalizeRaidScan()
     for key in pairs(db.obtained) do
         -- Keys are formatted as "RAID:encounterID:diffID:specID:itemID"
         if key:sub(1, 5) == "RAID:" then
-            local _, _, kDiff = key:match("^RAID:(%d+):(%d+):")
+            local _, kDiff = key:match("^RAID:(%d+):(%d+):")
             if tonumber(kDiff) == diffID then
                 db.obtained[key] = nil
             end

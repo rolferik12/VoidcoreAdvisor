@@ -248,8 +248,9 @@ end
 -- -- Item detection -----------------------------------------------------------
 
 -- Checks whether every item in the spec-specific pool is now obtained for
--- the given key tier.  If so, resets only that tier's obtained flags so the
--- cycle can repeat independently per tier.  Returns true if a reset was performed.
+-- the given key tier.  If so, resets obtained flags for ALL specs on this
+-- source so the whole dungeon/raid encounter cycle starts over together.
+-- Returns true if a reset was performed.
 -- isHighTier: true = ≥10 tier, false = <10 tier, nil = tier-less / non-M+ (full reset)
 local function CheckAndResetIfComplete(source, specID, isHighTier)
     if not source or not specID then
@@ -276,8 +277,9 @@ local function CheckAndResetIfComplete(source, specID, isHighTier)
         end
     end
 
-    -- All items obtained for this spec+tier — reset only this tier's cycle.
-    VCA.Data.ClearSourceForKeyTier(source.sourceType, source.sourceID, source.difficultyID, specID, isHighTier)
+    -- All items obtained for this spec+tier — reset all specs for this source so
+    -- the whole dungeon/raid encounter cycle starts over together.
+    VCA.Data.ClearSourceForKeyTier(source.sourceType, source.sourceID, source.difficultyID, nil, isHighTier)
     return true
 end
 

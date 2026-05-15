@@ -323,6 +323,16 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID, isHighTier
                         VCA.Data.SetObtained(self.sourceType, self.sourceID, self.diffID, specID, self.itemID, false)
                     end
                 end
+                local raidData = VCA.SeasonData and VCA.SeasonData.raids and VCA.SeasonData.raids[self.sourceID]
+                if raidData and raidData.bySpec then
+                    local specMap = raidData.bySpec[self.diffID]
+                    if specMap then
+                        for specID in pairs(specMap) do
+                            VCA.Data
+                                .SetObtained(self.sourceType, self.sourceID, self.diffID, specID, self.itemID, false)
+                        end
+                    end
+                end
                 VCA.Data.SetObtained(self.sourceType, self.sourceID, self.diffID, 0, self.itemID, false)
                 VCA.Data.RemoveAllManualLogEntriesForItem(self.itemID, self.sourceType, self.sourceID, self.diffID)
             else
@@ -343,6 +353,22 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID, isHighTier
                                     VCA.Detection.CheckAndResetIfComplete(source, specID, nil)
                                 end
                                 break
+                            end
+                        end
+                    end
+                end
+                local raidData = VCA.SeasonData and VCA.SeasonData.raids and VCA.SeasonData.raids[self.sourceID]
+                if raidData and raidData.bySpec then
+                    local specMap = raidData.bySpec[self.diffID]
+                    if specMap then
+                        for specID, itemList in pairs(specMap) do
+                            for _, id in ipairs(itemList) do
+                                if id == self.itemID then
+                                    if VCA.Detection and VCA.Detection.CheckAndResetIfComplete then
+                                        VCA.Detection.CheckAndResetIfComplete(source, specID, nil)
+                                    end
+                                    break
+                                end
                             end
                         end
                     end

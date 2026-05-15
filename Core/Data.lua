@@ -80,14 +80,32 @@ function Data.ToggleObtained(sourceType, sourceID, difficultyID, specID, itemID)
 end
 
 -- Marks itemID as obtained for every loot-spec that can receive it from sourceID.
--- Iterates SeasonData.dungeons[sourceID].bySpec; returns silently if the dungeon
--- or bySpec table is absent (e.g. for raids or unknown sources).
+-- Dungeons: SeasonData.dungeons[sourceID].bySpec is flat { [specID] = {itemIDs} }.
+-- Raids:    SeasonData.raids[sourceID].bySpec is nested { [difficultyID] = { [specID] = {itemIDs} } }.
 function Data.PropagateObtainedToAllSpecs(sourceType, sourceID, difficultyID, itemID, isHighTier)
+    -- Dungeon path (flat bySpec).
     local dungeonData = VCA.SeasonData and VCA.SeasonData.dungeons[sourceID]
-    if not dungeonData or not dungeonData.bySpec then
+    if dungeonData and dungeonData.bySpec then
+        for specID, itemList in pairs(dungeonData.bySpec) do
+            for _, id in ipairs(itemList) do
+                if id == itemID then
+                    Data.SetObtainedForKeyTier(sourceType, sourceID, difficultyID, specID, itemID, isHighTier, true)
+                    break
+                end
+            end
+        end
         return
     end
-    for specID, itemList in pairs(dungeonData.bySpec) do
+    -- Raid path (bySpec nested by difficultyID).
+    local raidData = VCA.SeasonData and VCA.SeasonData.raids and VCA.SeasonData.raids[sourceID]
+    if not raidData or not raidData.bySpec then
+        return
+    end
+    local specMap = raidData.bySpec[difficultyID]
+    if not specMap then
+        return
+    end
+    for specID, itemList in pairs(specMap) do
         for _, id in ipairs(itemList) do
             if id == itemID then
                 Data.SetObtainedForKeyTier(sourceType, sourceID, difficultyID, specID, itemID, isHighTier, true)
