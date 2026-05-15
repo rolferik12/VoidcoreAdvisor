@@ -37,21 +37,33 @@ local _combatFrame = CreateFrame("Frame")
 -- nil when idle, table when a scan is running.
 
 local _state = nil
+local _raidState = nil
 
--- ── Progress callback ─────────────────────────────────────────────────────────
+-- ── Progress callbacks ────────────────────────────────────────────────────────
 -- Signature: fn(specIdx, specCount, dungeonIdx, dungeonCount, status)
 --   During scan: specIdx/specCount/dungeonIdx/dungeonCount are numbers, status is nil.
 --   On finish:   all four numbers are nil, status is "COMPLETE", "ABORTED", or "COMBAT".
 
 local _progressCallback = nil
+local _raidProgressCallback = nil
 
 function Scan.SetProgressCallback(fn)
     _progressCallback = fn
 end
 
+function Scan.SetRaidProgressCallback(fn)
+    _raidProgressCallback = fn
+end
+
 local function NotifyProgress(specIdx, specCount, dungeonIdx, dungeonCount, status)
     if _progressCallback then
         _progressCallback(specIdx, specCount, dungeonIdx, dungeonCount, status)
+    end
+end
+
+local function NotifyRaidProgress(specIdx, specCount, encounterIdx, encounterCount, status)
+    if _raidProgressCallback then
+        _raidProgressCallback(specIdx, specCount, encounterIdx, encounterCount, status)
     end
 end
 
@@ -413,6 +425,294 @@ _combatFrame:SetScript("OnEvent", function(self, event)
         if not _state.expectingSpecChange then
             Log("Scan aborted: loot spec changed manually during scan.")
             AbortScan("ABORTED")
+        end
+    end
+end)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- RAID SCAN
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ── Raid name cache ───────────────────────────────────────────────────────────
+
+local function BuildEncounterNameCache(encounterID, specID)
+    local raidData = VCA.SeasonData and VCA.SeasonData.raids[encounterID]
+    if not raidData then
+        return {}
+    end
+    local diffID = VCA.Difficulty.RAID_MYTHIC
+    local specItems = raidData.bySpec and raidData.bySpec[diffID] and raidData.bySpec[diffID][specID] or {}
+    local nameCache = {}
+    for _, itemID in ipairs(specItems) do
+        local name = GetItemInfo(itemID)
+        if name and name ~= "" then
+            nameCache[name] = itemID
+        end
+    end
+    return nameCache
+end
+
+-- ── Raid abort ────────────────────────────────────────────────────────────────
+
+local _raidCombatFrame = CreateFrame("Frame")
+
+local function AbortRaidScan(reason)
+    if not _raidState then
+        return
+    end
+    _raidState.running = false
+    _raidCombatFrame:UnregisterEvent("PLAYER_REGEN_DISABLED")
+    _raidCombatFrame:UnregisterEvent("PLAYER_LOOT_SPEC_UPDATED")
+    if _raidState.originalLootSpec ~= nil then
+        SetLootSpecialization(_raidState.originalLootSpec)
+    end
+    NotifyRaidProgress(nil, nil, nil, nil, reason or "ABORTED")
+    _raidState = nil
+end
+
+-- ── Raid finalize ─────────────────────────────────────────────────────────────
+
+local function FinalizeRaidScan()
+    if not _raidState then
+        return
+    end
+    local results = _raidState.results -- [specID][encounterID] = { [name]=true }
+    local nameCaches = _raidState.nameCaches -- [specID][encounterID] = { [name]=itemID }
+    local specs = _raidState.specs
+
+    local db = _G[VCA.CHAR_DB_NAME]
+    if not db then
+        AbortRaidScan("NO_DB")
+        return
+    end
+
+    local diffID = VCA.Difficulty.RAID_MYTHIC
+    local contentType = VCA.ContentType.RAID
+
+    -- 1. Clear all existing mythic raid obtained entries — scan result is authoritative.
+    db.obtained = db.obtained or {}
+    for key in pairs(db.obtained) do
+        -- Keys are formatted as "RAID:encounterID:diffID:specID:itemID"
+        if key:sub(1, 5) == "RAID:" then
+            local _, _, kDiff = key:match("^RAID:(%d+):(%d+):")
+            if tonumber(kDiff) == diffID then
+                db.obtained[key] = nil
+            end
+        end
+    end
+
+    -- 2. Apply results per-spec.
+    local markedItemIDs = {}
+    for _, specEntry in ipairs(specs) do
+        local specID = specEntry.specID
+        local specResults = results[specID] or {}
+        local specCaches = nameCaches[specID] or {}
+
+        for encounterID, nameCache in pairs(specCaches) do
+            local seenItems = specResults[encounterID] or {}
+            for itemName, itemID in pairs(nameCache) do
+                if not seenItems[itemName] then
+                    markedItemIDs[itemID] = true
+                    VCA.Data.SetObtained(contentType, encounterID, diffID, specID, itemID, true)
+                end
+            end
+        end
+    end
+
+    local totalMarked = 0
+    for _ in pairs(markedItemIDs) do
+        totalMarked = totalMarked + 1
+    end
+    Log(string.format("Raid scan complete — %d unique item(s) marked as obtained.", totalMarked))
+
+    -- 3. Restore original loot spec.
+    _raidCombatFrame:UnregisterEvent("PLAYER_REGEN_DISABLED")
+    _raidCombatFrame:UnregisterEvent("PLAYER_LOOT_SPEC_UPDATED")
+    SetLootSpecialization(_raidState.originalLootSpec or 0)
+
+    NotifyRaidProgress(nil, nil, nil, nil, "COMPLETE")
+
+    if VCA.RaidOverview and VCA.RaidOverview.Refresh then
+        VCA.RaidOverview.Refresh()
+    end
+
+    _raidState = nil
+end
+
+-- ── Raid scan step ────────────────────────────────────────────────────────────
+
+local RaidScanStep
+
+RaidScanStep = function()
+    if not _raidState or not _raidState.running then
+        return
+    end
+
+    if _raidState.specIdx > #_raidState.specs then
+        FinalizeRaidScan()
+        return
+    end
+
+    local specEntry = _raidState.specs[_raidState.specIdx]
+    local encounterEntry = _raidState.encounters[_raidState.encounterIdx]
+
+    -- Spec change at the start of each new spec pass.
+    if _raidState.encounterIdx == 1 and _raidState.retries == 0 then
+        if not _raidState.specSwitchDone then
+            _raidState.expectingSpecChange = true
+            SetLootSpecialization(specEntry.specID)
+            _raidState.specSwitchDone = true
+            C_Timer.After(SPEC_CHANGE_DELAY, RaidScanStep)
+            return
+        end
+        _raidState.expectingSpecChange = false
+        _raidState.specSwitchDone = false
+    end
+
+    local tooltipData = C_TooltipInfo.GetItemByID(encounterEntry.voidcacheID)
+    local numLines = (tooltipData and tooltipData.lines) and #tooltipData.lines or 0
+    local parsed = ParseVoidcacheTooltip(tooltipData, numLines)
+
+    if not parsed then
+        _raidState.retries = _raidState.retries + 1
+        if _raidState.retries <= MAX_RETRIES then
+            C_Timer.After(RETRY_DELAY, RaidScanStep)
+            return
+        end
+        parsed = {}
+    end
+
+    -- Confirmation pass.
+    if not _raidState.confirmPending then
+        _raidState.confirmPending = true
+        _raidState.confirmResult = parsed
+        C_Timer.After(RETRY_DELAY, RaidScanStep)
+        return
+    end
+
+    local merged = {}
+    for k, v in pairs(_raidState.confirmResult) do
+        merged[k] = v
+    end
+    for k, v in pairs(parsed) do
+        merged[k] = v
+    end
+    parsed = merged
+    _raidState.confirmPending = false
+    _raidState.confirmResult = nil
+
+    _raidState.results[specEntry.specID] = _raidState.results[specEntry.specID] or {}
+    _raidState.results[specEntry.specID][encounterEntry.encounterID] = parsed
+    _raidState.retries = 0
+
+    -- Advance.
+    _raidState.encounterIdx = _raidState.encounterIdx + 1
+    if _raidState.encounterIdx > #_raidState.encounters then
+        _raidState.encounterIdx = 1
+        _raidState.specIdx = _raidState.specIdx + 1
+    end
+
+    NotifyRaidProgress(_raidState.specIdx, #_raidState.specs, _raidState.encounterIdx, #_raidState.encounters, nil)
+    C_Timer.After(STEP_DELAY, RaidScanStep)
+end
+
+-- ── Public: start raid scan ───────────────────────────────────────────────────
+
+function Scan.IsRaidRunning()
+    return _raidState ~= nil and _raidState.running == true
+end
+
+function Scan.StartRaid()
+    local canScan, reason = Scan.CanScan()
+    if not canScan then
+        return false, reason
+    end
+    if Scan.IsRaidRunning() then
+        return false, "RUNNING"
+    end
+    if not VCA.SeasonData then
+        return false, "NO_SEASON_DATA"
+    end
+
+    local numSpecs = GetNumSpecializations()
+    local specs = {}
+    for i = 1, numSpecs do
+        local specID = GetSpecializationInfo(i)
+        if specID and specID > 0 then
+            specs[#specs + 1] = {
+                specID = specID,
+                index = i
+            }
+        end
+    end
+    if #specs == 0 then
+        return false, "NO_SPECS"
+    end
+
+    -- Build encounter list from RaidEncounterCacheIDs.
+    local encounters = {}
+    if VCA.RaidEncounterCacheIDs then
+        for encounterID, voidcacheID in pairs(VCA.RaidEncounterCacheIDs) do
+            encounters[#encounters + 1] = {
+                encounterID = encounterID,
+                voidcacheID = voidcacheID
+            }
+        end
+    end
+    if #encounters == 0 then
+        return false, "NO_ENCOUNTERS"
+    end
+    -- Sort for deterministic order.
+    table.sort(encounters, function(a, b)
+        return a.encounterID < b.encounterID
+    end)
+
+    -- Pre-build name caches.
+    Log(string.format("Starting raid scan: %d spec(s), %d encounter(s)", #specs, #encounters))
+    local nameCaches = {}
+    for _, specEntry in ipairs(specs) do
+        nameCaches[specEntry.specID] = {}
+        for _, enc in ipairs(encounters) do
+            nameCaches[specEntry.specID][enc.encounterID] = BuildEncounterNameCache(enc.encounterID, specEntry.specID)
+        end
+    end
+
+    _raidState = {
+        running = true,
+        specs = specs,
+        encounters = encounters,
+        specIdx = 1,
+        encounterIdx = 1,
+        retries = 0,
+        confirmPending = false,
+        confirmResult = nil,
+        specSwitchDone = false,
+        expectingSpecChange = false,
+        results = {},
+        nameCaches = nameCaches,
+        originalLootSpec = GetLootSpecialization()
+    }
+
+    _raidCombatFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+    _raidCombatFrame:RegisterEvent("PLAYER_LOOT_SPEC_UPDATED")
+
+    NotifyRaidProgress(1, #specs, 1, #encounters, nil)
+    C_Timer.After(0, RaidScanStep)
+    return true
+end
+
+-- ── Raid combat guard ─────────────────────────────────────────────────────────
+
+_raidCombatFrame:SetScript("OnEvent", function(self, event)
+    if not _raidState or not _raidState.running then
+        return
+    end
+    if event == "PLAYER_REGEN_DISABLED" then
+        AbortRaidScan("COMBAT")
+    elseif event == "PLAYER_LOOT_SPEC_UPDATED" then
+        if not _raidState.expectingSpecChange then
+            Log("Raid scan aborted: loot spec changed manually during scan.")
+            AbortRaidScan("ABORTED")
         end
     end
 end)

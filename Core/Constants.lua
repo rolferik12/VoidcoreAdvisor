@@ -106,6 +106,22 @@ VCA.DungeonVoidcacheIDs = {
     [1315] = 268473 -- Maisara Caverns
 }
 
+-- ── Raid Nebulous Voidcache item IDs ─────────────────────────────────────────
+-- Maps current-season raid encounterID → its Nebulous Voidcache item ID.
+-- Only encounters that award Voidcaches are listed here.
+-- Encounters 2782, 2827, 2828, 2829 (Liberation of Undermine) have no Voidcache.
+VCA.RaidEncounterCacheIDs = {
+    [2733] = 268459, -- Imperator Averzian
+    [2734] = 268460, -- Vorasius
+    [2735] = 268462, -- Vaelgor & Ezzorak
+    [2736] = 268461, -- Fallen-King Salhadaar
+    [2737] = 268463, -- Lightblinded Vanguard
+    [2738] = 267488, -- Crown of the Cosmos
+    [2739] = 268458, -- Belo'ren, Child of Al'ar
+    [2740] = 262658, -- Midnight Falls
+    [2795] = 268464 -- Chimaerus the Undreamt God
+}
+
 -- ── Detection ─────────────────────────────────────────────────────────────────
 -- How long (seconds) after a successful encounter the addon watches for loot
 -- appearing in bags from a Voidcore bonus prompt.

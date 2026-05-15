@@ -72,6 +72,72 @@ local subtitleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 subtitleText:SetPoint("TOPLEFT", 18, -40)
 subtitleText:SetText("|cff888888" .. L["RAID_OVERVIEW_SUBTITLE"] .. "|r")
 
+local raidScanBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+raidScanBtn:SetSize(110, 22)
+raidScanBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -38, -30)
+raidScanBtn:SetText(L["SCAN_BTN"])
+
+local function UpdateRaidScanButton()
+    if VCA.VoidcacheScan.IsRaidRunning() then
+        raidScanBtn:Disable()
+        return
+    end
+    local canScan = VCA.VoidcacheScan.CanScan()
+    raidScanBtn:SetText(L["SCAN_BTN"])
+    if canScan then
+        raidScanBtn:Enable()
+    else
+        raidScanBtn:Disable()
+    end
+end
+
+raidScanBtn:SetScript("OnClick", function()
+    local canScan, reason = VCA.VoidcacheScan.CanScan()
+    if not canScan then
+        if reason == "COMBAT" then
+            DEFAULT_CHAT_FRAME:AddMessage(L["SCAN_UNAVAILABLE_COMBAT"])
+        elseif reason == "INSTANCE" then
+            DEFAULT_CHAT_FRAME:AddMessage(L["SCAN_UNAVAILABLE_INSTANCE"])
+        end
+        return
+    end
+    StaticPopup_Show("VOIDCORE_RAID_SCAN_CONFIRM")
+end)
+
+StaticPopupDialogs["VOIDCORE_RAID_SCAN_CONFIRM"] = {
+    text = "%s",
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function()
+        VCA.VoidcacheScan.StartRaid()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3
+}
+
+VCA.VoidcacheScan.SetRaidProgressCallback(function(specIdx, specCount, _, _, status)
+    if status == "COMPLETE" then
+        raidScanBtn:SetText(L["SCAN_COMPLETE"])
+        raidScanBtn:Disable()
+        C_Timer.After(3, UpdateRaidScanButton)
+    elseif status == "ABORTED" or status == "COMBAT" then
+        raidScanBtn:SetText(L["SCAN_ABORTED"])
+        raidScanBtn:Disable()
+        C_Timer.After(3, UpdateRaidScanButton)
+    elseif specIdx then
+        raidScanBtn:SetText(string.format(L["SCAN_PROGRESS"], specIdx, specCount))
+        raidScanBtn:Disable()
+    end
+end)
+
+local raidScanBtnStateFrame = CreateFrame("Frame")
+raidScanBtnStateFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+raidScanBtnStateFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+raidScanBtnStateFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+raidScanBtnStateFrame:SetScript("OnEvent", UpdateRaidScanButton)
+
 local loadingText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 loadingText:SetPoint("TOPRIGHT", -26, -40)
 loadingText:SetJustifyH("RIGHT")
@@ -461,11 +527,27 @@ function Overview.IsShown()
     return frame:IsShown()
 end
 
+function Overview.Refresh()
+    if frame:IsShown() then
+        Populate()
+    end
+end
+
 local refreshFrame = CreateFrame("Frame")
 refreshFrame:RegisterEvent("PLAYER_LOOT_SPEC_UPDATED")
 refreshFrame:RegisterEvent("EJ_LOOT_DATA_RECIEVED")
 refreshFrame:SetScript("OnEvent", function()
     if frame:IsShown() then
         Populate()
+    end
+end)
+
+local raidScanConfirmTextFrame = CreateFrame("Frame")
+raidScanConfirmTextFrame:RegisterEvent("ADDON_LOADED")
+raidScanConfirmTextFrame:SetScript("OnEvent", function(self, event, name)
+    if name == VCA.ADDON_NAME then
+        StaticPopupDialogs["VOIDCORE_RAID_SCAN_CONFIRM"].text =
+            VCA.L["RAID_SCAN_CONFIRM_TITLE"] .. "\n\n|cffaaaaaa" .. VCA.L["RAID_SCAN_CONFIRM_BODY"] .. "|r"
+        self:UnregisterAllEvents()
     end
 end)

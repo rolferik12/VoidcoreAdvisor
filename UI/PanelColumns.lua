@@ -316,7 +316,7 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID, isHighTier
         end)
         row.checkbox:SetScript("OnClick", function(self)
             if self.isObtained then
-                -- Clear all specs and any migrated (specID=0) entry.
+                -- Clear all specs, any migrated (specID=0) entry, and manual log entries.
                 local dungeonData = VCA.SeasonData and VCA.SeasonData.dungeons[self.sourceID]
                 if dungeonData and dungeonData.bySpec then
                     for specID in pairs(dungeonData.bySpec) do
@@ -324,20 +324,26 @@ local function PopulateItemColumn(sourceType, sourceID, difficultyID, isHighTier
                     end
                 end
                 VCA.Data.SetObtained(self.sourceType, self.sourceID, self.diffID, 0, self.itemID, false)
+                VCA.Data.RemoveAllManualLogEntriesForItem(self.itemID, self.sourceType, self.sourceID, self.diffID)
             else
-                -- Mark obtained for all eligible specs.
+                -- Mark obtained for all eligible specs, log the manual action, and check completion.
+                local source = {
+                    sourceType = self.sourceType,
+                    sourceID = self.sourceID,
+                    difficultyID = self.diffID
+                }
+                local dungeonData = VCA.SeasonData and VCA.SeasonData.dungeons[self.sourceID]
                 VCA.Data.PropagateObtainedToAllSpecs(self.sourceType, self.sourceID, self.diffID, self.itemID, nil)
                 VCA.Data.SetObtained(self.sourceType, self.sourceID, self.diffID, 0, self.itemID, false)
-                if VCA.Detection and VCA.Detection.CheckAndResetIfComplete then
-                    local source = {
-                        sourceType = self.sourceType,
-                        sourceID = self.sourceID,
-                        difficultyID = self.diffID
-                    }
-                    local dungeonData = VCA.SeasonData and VCA.SeasonData.dungeons[self.sourceID]
-                    if dungeonData and dungeonData.bySpec then
-                        for specID in pairs(dungeonData.bySpec) do
-                            VCA.Detection.CheckAndResetIfComplete(source, specID, nil)
+                if dungeonData and dungeonData.bySpec then
+                    for specID, itemList in pairs(dungeonData.bySpec) do
+                        for _, id in ipairs(itemList) do
+                            if id == self.itemID then
+                                if VCA.Detection and VCA.Detection.CheckAndResetIfComplete then
+                                    VCA.Detection.CheckAndResetIfComplete(source, specID, nil)
+                                end
+                                break
+                            end
                         end
                     end
                 end

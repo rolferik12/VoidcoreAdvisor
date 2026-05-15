@@ -375,6 +375,23 @@ function Data.RemoveManualLogEntries(itemID, sourceType, sourceID, difficultyID,
     end
 end
 
+-- Removes all manual log entries for an item + source, regardless of spec or tier.
+-- Used when a manual mark is cleared entirely (no spec/tier to filter on).
+function Data.RemoveAllManualLogEntriesForItem(itemID, sourceType, sourceID, difficultyID)
+    local db = _G[VCA.CHAR_DB_NAME]
+    if not db or not db.bonusRollLog then
+        return
+    end
+    local log = db.bonusRollLog
+    for i = #log, 1, -1 do
+        local e = log[i]
+        if e.manual and e.itemID == itemID and e.sourceType == sourceType and e.sourceID == sourceID and e.difficultyID ==
+            difficultyID then
+            table.remove(log, i)
+        end
+    end
+end
+
 -- Returns the saved bonus roll log (array, oldest first), or an empty table.
 function Data.GetBonusRollLog()
     local db = _G[VCA.CHAR_DB_NAME]
