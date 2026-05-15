@@ -64,7 +64,7 @@ end
 -- Reads tooltip data from C_TooltipInfo and collects item names from line 7+.
 -- Each item line is prefixed with "- " which is stripped to get the bare name.
 -- Returns a { [itemName] = true } set, or nil when the data is missing or thin.
-local function ParseVoidcacheTooltip(tooltipData, numLines, logLines)
+local function ParseVoidcacheTooltip(tooltipData, numLines)
     if numLines < MIN_LINES then
         return nil
     end
@@ -72,9 +72,6 @@ local function ParseVoidcacheTooltip(tooltipData, numLines, logLines)
     for i, lineData in ipairs(tooltipData.lines) do
         local text = lineData.leftText
         if text then
-            if logLines then
-                Log(string.format("  line %d: %q", i, text))
-            end
             -- Item entries start at line 7, each prefixed with "- "
             if i >= 7 then
                 local clean = StripColorCodes(text)
@@ -110,9 +107,6 @@ local function BuildDungeonNameCache(instanceID, specID)
             missing = missing + 1
         end
     end
-    local total = #itemIDs
-    Log(string.format("  nameCache[%d] spec %d: %d/%d items resolved (%d missing from cache)", instanceID, specID,
-        total - missing, total, missing))
     return nameCache
 end
 
@@ -143,12 +137,15 @@ local function AbortScan(reason)
     end
     _state.running = false
 
+    -- Unregister guards before restoring loot spec so the restore call
+    -- does not re-trigger the PLAYER_LOOT_SPEC_UPDATED handler.
+    _combatFrame:UnregisterEvent("PLAYER_REGEN_DISABLED")
+    _combatFrame:UnregisterEvent("PLAYER_LOOT_SPEC_UPDATED")
+
     -- Restore the player's original loot spec.
     if _state.originalLootSpec ~= nil then
         SetLootSpecialization(_state.originalLootSpec)
     end
-
-    _combatFrame:UnregisterEvent("PLAYER_REGEN_DISABLED")
 
     NotifyProgress(nil, nil, nil, nil, reason or "ABORTED")
     _state = nil
@@ -184,50 +181,23 @@ local function FinalizeScan()
 
     -- 2. Apply scan results for every season dungeon.
     local instanceIDs = VCA.LootPool.GetSeasonDungeonInstanceIDs()
-    local totalMarked = 0
-
-    -- Dump raw scan-result sizes so we can spot empty reads immediately.
-    Log("── Scan result sizes (spec × dungeon):")
-    for _, specEntry in ipairs(specs) do
-        local _, specName = GetSpecializationInfo(specEntry.index)
-        for _, instanceID in ipairs(instanceIDs) do
-            local specItems = results[specEntry.specID] and results[specEntry.specID][instanceID]
-            local count = 0
-            if specItems then
-                for _ in pairs(specItems) do
-                    count = count + 1
-                end
-            end
-            Log(string.format("  spec %-20s instance %d → %d items", tostring(specName), instanceID, count))
-        end
-    end
 
     -- Apply results per-spec so each spec is only judged against its own item pool.
+    local markedItemIDs = {}
+
     for _, specEntry in ipairs(specs) do
         local specID = specEntry.specID
-        local _, specName = GetSpecializationInfo(specEntry.index)
         local specResults = results[specID] or {}
         local specCaches = nameCaches[specID] or {}
 
         for _, instanceID in ipairs(instanceIDs) do
             local nameCache = specCaches[instanceID] or {}
             local specItems = specResults[instanceID] or {}
-            local ncSize = 0
-            for _ in pairs(nameCache) do
-                ncSize = ncSize + 1
-            end
-            Log(string.format("Applying results for spec %s instance %d (%d items in nameCache)", tostring(specName),
-                instanceID, ncSize))
 
             for itemName, itemID in pairs(nameCache) do
-                if specItems[itemName] then
-                    -- Item appeared in this spec's tooltip scan — lootable, leave as-is.
-                    Log(string.format("  LOOTABLE id %d (%s) spec %s", itemID, itemName, tostring(specName)))
-                else
+                if not specItems[itemName] then
                     -- Item is in this spec's pool but was NOT seen in the scan.
-                    totalMarked = totalMarked + 1
-                    Log(string.format("  OBTAINED id %d (%s) for spec %s — not in scan results", itemID, itemName,
-                        tostring(specName)))
+                    markedItemIDs[itemID] = true
                     VCA.Data.SetObtained(contentType, instanceID, diffID, specID, itemID, true)
                 end
             end
@@ -235,11 +205,17 @@ local function FinalizeScan()
         end
     end
 
-    Log(string.format("Finalize complete: %d spec/item combos marked as obtained.", totalMarked))
+    local totalMarked = 0
+    for _ in pairs(markedItemIDs) do
+        totalMarked = totalMarked + 1
+    end
+
+    Log(string.format("Scan complete — %d unique item(s) marked as obtained.", totalMarked))
 
     -- 3. Restore original loot spec.
-    SetLootSpecialization(_state.originalLootSpec or 0)
     _combatFrame:UnregisterEvent("PLAYER_REGEN_DISABLED")
+    _combatFrame:UnregisterEvent("PLAYER_LOOT_SPEC_UPDATED")
+    SetLootSpecialization(_state.originalLootSpec or 0)
 
     NotifyProgress(nil, nil, nil, nil, "COMPLETE")
 
@@ -273,47 +249,35 @@ ScanStep = function()
     if _state.dungeonIdx == 1 and _state.retries == 0 then
         if not _state.specSwitchDone then
             -- Request the spec change and wait for it to apply before reading tooltips.
-            local _, specName = GetSpecializationInfo(specEntry.index)
-            Log(string.format("── Spec pass %d/%d: %s (specID %d) — waiting %.1fs for spec change...",
-                _state.specIdx, #_state.specs, tostring(specName), specEntry.specID, SPEC_CHANGE_DELAY))
+            _state.expectingSpecChange = true
             SetLootSpecialization(specEntry.specID)
             _state.specSwitchDone = true
             C_Timer.After(SPEC_CHANGE_DELAY, ScanStep)
             return
         end
         -- Spec change has been applied; clear flag so the next spec gets its own delay.
+        _state.expectingSpecChange = false
         _state.specSwitchDone = false
     end
 
     -- Read the Voidcache tooltip via C_TooltipInfo (pure data call, no frame needed).
     local tooltipData = C_TooltipInfo.GetItemByID(dungeonEntry.voidcacheID)
     local numLines = (tooltipData and tooltipData.lines) and #tooltipData.lines or 0
-    -- Log raw lines only on the first attempt of the first spec to show the actual format.
-    local logLines = (_state.specIdx == 1 and _state.retries == 0)
-    local parsed = ParseVoidcacheTooltip(tooltipData, numLines, logLines)
+    local parsed = ParseVoidcacheTooltip(tooltipData, numLines)
 
     if not parsed then
         -- Not enough lines yet — retry in place.
         _state.retries = _state.retries + 1
-        Log(string.format("  instance %d (voidcache %d): only %d lines, retry %d/%d", dungeonEntry.instanceID,
-            dungeonEntry.voidcacheID, numLines, _state.retries, MAX_RETRIES))
         if _state.retries <= MAX_RETRIES then
             C_Timer.After(RETRY_DELAY, ScanStep)
             return
         end
-        Log(string.format("  instance %d: max retries exhausted, storing empty result", dungeonEntry.instanceID))
         parsed = {}
     end
 
     -- First successful read — do one confirmation pass to catch any lines that
     -- may have been missing at the tail of the tooltip.
     if not _state.confirmPending then
-        local firstCount = 0
-        for _ in pairs(parsed) do
-            firstCount = firstCount + 1
-        end
-        Log(string.format("  instance %d: first read OK (%d lines, %d items) — confirming...",
-            dungeonEntry.instanceID, numLines, firstCount))
         _state.confirmPending = true
         _state.confirmResult = parsed
         C_Timer.After(RETRY_DELAY, ScanStep)
@@ -328,45 +292,9 @@ ScanStep = function()
     for k, v in pairs(parsed) do
         merged[k] = v
     end
-    local firstCount, secondCount, mergedCount = 0, 0, 0
-    for _ in pairs(_state.confirmResult) do
-        firstCount = firstCount + 1
-    end
-    for _ in pairs(parsed) do
-        secondCount = secondCount + 1
-    end
-    for _ in pairs(merged) do
-        mergedCount = mergedCount + 1
-    end
-    Log(string.format("  instance %d: confirm read %d items (first %d, second %d) → merged %d",
-        dungeonEntry.instanceID, secondCount, firstCount, secondCount, mergedCount))
     parsed = merged
     _state.confirmPending = false
     _state.confirmResult = nil
-
-    local itemCount = 0
-    for _ in pairs(parsed) do
-        itemCount = itemCount + 1
-    end
-    Log(string.format("  instance %d (voidcache %d): %d lines → %d items parsed", dungeonEntry.instanceID,
-        dungeonEntry.voidcacheID, numLines, itemCount))
-
-    -- Log each parsed name and the itemID it resolves to in the name cache.
-    local nameCache = (_state.nameCaches[specEntry.specID] or {})[dungeonEntry.instanceID] or {}
-    for itemName in pairs(parsed) do
-        local resolvedID = nameCache[itemName]
-        if resolvedID then
-            Log(string.format("    MATCH  %q → id %d", itemName, resolvedID))
-        else
-            Log(string.format("    NOMATCH %q (not in nameCache)", itemName))
-        end
-    end
-    -- Log nameCache entries that had no match in the parsed tooltip.
-    for cachedName, cachedID in pairs(nameCache) do
-        if not parsed[cachedName] then
-            Log(string.format("    NOTFOUND id %d %q", cachedID, cachedName))
-        end
-    end
 
     -- Store result.
     _state.results[specEntry.specID] = _state.results[specEntry.specID] or {}
@@ -436,10 +364,6 @@ function Scan.Start()
 
     -- Pre-build name caches per spec (requires item cache to be warm).
     Log(string.format("Starting scan: %d spec(s), %d dungeon(s)", #specs, #dungeons))
-    for _, specEntry in ipairs(specs) do
-        local _, specName = GetSpecializationInfo(specEntry.index)
-        Log(string.format("  spec: %s (id %d)", tostring(specName), specEntry.specID))
-    end
     local nameCaches = {} -- [specID][instanceID] = { [name]=itemID }
     for _, specEntry in ipairs(specs) do
         nameCaches[specEntry.specID] = {}
@@ -460,13 +384,15 @@ function Scan.Start()
         confirmPending = false,
         confirmResult = nil,
         specSwitchDone = false,
+        expectingSpecChange = false,
         results = {},
         nameCaches = nameCaches,
         originalLootSpec = GetLootSpecialization()
     }
 
-    -- Register combat guard.
+    -- Register guards.
     _combatFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+    _combatFrame:RegisterEvent("PLAYER_LOOT_SPEC_UPDATED")
 
     -- Fire initial progress notification, then begin.
     NotifyProgress(1, #specs, 1, #dungeons, nil)
@@ -478,7 +404,15 @@ end
 -- ── Combat guard ──────────────────────────────────────────────────────────────
 
 _combatFrame:SetScript("OnEvent", function(self, event)
-    if event == "PLAYER_REGEN_DISABLED" and _state and _state.running then
+    if not _state or not _state.running then
+        return
+    end
+    if event == "PLAYER_REGEN_DISABLED" then
         AbortScan("COMBAT")
+    elseif event == "PLAYER_LOOT_SPEC_UPDATED" then
+        if not _state.expectingSpecChange then
+            Log("Scan aborted: loot spec changed manually during scan.")
+            AbortScan("ABORTED")
+        end
     end
 end)

@@ -79,6 +79,24 @@ function Data.ToggleObtained(sourceType, sourceID, difficultyID, specID, itemID)
     return not current
 end
 
+-- Marks itemID as obtained for every loot-spec that can receive it from sourceID.
+-- Iterates SeasonData.dungeons[sourceID].bySpec; returns silently if the dungeon
+-- or bySpec table is absent (e.g. for raids or unknown sources).
+function Data.PropagateObtainedToAllSpecs(sourceType, sourceID, difficultyID, itemID, isHighTier)
+    local dungeonData = VCA.SeasonData and VCA.SeasonData.dungeons[sourceID]
+    if not dungeonData or not dungeonData.bySpec then
+        return
+    end
+    for specID, itemList in pairs(dungeonData.bySpec) do
+        for _, id in ipairs(itemList) do
+            if id == itemID then
+                Data.SetObtainedForKeyTier(sourceType, sourceID, difficultyID, specID, itemID, isHighTier, true)
+                break
+            end
+        end
+    end
+end
+
 -- ── Pool filtering ────────────────────────────────────────────────────────────
 
 -- Given a flat array of item tables (each must have an `itemID` field),

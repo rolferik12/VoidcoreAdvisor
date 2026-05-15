@@ -99,6 +99,9 @@ local function OnPickerOK()
                 -- Write tier-specific obtained flag for M+, tier-less for raids.
                 VCA.Data.SetObtainedForKeyTier(ctx.sourceType, ctx.sourceID, ctx.diffID, row.specID, ctx.itemID,
                     ctx.isHighTier, true)
+                -- Propagate to every other spec that can also receive this item.
+                VCA.Data.PropagateObtainedToAllSpecs(ctx.sourceType, ctx.sourceID, ctx.diffID, ctx.itemID,
+                    ctx.isHighTier)
                 -- Mirror the manual check into the roll log so /vca rolls shows it.
                 -- Skip logging for specs that were already obtained when the picker
                 -- was opened (auto-detected or previously saved) to avoid creating
