@@ -503,6 +503,7 @@ function BRC.Show()
     win:ClearAllPoints()
     win:SetPoint("TOP", BonusRollFrame, "BOTTOM", 0, WIN_GAP_Y)
 
+    BonusRollFrame:SetAlpha(0)
     isActive = true
     win:Show()
     print("|cffb048f8[VCA]|r window shown. isWarn=" .. tostring(isWarn) .. "  size=" .. tostring(winW) .. "x" ..
@@ -512,6 +513,9 @@ end
 -- â”€â”€ BRC.Hide / Uninject â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function BRC.Uninject()
+    if BonusRollFrame then
+        BonusRollFrame:SetAlpha(1)
+    end
     win:Hide()
     StaticPopup_Hide("VOIDCORE_BONUS_ROLL")
     StaticPopup_Hide("VOIDCORE_BONUS_PASS")
