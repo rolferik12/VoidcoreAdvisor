@@ -1291,7 +1291,9 @@ Populate = function()
             else
                 row.specIcon:Hide()
             end
-            row.specLabel:SetText("|cffaaaaaa" .. (entry.specName or "?") .. "|r")
+            local warnPrefix = (entry.remainingCount == 1) and
+                                   (CreateAtlasMarkup("Ping_Wheel_Icon_Warning", 14, 14) .. " ") or ""
+            row.specLabel:SetText(warnPrefix .. "|cffaaaaaa" .. (entry.specName or "?") .. "|r")
         else
             row.specIcon:Hide()
             row.specLabel:SetText("|cff888888-|r")

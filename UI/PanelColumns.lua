@@ -481,9 +481,11 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
 
         -- Spec name (left part of nameLabel)
         local nameColor = entry.allObtained and "|cff44ff44" or (entry.noItems and "|cff888888" or "|cffdddddd")
+        local warnPrefix =
+            (entry.remainingCount == 1) and (CreateAtlasMarkup("Ping_Wheel_Icon_Warning", 14, 14) .. " ") or ""
         row.nameLabel:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
         row.nameLabel:SetPoint("RIGHT", row.frame, "RIGHT", -90, 0)
-        row.nameLabel:SetText(nameColor .. (entry.specName or "?") .. "|r")
+        row.nameLabel:SetText(warnPrefix .. nameColor .. (entry.specName or "?") .. "|r")
 
         -- Stats: obtained/total + percentage (right side)
         local hasSelection = filterItemIDs and #filterItemIDs > 0

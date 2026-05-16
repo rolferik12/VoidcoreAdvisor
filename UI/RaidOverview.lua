@@ -483,7 +483,9 @@ local function Populate()
             else
                 row.specIcon:Hide()
             end
-            row.specLabel:SetText("|cffaaaaaa" .. (entry.specName or "?") .. "|r")
+            local warnPrefix = (entry.remainingCount == 1) and
+                                   (CreateAtlasMarkup("Ping_Wheel_Icon_Warning", 14, 14) .. " ") or ""
+            row.specLabel:SetText(warnPrefix .. "|cffaaaaaa" .. (entry.specName or "?") .. "|r")
 
             if entry.baseCount > 0 then
                 local obtained = entry.baseCount - entry.remainingCount
