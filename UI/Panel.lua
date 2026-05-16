@@ -711,6 +711,24 @@ local function GetOrCreateSpecRow(pool, parent)
     nameLabel:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
     nameLabel:SetWordWrap(false)
 
+    -- Invisible hit-area for the warning icon (shown only when remainingCount == 1)
+    local warnHitArea = CreateFrame("Button", nil, rowFrame)
+    warnHitArea:SetSize(18, ROW_H)
+    warnHitArea:SetPoint("LEFT", icon, "RIGHT", 4, 0)
+    warnHitArea:SetFrameLevel(rowFrame:GetFrameLevel() + 2)
+    warnHitArea:EnableMouse(true)
+    warnHitArea:SetScript("OnEnter", function(self)
+        if self.tooltipText then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(self.tooltipText, 1, 1, 1, 1, true)
+            GameTooltip:Show()
+        end
+    end)
+    warnHitArea:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    warnHitArea:Hide()
+
     local statsLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     statsLabel:SetJustifyH("RIGHT")
     statsLabel:SetPoint("RIGHT", rowFrame, "RIGHT", 0, 0)
@@ -746,7 +764,8 @@ local function GetOrCreateSpecRow(pool, parent)
         rankLabel = rankLabel,
         icon = icon,
         nameLabel = nameLabel,
-        statsLabel = statsLabel
+        statsLabel = statsLabel,
+        warnHitArea = warnHitArea
     }
     pool[#pool + 1] = row
     return row

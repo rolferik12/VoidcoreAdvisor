@@ -486,7 +486,12 @@ local function PopulateSpecColumn(sourceType, sourceID, difficultyID, filterItem
         row.nameLabel:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
         row.nameLabel:SetPoint("RIGHT", row.frame, "RIGHT", -90, 0)
         row.nameLabel:SetText(warnPrefix .. nameColor .. (entry.specName or "?") .. "|r")
-
+        if entry.remainingCount == 1 then
+            row.warnHitArea.tooltipText = L["REMINDER_WARNING_ONE_ITEM"]
+            row.warnHitArea:Show()
+        else
+            row.warnHitArea:Hide()
+        end
         -- Stats: obtained/total + percentage (right side)
         local hasSelection = filterItemIDs and #filterItemIDs > 0
         local statsText
