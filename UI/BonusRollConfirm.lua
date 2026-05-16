@@ -156,8 +156,8 @@ end)
 
 -- Item name label
 local winItemName = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-winItemName:SetPoint("TOPLEFT", win, "TOPLEFT", 16, -74)
-winItemName:SetWidth(328)
+winItemName:SetPoint("TOPLEFT", winItemIcon, "TOPRIGHT", 8, -2)
+winItemName:SetWidth(280)
 winItemName:SetJustifyH("LEFT")
 winItemName:SetWordWrap(true)
 
@@ -422,9 +422,16 @@ function BRC.Show()
         cachedItemLink = select(2, GetItemInfo(ejBtn.displayItemID))
     end
 
-    local iName = cachedItemLink and GetItemInfo(cachedItemLink)
+    local iName, _, iQuality, _, _, _, _, _, _, iTexture = GetItemInfo(cachedDisplayItemID or 0)
+    if iTexture then
+        winItemIcon:SetTexture(iTexture)
+        winItemIcon:Show()
+    else
+        winItemIcon:Hide()
+    end
     if iName then
-        winItemName:SetText("|cffffffff" .. iName .. "|r")
+        local _, _, _, hex = GetItemQualityColor(iQuality or 1)
+        winItemName:SetText("|c" .. hex .. iName .. "|r")
     elseif pf.Name and pf.Name:GetText() and pf.Name:GetText() ~= "" then
         winItemName:SetText("|cffffffff" .. pf.Name:GetText() .. "|r")
     else
@@ -532,7 +539,16 @@ function BRC.ShowPreview()
     -- Algeth'ar Academy cache item as a live-data stand-in
     cachedDisplayItemID = 268465
     cachedItemLink = nil
-    winItemName:SetText("|cff888888Nebulous Voidcore Roll (Preview)|r")
+
+    local iName, _, iQuality, _, _, _, _, _, _, iTexture = GetItemInfo(cachedDisplayItemID)
+    if iTexture then
+        winItemIcon:SetTexture(iTexture)
+        winItemIcon:Show()
+    else
+        winItemIcon:Hide()
+    end
+    local iHex = iQuality and select(4, GetItemQualityColor(iQuality)) or "ffa335ee"
+    winItemName:SetText("|c" .. iHex .. (iName or "Nebulous Voidcore Roll") .. "|r")
 
     local specID = VCA.SpecInfo.GetEffectiveLootSpecID()
     local _, sName, _, sIcon = GetSpecializationInfoByID(specID)
