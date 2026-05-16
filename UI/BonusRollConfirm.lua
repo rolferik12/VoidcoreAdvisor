@@ -26,6 +26,11 @@ local function IsEnabled()
     return gdb and gdb.bonusRollConfirmEnabled == true
 end
 
+local function IsSpecListEnabled()
+    local gdb = _G[VCA.GLOBAL_DB_NAME]
+    return gdb and gdb.bonusRollConfirmSpecListEnabled ~= false
+end
+
 -- Reverse lookup: Voidcache itemID -> { sourceType, sourceID }
 -- Built lazily on first call after Constants are loaded.
 local cacheItemSourceMap
@@ -396,7 +401,7 @@ function BRC.Show()
     end
 
     -- Per-spec remaining item counts
-    if source and source.sourceType and source.sourceID then
+    if IsSpecListEnabled() and source and source.sourceType and source.sourceID then
         local specs = VCA.SpecInfo.GetPlayerSpecs()
         if specs and #specs > 0 then
             specListSep:ClearAllPoints()
@@ -622,7 +627,7 @@ function BRC.ShowPreview()
     end
 
     -- Per-spec remaining item counts
-    if source and source.sourceType and source.sourceID then
+    if IsSpecListEnabled() and source and source.sourceType and source.sourceID then
         local specs = VCA.SpecInfo.GetPlayerSpecs()
         if specs and #specs > 0 then
             specListSep:ClearAllPoints()

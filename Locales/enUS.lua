@@ -117,6 +117,9 @@ L["BONUS_ROLL_CONFIRM_COST"] = "Cost: |cffffff00%d|r  \194\183  You have |cfffff
 L["OPTIONS_BONUS_ROLL_CONFIRM"] = "Bonus roll window"
 L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
     "Show VoidcoreAdvisor information when the Nebulous Voidcore bonus roll window appears, including your active loot spec and item odds."
+L["OPTIONS_BRC_SPEC_LIST"] = "Show items remaining per spec"
+L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
+    "Show a list of remaining items for each of your specializations in the bonus roll window."
 
 -- ── Dungeon Overview panel (DungeonOverview.lua) ─────────────────────────────
 
