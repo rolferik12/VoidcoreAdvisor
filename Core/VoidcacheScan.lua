@@ -183,8 +183,18 @@ local function FinalizeScan()
     local diffID = VCA.MythicPlusEJDifficulty
     local contentType = VCA.ContentType.MYTHIC_PLUS
 
-    -- 1. Clear all existing MYTHIC_PLUS obtained entries — the scan result is now authoritative.
+    -- 1. Snapshot existing MYTHIC_PLUS obtained entries before clearing (enables restore).
     db.obtained = db.obtained or {}
+    db.obtainedBackup = db.obtainedBackup or {}
+    db.obtainedBackup.mythicPlus = {}
+    db.obtainedBackup.mythicPlusTime = time()
+    for key, val in pairs(db.obtained) do
+        if key:sub(1, 12) == "MYTHIC_PLUS:" then
+            db.obtainedBackup.mythicPlus[key] = val
+        end
+    end
+
+    -- Clear all existing MYTHIC_PLUS obtained entries — the scan result is now authoritative.
     for key in pairs(db.obtained) do
         if key:sub(1, 12) == "MYTHIC_PLUS:" then
             db.obtained[key] = nil
@@ -489,12 +499,25 @@ local function FinalizeRaidScan()
     local diffID = VCA.Difficulty.RAID_MYTHIC
     local contentType = VCA.ContentType.RAID
 
-    -- 1. Clear all existing mythic raid obtained entries — scan result is authoritative.
+    -- 1. Snapshot existing RAID mythic obtained entries before clearing (enables restore).
     db.obtained = db.obtained or {}
+    db.obtainedBackup = db.obtainedBackup or {}
+    db.obtainedBackup.raid = {}
+    db.obtainedBackup.raidTime = time()
+    for key, val in pairs(db.obtained) do
+        if key:sub(1, 5) == "RAID:" then
+            local _, kDiff = key:match("^RAID:%d+:(%d+):")
+            if tonumber(kDiff) == diffID then
+                db.obtainedBackup.raid[key] = val
+            end
+        end
+    end
+
+    -- Clear all existing mythic raid obtained entries — scan result is authoritative.
     for key in pairs(db.obtained) do
         -- Keys are formatted as "RAID:encounterID:diffID:specID:itemID"
         if key:sub(1, 5) == "RAID:" then
-            local _, kDiff = key:match("^RAID:(%d+):(%d+):")
+            local _, kDiff = key:match("^RAID:%d+:(%d+):")
             if tonumber(kDiff) == diffID then
                 db.obtained[key] = nil
             end
@@ -716,3 +739,75 @@ _raidCombatFrame:SetScript("OnEvent", function(self, event)
         end
     end
 end)
+
+-- ── Public: restore from backup ───────────────────────────────────────────────
+
+-- Rolls back db.obtained to the snapshot taken just before the last scan
+-- finalized.  contentType: "mythicplus", "raid", or nil to restore both.
+-- Returns true, restoredCount on success; false, reason on failure.
+function Scan.RestoreBackup(contentType)
+    local db = _G[VCA.CHAR_DB_NAME]
+    if not db then
+        return false, "NO_DB"
+    end
+    local backup = db.obtainedBackup
+    if not backup then
+        return false, "NO_BACKUP"
+    end
+
+    local wantMP = not contentType or contentType == "mythicplus"
+    local wantRaid = not contentType or contentType == "raid"
+
+    if wantMP and not backup.mythicPlus then
+        wantMP = false
+    end
+    if wantRaid and not backup.raid then
+        wantRaid = false
+    end
+    if not wantMP and not wantRaid then
+        return false, "NO_BACKUP"
+    end
+
+    db.obtained = db.obtained or {}
+    local restoredCount = 0
+
+    if wantMP then
+        for key in pairs(db.obtained) do
+            if key:sub(1, 12) == "MYTHIC_PLUS:" then
+                db.obtained[key] = nil
+            end
+        end
+        for key, val in pairs(backup.mythicPlus) do
+            db.obtained[key] = val
+            restoredCount = restoredCount + 1
+        end
+    end
+
+    if wantRaid then
+        local diffID = VCA.Difficulty.RAID_MYTHIC
+        for key in pairs(db.obtained) do
+            if key:sub(1, 5) == "RAID:" then
+                local _, kDiff = key:match("^RAID:%d+:(%d+):")
+                if tonumber(kDiff) == diffID then
+                    db.obtained[key] = nil
+                end
+            end
+        end
+        for key, val in pairs(backup.raid) do
+            db.obtained[key] = val
+            restoredCount = restoredCount + 1
+        end
+    end
+
+    return true, restoredCount
+end
+
+-- Returns the timestamps (Unix epoch) of the last M+ and raid backups,
+-- or nil for each if that backup does not exist yet.
+function Scan.GetBackupInfo()
+    local db = _G[VCA.CHAR_DB_NAME]
+    if not db or not db.obtainedBackup then
+        return nil, nil
+    end
+    return db.obtainedBackup.mythicPlusTime, db.obtainedBackup.raidTime
+end

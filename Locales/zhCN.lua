@@ -44,6 +44,7 @@ L["HELP_COUNT"] = "  /vca count    – 显示已获取物品总数"
 L["HELP_SPEC"] = "  /vca spec     – 显示拾取专精 ID"
 L["HELP_SOURCE"] = "  /vca source   – 显示当前检测来源"
 L["HELP_VERSION"] = "  /vca version  – 显示插件版本"
+L["HELP_RESTORE"] = "  /vca restore  – 从扫描前备份恢复已获得数据"
 
 -- ── 面板 UI（补充）────────────────────────────────────────────────────────────
 

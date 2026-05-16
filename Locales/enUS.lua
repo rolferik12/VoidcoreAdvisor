@@ -52,6 +52,11 @@ L["HELP_SPEC"] = "  /vca spec     – show effective loot spec ID"
 L["HELP_SOURCE"] = "  /vca source   – show active detection source"
 L["HELP_VERSION"] = "  /vca version   – show addon version"
 L["HELP_REPLAYLOG"] = "  /vca replaylog – re-apply all roll log entries as obtained"
+L["HELP_RESTORE"] = "  /vca restore  – restore obtained data from pre-scan backup"
+
+L["RESTORE_COMPLETE"] = "%d item(s) restored from backup."
+L["RESTORE_NO_BACKUP"] = "No backup available. Run a scan first."
+L["RESTORE_FAILED"] = "Restore failed."
 
 -- ── Reminder popup (Reminder.lua) ─────────────────────────────────────────────
 

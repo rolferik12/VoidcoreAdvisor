@@ -44,6 +44,7 @@ L["HELP_COUNT"] = "  /vca count    – afficher le nombre total d'objets obtenus
 L["HELP_SPEC"] = "  /vca spec     – afficher l'ID de spécialisation de butin"
 L["HELP_SOURCE"] = "  /vca source   – afficher la source de détection active"
 L["HELP_VERSION"] = "  /vca version  – afficher la version de l'addon"
+L["HELP_RESTORE"] = "  /vca restore  – restaurer les données de butin depuis la sauvegarde"
 
 -- ── Panel UI (ajouts) ─────────────────────────────────────────────────────────
 

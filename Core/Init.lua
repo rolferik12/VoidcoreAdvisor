@@ -213,6 +213,28 @@ SlashCmdList["VOIDCOREADVISOR"] = function(msg)
             VCA.Panel.Refresh()
         end
 
+    elseif cmd == "restore" then
+        local mpTime, raidTime = VCA.VoidcacheScan.GetBackupInfo()
+        if not mpTime and not raidTime then
+            print("|cff9370DBVoidcoreAdvisor:|r " .. L["RESTORE_NO_BACKUP"])
+        else
+            local ok, result = VCA.VoidcacheScan.RestoreBackup()
+            if ok then
+                print("|cff9370DBVoidcoreAdvisor:|r " .. string.format(L["RESTORE_COMPLETE"], result))
+                if VCA.DungeonOverview and VCA.DungeonOverview.Refresh then
+                    VCA.DungeonOverview.Refresh()
+                end
+                if VCA.RaidOverview and VCA.RaidOverview.Refresh then
+                    VCA.RaidOverview.Refresh()
+                end
+                if VCA.Panel and VCA.Panel.Refresh then
+                    VCA.Panel.Refresh()
+                end
+            else
+                print("|cff9370DBVoidcoreAdvisor:|r " .. L["RESTORE_FAILED"])
+            end
+        end
+
     elseif cmd == "reminder" then
         -- Force-evaluate the reminder, ignoring the already-shown guard.
         VCA.Reminder.ForceEvaluate()
@@ -225,5 +247,6 @@ SlashCmdList["VOIDCOREADVISOR"] = function(msg)
         print(L["HELP_SOURCE"])
         print(L["HELP_VERSION"])
         print(L["HELP_REPLAYLOG"])
+        print(L["HELP_RESTORE"])
     end
 end

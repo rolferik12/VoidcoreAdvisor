@@ -44,6 +44,7 @@ L["HELP_COUNT"] = "  /vca count    – mostrar total de itens marcados como obti
 L["HELP_SPEC"] = "  /vca spec     – mostrar ID de especialização de saque"
 L["HELP_SOURCE"] = "  /vca source   – mostrar fonte de detecção ativa"
 L["HELP_VERSION"] = "  /vca version  – mostrar versão do addon"
+L["HELP_RESTORE"] = "  /vca restore  – restaurar dados de saque do backup pré-varredura"
 
 -- ── Panel UI (adições) ────────────────────────────────────────────────────────
 

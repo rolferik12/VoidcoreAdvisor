@@ -44,6 +44,7 @@ L["HELP_COUNT"] = "  /vca count    – mostrar total de objetos marcados como ob
 L["HELP_SPEC"] = "  /vca spec     – mostrar ID de especialización de botín activa"
 L["HELP_SOURCE"] = "  /vca source   – mostrar fuente de detección activa"
 L["HELP_VERSION"] = "  /vca version  – mostrar versión del addon"
+L["HELP_RESTORE"] = "  /vca restore  – restaurar datos de botín del respaldo pre-escaneo"
 
 -- ── Panel UI (adiciones) ──────────────────────────────────────────────────────
 

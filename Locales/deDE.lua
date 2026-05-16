@@ -44,6 +44,7 @@ L["HELP_COUNT"] = "  /vca count    – Gesamtzahl erhaltener Gegenstände anzeig
 L["HELP_SPEC"] = "  /vca spec     – aktive Beutespezialisierungs-ID anzeigen"
 L["HELP_SOURCE"] = "  /vca source   – aktive Erkennungsquelle anzeigen"
 L["HELP_VERSION"] = "  /vca version  – Addon-Version anzeigen"
+L["HELP_RESTORE"] = "  /vca restore  – Beutedaten aus Scan-Backup wiederherstellen"
 
 -- ── Panel UI (Ergänzungen) ────────────────────────────────────────────────────
 

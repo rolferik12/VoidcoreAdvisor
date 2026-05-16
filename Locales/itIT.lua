@@ -44,6 +44,7 @@ L["HELP_COUNT"] = "  /vca count    – mostra il totale degli oggetti ottenuti"
 L["HELP_SPEC"] = "  /vca spec     – mostra l'ID della specializzazione bottino"
 L["HELP_SOURCE"] = "  /vca source   – mostra la fonte di rilevamento attiva"
 L["HELP_VERSION"] = "  /vca version  – mostra la versione dell'addon"
+L["HELP_RESTORE"] = "  /vca restore  – ripristina i dati del bottino dal backup pre-scansione"
 
 -- ── Panel UI (aggiunte) ───────────────────────────────────────────────────────
 

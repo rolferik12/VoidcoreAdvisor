@@ -44,6 +44,7 @@ L["HELP_COUNT"] = "  /vca count    – 획득한 아이템 총 수 표시"
 L["HELP_SPEC"] = "  /vca spec     – 전리품 전문화 ID 표시"
 L["HELP_SOURCE"] = "  /vca source   – 활성 감지 출처 표시"
 L["HELP_VERSION"] = "  /vca version  – 애드온 버전 표시"
+L["HELP_RESTORE"] = "  /vca restore  – 스캔 이전 백업에서 획득 데이터 복원"
 
 -- ── 패널 UI (추가) ────────────────────────────────────────────────────────────
 
