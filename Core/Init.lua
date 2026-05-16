@@ -20,7 +20,8 @@ end
 
 local function GetGlobalDefaults()
     return {
-        reminderEnabled = true
+        reminderEnabled = true,
+        bonusRollConfirmEnabled = false
     }
 end
 
@@ -44,6 +45,9 @@ local function InitDB()
         local gdb = _G[VCA.GLOBAL_DB_NAME]
         if gdb.reminderEnabled == nil then
             gdb.reminderEnabled = true
+        end
+        if gdb.bonusRollConfirmEnabled == nil then
+            gdb.bonusRollConfirmEnabled = false
         end
     end
 

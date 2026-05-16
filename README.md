@@ -33,7 +33,16 @@ When the Encounter Journal is open on a raid's main page without a specific boss
 
 VoidcoreAdvisor registers a settings page under Game Menu → Options → AddOns. From there you can enable or disable the loot spec reminder popup and preview the reminder dialog without having to enter a dungeon.
 
-## Recent Changes (2.0.0)
+## Recent Changes (2.1.0)
+
+### Scan Backup and Restore
+
+- Before a Voidcache scan finalizes (both M+ and raid), all existing obtained entries for that content type are snapshotted into `db.obtainedBackup` in `SavedVariables`. The backup survives `/reload` and logout.
+- M+ and raid backups are stored independently. Running an M+ scan does not overwrite the raid backup, and vice versa.
+- A new `/vca restore` command rolls back `db.obtained` to the pre-scan snapshot and immediately refreshes all open panels. If no backup exists (no scan has ever completed), the command prints a clear message rather than silently doing nothing.
+- Aborted scans (combat interrupt, manual cancel, or loot spec change) never modify `db.obtained`, so no backup is needed or taken for those cases — only a scan that runs to completion can overwrite existing data.
+
+---
 
 ### Loot Pool Accuracy
 

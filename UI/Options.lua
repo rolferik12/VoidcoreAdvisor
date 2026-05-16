@@ -1,7 +1,6 @@
 -- VoidcoreAdvisor: Options
 -- Registers the addon in the Game Menu → Options → AddOns panel using the
 -- Settings API (added in 10.0).
-
 local addonName, VCA = ...
 local L = VCA.L
 
@@ -11,7 +10,9 @@ local L = VCA.L
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:SetScript("OnEvent", function(self, event, loadedAddon)
-    if loadedAddon ~= addonName then return end
+    if loadedAddon ~= addonName then
+        return
+    end
     self:UnregisterEvent("ADDON_LOADED")
 
     -- Create a vertical-layout category for the AddOns tab.
@@ -19,13 +20,14 @@ frame:SetScript("OnEvent", function(self, event, loadedAddon)
 
     -- ── Loot Spec Reminder toggle ─────────────────────────────────────────
     do
-        local variable    = "VoidcoreAdvisor_ReminderEnabled"
-        local name        = L["OPTIONS_REMINDER_ENABLE"]
+        local variable = "VoidcoreAdvisor_ReminderEnabled"
+        local name = L["OPTIONS_REMINDER_ENABLE"]
         local variableKey = "reminderEnabled"
         local variableTbl = _G[VCA.GLOBAL_DB_NAME]
-        local default     = true
+        local default = true
 
-        local setting = Settings.RegisterAddOnSetting(category, variable, variableKey, variableTbl, type(default), name, default)
+        local setting = Settings.RegisterAddOnSetting(category, variable, variableKey, variableTbl, type(default), name,
+            default)
 
         local initializer = Settings.CreateCheckbox(category, setting, L["OPTIONS_REMINDER_TOOLTIP"])
 
@@ -49,6 +51,41 @@ frame:SetScript("OnEvent", function(self, event, loadedAddon)
                 self.VCAPreviewButton:Show()
             elseif self.VCAPreviewButton then
                 self.VCAPreviewButton:Hide()
+            end
+        end)
+    end
+
+    -- ── Bonus Roll confirmation overlay toggle ────────────────────────────
+    do
+        local variable = "VoidcoreAdvisor_BonusRollConfirmEnabled"
+        local name = L["OPTIONS_BONUS_ROLL_CONFIRM"]
+        local variableKey = "bonusRollConfirmEnabled"
+        local variableTbl = _G[VCA.GLOBAL_DB_NAME]
+        local default = false
+
+        local setting = Settings.RegisterAddOnSetting(category, variable, variableKey, variableTbl, type(default), name,
+            default)
+        local brcInitializer = Settings.CreateCheckbox(category, setting, L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"])
+
+        hooksecurefunc(SettingsCheckboxControlMixin, "Init", function(self, init)
+            if init == brcInitializer then
+                if not self.VCABRCPreviewButton then
+                    local btn = CreateFrame("Button", nil, self, "UIPanelButtonTemplate")
+                    btn:SetSize(100, 22)
+                    btn:SetPoint("RIGHT", self, "RIGHT", -16, 0)
+                    btn:SetText(L["OPTIONS_PREVIEW_BONUS_ROLL"])
+                    btn:SetScript("OnClick", function()
+                        if VCARollWindow and VCARollWindow:IsShown() then
+                            VCA.BonusRollConfirm.Hide()
+                        else
+                            VCA.BonusRollConfirm.ShowPreview()
+                        end
+                    end)
+                    self.VCABRCPreviewButton = btn
+                end
+                self.VCABRCPreviewButton:Show()
+            elseif self.VCABRCPreviewButton then
+                self.VCABRCPreviewButton:Hide()
             end
         end)
     end

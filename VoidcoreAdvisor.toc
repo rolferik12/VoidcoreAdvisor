@@ -36,5 +36,6 @@ UI\DungeonOverview.lua
 UI\RaidOverview.lua
 UI\Reminder.lua
 UI\Options.lua
+UI\BonusRollConfirm.lua
 UI\EJHook.lua
 UI\EJHookView.lua

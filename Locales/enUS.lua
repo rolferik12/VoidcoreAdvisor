@@ -86,12 +86,37 @@ L["WARNING_ONE_ITEM"] =
 L["WARNING_SPEC_LIST_HEADER"] = "Items remaining per spec:"
 L["WARNING_CLOSE"] = "Close"
 
+-- ── Bonus Roll Confirm overlay (BonusRollConfirm.lua) ────────────────────────
+
+L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Confirm Nebulous Voidcore Roll"
+L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Active loot spec:"
+L["BONUS_ROLL_CONFIRM_POOL"] = "%d item(s) remaining in pool"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% roll chance"
+L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "All items obtained for this spec"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "No items available for this spec"
+L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Source not tracked — no odds available"
+L["BONUS_ROLL_CONFIRM_WARNING"] =
+    "|cffff8000Warning:|r Only |cffff00001|r item remaining — this roll will |cffff0000reset the loot pool for all specs|r!"
+L["BONUS_ROLL_CONFIRM_QUESTION"] = "Do you want to roll for loot?"
+L["BONUS_ROLL_CONFIRM_ROLL"] = "Roll"
+L["BONUS_ROLL_CONFIRM_PASS"] = "Pass"
+L["BONUS_ROLL_CONFIRM_CONFIRM"] = "Confirm Roll"
+L["BONUS_ROLL_CONFIRM_PASS_CONFIRM"] = "Confirm Pass"
+L["BONUS_ROLL_CONFIRM_CLOSE"] = "Close"
+L["BONUS_ROLL_POPUP_ROLL"] = "Spend your Nebulous Voidcore on a bonus roll?"
+L["BONUS_ROLL_POPUP_PASS"] = "Pass on this bonus roll?"
+
 -- ── Options panel (Options.lua) ───────────────────────────────────────────────
 
 L["OPTIONS_REMINDER_ENABLE"] = "Loot spec reminder"
 L["OPTIONS_REMINDER_TOOLTIP"] =
     "Show a popup when entering a current-season mythic dungeon if a different loot specialization would give better odds for your selected items."
 L["OPTIONS_PREVIEW_REMINDER"] = "Preview"
+L["OPTIONS_PREVIEW_BONUS_ROLL"] = "Preview"
+L["BONUS_ROLL_CONFIRM_COST"] = "Cost: |cffffff00%d|r  \194\183  You have |cffffff00%d|r"
+L["OPTIONS_BONUS_ROLL_CONFIRM"] = "Bonus roll window"
+L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
+    "Show VoidcoreAdvisor information when the Nebulous Voidcore bonus roll window appears, including your active loot spec and item odds."
 
 -- ── Dungeon Overview panel (DungeonOverview.lua) ─────────────────────────────
 
