@@ -7,8 +7,6 @@
 --
 -- Roll button requires TWO clicks (confirm) â€” this is intentional and critical.
 -- Pass button also requires two clicks.
---
--- Debug prints remain active so tooltip field names can be identified.
 local addonName, VCA = ...
 local L = VCA.L
 
@@ -153,14 +151,6 @@ winIconBtn:SetScript("OnEnter", function(self)
 end)
 winIconBtn:SetScript("OnLeave", function()
     GameTooltip:Hide()
-    local pf = BonusRollFrame and BonusRollFrame.PromptFrame
-    local ejBtn = pf and pf.EncounterJournalLinkButton
-    if ejBtn then
-        local onLeave = ejBtn:GetScript("OnLeave")
-        if onLeave then
-            onLeave(ejBtn)
-        end
-    end
 end)
 
 -- Item name label
@@ -276,92 +266,23 @@ win:SetScript("OnUpdate", function()
     timerBar:SetValue(src:GetValue())
 end)
 
--- â”€â”€ BRC.Show â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function BRC.Show()
-    print("|cffb048f8[VCA]|r BRC.Show() called")
-    if not (BonusRollFrame and BonusRollFrame.PromptFrame) then
-        print("|cffb048f8[VCA]|r BRC.Show() aborted -- BonusRollFrame or PromptFrame nil")
-        return
+-- Hides per-spec list separator, header and all row widgets.
+local function HideSpecList()
+    specListSep:Hide()
+    specListHeader:Hide()
+    for i = 1, 4 do
+        specListRows[i].icon:Hide()
+        specListRows[i].label:Hide()
     end
+end
 
-    local pf = BonusRollFrame.PromptFrame
-
-    -- Mirror item icon
-    if pf.Icon then
-        winItemIcon:SetTexture(pf.Icon:GetTexture())
-        print("|cffb048f8[VCA]|r pf.Icon texture: " .. tostring(pf.Icon:GetTexture()))
-    else
-        print("|cffb048f8[VCA]|r pf.Icon is nil")
-    end
-
-    -- Item link via displayItemID on EJLinkButton (confirmed field from debug)
-    cachedDisplayItemID = nil
-    cachedItemLink = nil
-    local ejBtn = pf.EncounterJournalLinkButton
-    if ejBtn and ejBtn.displayItemID then
-        cachedDisplayItemID = ejBtn.displayItemID
-        cachedItemLink = select(2, GetItemInfo(ejBtn.displayItemID))
-    end
-    print("|cffb048f8[VCA]|r displayItemID: " .. tostring(cachedDisplayItemID) .. "  cachedItemLink: " ..
-              tostring(cachedItemLink))
-
-    -- Item name label
-    local iName = cachedItemLink and GetItemInfo(cachedItemLink)
-    if iName then
-        winItemName:SetText("|cffffffff" .. iName .. "|r")
-    elseif pf.Name and pf.Name:GetText() and pf.Name:GetText() ~= "" then
-        winItemName:SetText("|cffffffff" .. pf.Name:GetText() .. "|r")
-    else
-        winItemName:SetText("|cff888888Nebulous Voidcore Roll|r")
-    end
-
-    -- Active loot spec
-    local specID = VCA.SpecInfo.GetEffectiveLootSpecID()
-    local _, sName, _, sIcon = GetSpecializationInfoByID(specID)
-    print("|cffb048f8[VCA]|r specID: " .. tostring(specID) .. " (" .. tostring(sName) .. ")")
-    specIcon:SetTexture(sIcon or "Interface\\Icons\\INV_Misc_QuestionMark")
-    specName:SetText("|cffdddddd" .. (sName or "?") .. "|r")
-
-    -- Sync button appearance from originals
-    if pf.RollButton then
-        SyncButtonAppearance(pf.RollButton, rollBtn)
-    end
-    rollBtn:SetText(L["BONUS_ROLL_CONFIRM_ROLL"])
-    local passText = (pf.PassButton and pf.PassButton:GetText()) or "Pass"
-    if pf.PassButton then
-        SyncButtonAppearance(pf.PassButton, passBtn)
-    end
-    passBtn:SetText(passText)
-
-    -- Dynamic loot odds section
-    -- dynY cursor: top of spec row = -108, row height = 22, gap = 8  â†’  -138
-    -- Source from Voidcache item ID (displayItemID on EJLinkButton)
-    local source = GetSourceFromDisplayItemID(cachedDisplayItemID)
-    if source then
-        if source.sourceType == VCA.ContentType.MYTHIC_PLUS then
-            source.difficultyID = VCA.MythicPlusEJDifficulty
-        else
-            local _, _, diffID = GetInstanceInfo()
-            source.difficultyID = (VCA.EligibleRaidDifficulties[diffID] and diffID) or VCA.Difficulty.RAID_NORMAL
-        end
-    end
-
-    -- Voidcore count + cost
-    local currInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(VCA.VOIDCORE_CURRENCY_ID)
-    local owned = currInfo and currInfo.quantity or 0
-    local cost = (source and source.sourceType == VCA.ContentType.RAID) and VCA.VoidcoreCost.RAID or
-                     VCA.VoidcoreCost.MYTHIC_PLUS
-    winVoidcoreInfo:SetText(string.format(L["BONUS_ROLL_CONFIRM_COST"], cost, owned))
-
-    local dynY = -178
-    local isWarn = false
-
+-- Renders the loot-odds row, per-spec list, and the roll-prompt label onto the
+-- window, advancing `dynY` for each section shown.  Returns the final dynY.
+-- `source` must carry { sourceType, sourceID, difficultyID } or be nil.
+local function LayoutDynamicSection(source, specID, dynY)
     if source and source.sourceType and source.sourceID then
-
-        local isHighTier = source.keyLevel and (source.keyLevel >= 10) or nil
         local prob = VCA.Probability.CalculateForSpec(source.sourceType, source.sourceID, source.difficultyID,
-            VCA.SpecInfo.GetPlayerClassID(), specID, isHighTier)
+            VCA.SpecInfo.GetPlayerClassID(), specID, nil)
 
         lootSep:ClearAllPoints()
         lootSep:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
@@ -385,7 +306,6 @@ function BRC.Show()
         dynY = dynY - 22
 
         if prob.remainingCount == 1 then
-            isWarn = true
             warnText:ClearAllPoints()
             warnText:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
             warnText:SetText(L["BONUS_ROLL_CONFIRM_WARNING"])
@@ -400,7 +320,6 @@ function BRC.Show()
         warnText:Hide()
     end
 
-    -- Per-spec remaining item counts
     if IsSpecListEnabled() and source and source.sourceType and source.sourceID then
         local specs = VCA.SpecInfo.GetPlayerSpecs()
         if specs and #specs > 0 then
@@ -462,36 +381,93 @@ function BRC.Show()
             end
             dynY = dynY - 4
         else
-            specListSep:Hide()
-            specListHeader:Hide()
-            for i = 1, 4 do
-                specListRows[i].icon:Hide();
-                specListRows[i].label:Hide()
-            end
+            HideSpecList()
         end
     else
-        specListSep:Hide()
-        specListHeader:Hide()
-        for i = 1, 4 do
-            specListRows[i].icon:Hide();
-            specListRows[i].label:Hide()
-        end
+        HideSpecList()
     end
 
-    -- Confirmation question
     dynY = dynY - 6
     winRollPrompt:ClearAllPoints()
     winRollPrompt:SetPoint("TOP", win, "TOP", 0, dynY)
     winRollPrompt:Show()
     dynY = dynY - 22
 
-    -- Size window: content height + gap + buttons + 16px bottom inset
+    return dynY
+end
+
+-- â”€â”€ BRC.Show â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function BRC.Show()
+    if not (BonusRollFrame and BonusRollFrame.PromptFrame) then
+        return
+    end
+
+    local pf = BonusRollFrame.PromptFrame
+
+    if pf.Icon then
+        winItemIcon:SetTexture(pf.Icon:GetTexture())
+    end
+
+    cachedDisplayItemID = nil
+    cachedItemLink = nil
+    local ejBtn = pf.EncounterJournalLinkButton
+    if ejBtn and ejBtn.displayItemID then
+        cachedDisplayItemID = ejBtn.displayItemID
+        cachedItemLink = select(2, GetItemInfo(ejBtn.displayItemID))
+    end
+
+    local iName = cachedItemLink and GetItemInfo(cachedItemLink)
+    if iName then
+        winItemName:SetText("|cffffffff" .. iName .. "|r")
+    elseif pf.Name and pf.Name:GetText() and pf.Name:GetText() ~= "" then
+        winItemName:SetText("|cffffffff" .. pf.Name:GetText() .. "|r")
+    else
+        winItemName:SetText("|cff888888Nebulous Voidcore Roll|r")
+    end
+
+    local specID = VCA.SpecInfo.GetEffectiveLootSpecID()
+    local _, sName, _, sIcon = GetSpecializationInfoByID(specID)
+    specIcon:SetTexture(sIcon or "Interface\\Icons\\INV_Misc_QuestionMark")
+    specName:SetText("|cffdddddd" .. (sName or "?") .. "|r")
+
+    if pf.RollButton then
+        SyncButtonAppearance(pf.RollButton, rollBtn)
+    end
+    rollBtn:SetText(L["BONUS_ROLL_CONFIRM_ROLL"])
+    local passText = (pf.PassButton and pf.PassButton:GetText()) or "Pass"
+    if pf.PassButton then
+        SyncButtonAppearance(pf.PassButton, passBtn)
+    end
+    passBtn:SetText(passText)
+
+    -- Dynamic loot odds section
+    -- dynY cursor: top of spec row = -108, row height = 22, gap = 8  â†’  -138
+    -- Source from Voidcache item ID (displayItemID on EJLinkButton)
+    local source = GetSourceFromDisplayItemID(cachedDisplayItemID)
+    if source then
+        if source.sourceType == VCA.ContentType.MYTHIC_PLUS then
+            source.difficultyID = VCA.MythicPlusEJDifficulty
+        else
+            local _, _, diffID = GetInstanceInfo()
+            source.difficultyID = (VCA.EligibleRaidDifficulties[diffID] and diffID) or VCA.Difficulty.RAID_NORMAL
+        end
+    end
+
+    -- Voidcore count + cost
+    local currInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(VCA.VOIDCORE_CURRENCY_ID)
+    local owned = currInfo and currInfo.quantity or 0
+    local cost = (source and source.sourceType == VCA.ContentType.RAID) and VCA.VoidcoreCost.RAID or
+                     VCA.VoidcoreCost.MYTHIC_PLUS
+    winVoidcoreInfo:SetText(string.format(L["BONUS_ROLL_CONFIRM_COST"], cost, owned))
+
+    local dynY = LayoutDynamicSection(source, specID, -178)
+
     local winW = math.max(BonusRollFrame:GetWidth() or 0, 360)
     local btnW, btnH = 140, 28
     local winH = math.abs(dynY) + 8 + btnH + 16
     win:SetSize(winW, winH)
 
-    -- Position buttons — 140×28, centred with a gap
     rollBtn:SetSize(btnW, btnH)
     passBtn:SetSize(btnW, btnH)
     rollBtn:ClearAllPoints()
@@ -499,15 +475,11 @@ function BRC.Show()
     rollBtn:SetPoint("BOTTOM", win, "BOTTOM", -(btnW / 2 + 4), 12)
     passBtn:SetPoint("BOTTOM", win, "BOTTOM", (btnW / 2 + 4), 12)
 
-    -- Anchor at BonusRollFrame position + offset
     win:ClearAllPoints()
     win:SetPoint("TOP", BonusRollFrame, "BOTTOM", 0, WIN_GAP_Y)
-
     BonusRollFrame:SetAlpha(0)
     isActive = true
     win:Show()
-    print("|cffb048f8[VCA]|r window shown. isWarn=" .. tostring(isWarn) .. "  size=" .. tostring(winW) .. "x" ..
-              tostring(winH))
 end
 
 -- â”€â”€ BRC.Hide / Uninject â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -561,7 +533,7 @@ StaticPopupDialogs["VOIDCORE_BONUS_PASS"] = {
 BRC.Hide = BRC.Uninject
 
 function BRC.ShowPreview()
-    -- Use a real dungeon cache item as a preview stand-in (Algeth'ar Academy)
+    -- Algeth'ar Academy cache item as a live-data stand-in
     cachedDisplayItemID = 268465
     cachedItemLink = nil
     winItemIcon:SetTexture("Interface\\Icons\\Trade_VoidShards")
@@ -575,150 +547,19 @@ function BRC.ShowPreview()
     rollBtn:SetText(L["BONUS_ROLL_CONFIRM_ROLL"])
     passBtn:SetText(L["BONUS_ROLL_CONFIRM_PASS"])
 
-    -- Voidcore count + cost (M+ preview = cost 1)
     local currInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(VCA.VOIDCORE_CURRENCY_ID)
     local owned = currInfo and currInfo.quantity or 0
     winVoidcoreInfo:SetText(string.format(L["BONUS_ROLL_CONFIRM_COST"], VCA.VoidcoreCost.MYTHIC_PLUS, owned))
 
-    -- Loot odds for preview source (Algeth'ar Academy M+)
     local source = GetSourceFromDisplayItemID(cachedDisplayItemID)
     if source then
         source.difficultyID = VCA.MythicPlusEJDifficulty
     end
 
-    local dynY = -178
-    local isWarn = false
-
-    if source and source.sourceType and source.sourceID then
-        local prob = VCA.Probability.CalculateForSpec(source.sourceType, source.sourceID, source.difficultyID,
-            VCA.SpecInfo.GetPlayerClassID(), specID, nil)
-
-        lootSep:ClearAllPoints()
-        lootSep:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
-        lootSep:SetPoint("TOPRIGHT", win, "TOPRIGHT", -16, dynY)
-        lootSep:Show()
-        dynY = dynY - 10
-
-        lootLine:ClearAllPoints()
-        lootLine:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
-        if prob.noItems then
-            lootLine:SetText("|cff888888" .. L["BONUS_ROLL_CONFIRM_NO_ITEMS"] .. "|r")
-        elseif prob.allObtained then
-            lootLine:SetText("|cff00ff00" .. L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] .. "|r")
-        else
-            local pct = math.floor((prob.remainingOdds or 0) * 100 + 0.5)
-            lootLine:SetText(string.format(L["BONUS_ROLL_CONFIRM_POOL"], prob.remainingCount) ..
-                                 "  |cff888888\226\128\162|r  " .. "|cffffff00" ..
-                                 string.format(L["BONUS_ROLL_CONFIRM_CHANCE"], pct) .. "|r")
-        end
-        lootLine:Show()
-        dynY = dynY - 22
-
-        if prob.remainingCount == 1 then
-            isWarn = true
-            warnText:ClearAllPoints()
-            warnText:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
-            warnText:SetText(L["BONUS_ROLL_CONFIRM_WARNING"])
-            warnText:Show()
-            dynY = dynY - 44
-        else
-            warnText:Hide()
-        end
-    else
-        lootSep:Hide()
-        lootLine:Hide()
-        warnText:Hide()
-    end
-
-    -- Per-spec remaining item counts
-    if IsSpecListEnabled() and source and source.sourceType and source.sourceID then
-        local specs = VCA.SpecInfo.GetPlayerSpecs()
-        if specs and #specs > 0 then
-            specListSep:ClearAllPoints()
-            specListSep:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
-            specListSep:SetPoint("TOPRIGHT", win, "TOPRIGHT", -16, dynY)
-            specListSep:Show()
-            dynY = dynY - 10
-
-            specListHeader:ClearAllPoints()
-            specListHeader:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
-            specListHeader:Show()
-            dynY = dynY - 20
-
-            local rowsUsed = 0
-            for _, spec in ipairs(specs) do
-                if rowsUsed >= 4 then
-                    break
-                end
-                local items = VCA.LootPool.GetCachedItemsForSpec(source.sourceType, source.sourceID,
-                    source.difficultyID, spec.classID, spec.specID)
-                if not items then
-                    items = VCA.LootPool.GetItemsForSpec(source.sourceType, source.sourceID, source.difficultyID,
-                        spec.classID, spec.specID)
-                end
-                local remaining = 0
-                local total = #(items or {})
-                for _, itemID in ipairs(items or {}) do
-                    if not VCA.Data.IsObtained(source.sourceType, source.sourceID, source.difficultyID, spec.specID,
-                        itemID) then
-                        remaining = remaining + 1
-                    end
-                end
-                local row = specListRows[rowsUsed + 1]
-                row.icon:ClearAllPoints()
-                row.icon:SetPoint("TOPLEFT", win, "TOPLEFT", 24, dynY)
-                row.icon:SetTexture(spec.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-                row.icon:Show()
-                local remainStr
-                if total == 0 then
-                    remainStr = "|cff888888" .. L["REMINDER_SPEC_NONE"] .. "|r"
-                elseif remaining == 0 then
-                    remainStr = "|cff00ff00" .. L["ALL_OBTAINED"] .. "|r"
-                else
-                    remainStr = "|cffdddddd" .. string.format(L["REMINDER_SPEC_REMAINING"], remaining) .. "|r"
-                end
-                local warnPrefix = (remaining == 1) and (CreateAtlasMarkup("Ping_Wheel_Icon_Warning", 14, 14) .. " ") or
-                                       ""
-                row.label:ClearAllPoints()
-                row.label:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
-                row.label:SetText(warnPrefix .. "|cffa0a0a0" .. (spec.name or "?") .. "|r: " .. remainStr)
-                row.label:Show()
-                dynY = dynY - 22
-                rowsUsed = rowsUsed + 1
-            end
-            for i = rowsUsed + 1, 4 do
-                specListRows[i].icon:Hide()
-                specListRows[i].label:Hide()
-            end
-            dynY = dynY - 4
-        else
-            specListSep:Hide()
-            specListHeader:Hide()
-            for i = 1, 4 do
-                specListRows[i].icon:Hide();
-                specListRows[i].label:Hide()
-            end
-        end
-    else
-        specListSep:Hide()
-        specListHeader:Hide()
-        for i = 1, 4 do
-            specListRows[i].icon:Hide();
-            specListRows[i].label:Hide()
-        end
-    end
-
-    -- Confirmation question
-    dynY = dynY - 6
-    winRollPrompt:ClearAllPoints()
-    winRollPrompt:SetPoint("TOP", win, "TOP", 0, dynY)
-    winRollPrompt:Show()
-    dynY = dynY - 22
-
-    local winW = 360
+    local dynY = LayoutDynamicSection(source, specID, -178)
     local btnW, btnH = 140, 28
     local winH = math.abs(dynY) + 8 + btnH + 16
-    win:SetSize(winW, winH)
+    win:SetSize(360, winH)
 
     rollBtn:SetSize(btnW, btnH)
     passBtn:SetSize(btnW, btnH)
@@ -736,22 +577,16 @@ end
 
 local hooksDone = false
 local function SetupHooks()
-    if hooksDone then
-        return
-    end
-    if not BonusRollFrame then
-        print("|cffb048f8[VCA]|r SetupHooks: BonusRollFrame is nil")
+    if hooksDone or not BonusRollFrame then
         return
     end
     BonusRollFrame:HookScript("OnShow", function()
-        print("|cffb048f8[VCA]|r BonusRollFrame:OnShow fired")
         if IsEnabled() then
             BRC.Show()
         end
     end)
     BonusRollFrame:HookScript("OnHide", BRC.Uninject)
     hooksDone = true
-    print("|cffb048f8[VCA]|r SetupHooks: hooks registered on BonusRollFrame")
 end
 
 -- â”€â”€ Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -765,25 +600,17 @@ eventFrame:RegisterEvent("BONUS_ROLL_RESULT")
 
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" then
-        print("|cffb048f8[VCA]|r PLAYER_LOGIN: calling SetupHooks")
         SetupHooks()
     elseif event == "ADDON_LOADED" then
-        local name = ...
-        if name == "Blizzard_UIPanels_Game" then
-            print("|cffb048f8[VCA]|r Blizzard_UIPanels_Game loaded: calling SetupHooks")
+        if (...) == "Blizzard_UIPanels_Game" then
             SetupHooks()
         end
     elseif event == "BONUS_ROLL_STARTED" then
-        print("|cffb048f8[VCA]|r BONUS_ROLL_STARTED fired (event does exist)")
         if IsEnabled() then
             SetupHooks()
             BRC.Show()
         end
-    elseif event == "BONUS_ROLL_ACTIVATE" then
-        print("|cffb048f8[VCA]|r BONUS_ROLL_ACTIVATE fired -- uninjecting")
-        BRC.Uninject()
-    elseif event == "BONUS_ROLL_RESULT" then
-        print("|cffb048f8[VCA]|r BONUS_ROLL_RESULT fired -- uninjecting")
+    elseif event == "BONUS_ROLL_ACTIVATE" or event == "BONUS_ROLL_RESULT" then
         BRC.Uninject()
     end
 end)
