@@ -39,8 +39,17 @@ local Probability = VCA.Probability
 --     noItems        : bool    – true when this spec has no eligible items
 --   }
 -- isHighTier: nil = no tier filter (use plain obtained), true = key >= 10, false = key < 10
-function Probability.CalculateForSpec(sourceType, sourceID, difficultyID, classID, specID, isHighTier)
+function Probability.CalculateForSpec(sourceType, sourceID, difficultyID, classID, specID, isHighTier, selectedSet)
     local itemIDs = VCA.LootPool.GetItemsForSpec(sourceType, sourceID, difficultyID, classID, specID)
+    if selectedSet then
+        local filtered = {}
+        for _, itemID in ipairs(itemIDs) do
+            if selectedSet[itemID] then
+                filtered[#filtered + 1] = itemID
+            end
+        end
+        itemIDs = filtered
+    end
     local baseCount = #itemIDs
 
     local remainingCount = 0

@@ -94,6 +94,7 @@ L["BONUS_ROLL_CONFIRM_POOL"] = "%d item(s) remaining in pool"
 L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% roll chance"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "All items obtained for this spec"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "No items available for this spec"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "No items selected for this dungeon"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Source not tracked — no odds available"
 L["BONUS_ROLL_CONFIRM_WARNING"] =
     "|cffff8000Warning:|r Only |cffff00001|r item remaining — this roll will |cffff0000reset the loot pool for all specs|r!"

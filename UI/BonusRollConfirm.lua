@@ -181,10 +181,14 @@ topSep:SetHeight(1)
 topSep:SetPoint("TOPLEFT", win, "TOPLEFT", 16, -138)
 topSep:SetPoint("TOPRIGHT", win, "TOPRIGHT", -16, -138)
 
--- Spec icon + name
+-- "Current loot spec:" label + icon + name
+local specLabel = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+specLabel:SetPoint("TOPLEFT", win, "TOPLEFT", 16, -150)
+specLabel:SetText("|cff888888" .. L["REMINDER_CURRENT_SPEC"] .. "|r")
+
 local specIcon = win:CreateTexture(nil, "ARTWORK")
 specIcon:SetSize(22, 22)
-specIcon:SetPoint("TOPLEFT", win, "TOPLEFT", 16, -148)
+specIcon:SetPoint("TOPLEFT", win, "TOPLEFT", 16, -168)
 specIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
 local specName = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -230,6 +234,10 @@ end
 
 -- â”€â”€ Roll button â€” 2-click confirmation (EXTREMELY IMPORTANT) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+-- Pre-built button label strings (atlas markup evaluated once at load time).
+local ROLL_BTN_TEXT = CreateAtlasMarkup("lootroll-icon-need", 14, 14) .. " " .. L["BONUS_ROLL_CONFIRM_ROLL"]
+local PASS_BTN_TEXT = CreateAtlasMarkup("lootroll-icon-pass", 14, 14) .. " " .. L["BONUS_ROLL_CONFIRM_PASS"]
+
 -- Confirmation question above buttons
 local winRollPrompt = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 winRollPrompt:SetText(L["BONUS_ROLL_CONFIRM_QUESTION"])
@@ -241,7 +249,7 @@ rollBtn:SetNormalTexture("")
 rollBtn:SetPushedTexture("")
 rollBtn:SetHighlightTexture("")
 rollBtn:SetDisabledTexture("")
-rollBtn:SetText(L["BONUS_ROLL_CONFIRM_ROLL"])
+rollBtn:SetText(ROLL_BTN_TEXT)
 rollBtn:SetScript("OnClick", function()
     StaticPopup_Show("VOIDCORE_BONUS_ROLL", L["BONUS_ROLL_POPUP_ROLL"])
 end)
@@ -254,7 +262,7 @@ passBtn:SetNormalTexture("")
 passBtn:SetPushedTexture("")
 passBtn:SetHighlightTexture("")
 passBtn:SetDisabledTexture("")
-passBtn:SetText(L["BONUS_ROLL_CONFIRM_PASS"])
+passBtn:SetText(PASS_BTN_TEXT)
 passBtn:SetScript("OnClick", function()
     StaticPopup_Show("VOIDCORE_BONUS_PASS", L["BONUS_ROLL_POPUP_PASS"])
 end)
@@ -289,8 +297,13 @@ end
 -- window, advancing `dynY` for each section shown.  Returns the final dynY.
 -- `source` must carry { sourceType, sourceID, difficultyID } or be nil.
 local function LayoutDynamicSection(source, specID, dynY)
+    local selectedSet = (source and source.sourceType and source.sourceID) and
+                            VCA.Data.GetSelectedItems(source.sourceType, source.sourceID, source.difficultyID) or nil
+    local hasSelection = selectedSet and next(selectedSet)
+
     if source and source.sourceType and source.sourceID then
-        local prob = VCA.Probability.CalculateForSpec(source.sourceType, source.sourceID, source.difficultyID,
+        -- Full-pool probability (unfiltered) used for the warning check.
+        local probFull = VCA.Probability.CalculateForSpec(source.sourceType, source.sourceID, source.difficultyID,
             VCA.SpecInfo.GetPlayerClassID(), specID, nil)
 
         lootSep:ClearAllPoints()
@@ -299,22 +312,8 @@ local function LayoutDynamicSection(source, specID, dynY)
         lootSep:Show()
         dynY = dynY - 10
 
-        lootLine:ClearAllPoints()
-        lootLine:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
-        if prob.noItems then
-            lootLine:SetText("|cff888888" .. L["BONUS_ROLL_CONFIRM_NO_ITEMS"] .. "|r")
-        elseif prob.allObtained then
-            lootLine:SetText("|cff00ff00" .. L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] .. "|r")
-        else
-            local pct = math.floor((prob.remainingOdds or 0) * 100 + 0.5)
-            lootLine:SetText(string.format(L["BONUS_ROLL_CONFIRM_POOL"], prob.remainingCount) ..
-                                 "  |cff888888\226\128\162|r  " .. "|cffffff00" ..
-                                 string.format(L["BONUS_ROLL_CONFIRM_CHANCE"], pct) .. "|r")
-        end
-        lootLine:Show()
-        dynY = dynY - 22
-
-        if prob.remainingCount == 1 then
+        -- ── Warning (shown first, always from full pool) ──────────────────────
+        if probFull.remainingCount == 1 then
             warnText:ClearAllPoints()
             warnText:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
             warnText:SetText(L["BONUS_ROLL_CONFIRM_WARNING"])
@@ -323,12 +322,35 @@ local function LayoutDynamicSection(source, specID, dynY)
         else
             warnText:Hide()
         end
+
+        -- ── Loot probability (filtered by selection) ──────────────────────────
+        lootLine:ClearAllPoints()
+        lootLine:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
+        if not hasSelection then
+            lootLine:SetText("|cff888888" .. L["BONUS_ROLL_CONFIRM_NO_SELECTED"] .. "|r")
+        else
+            local prob = VCA.Probability.CalculateForSpec(source.sourceType, source.sourceID, source.difficultyID,
+                VCA.SpecInfo.GetPlayerClassID(), specID, nil, selectedSet)
+            if prob.noItems then
+                lootLine:SetText("|cff888888" .. L["BONUS_ROLL_CONFIRM_NO_ITEMS"] .. "|r")
+            elseif prob.allObtained then
+                lootLine:SetText("|cff00ff00" .. L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] .. "|r")
+            else
+                local pct = math.floor((prob.remainingOdds or 0) * 100 + 0.5)
+                lootLine:SetText(string.format(L["BONUS_ROLL_CONFIRM_POOL"], prob.remainingCount) ..
+                                     "  |cff888888\226\128\162|r  " .. "|cffffff00" ..
+                                     string.format(L["BONUS_ROLL_CONFIRM_CHANCE"], pct) .. "|r")
+            end
+        end
+        lootLine:Show()
+        dynY = dynY - 22
     else
         lootSep:Hide()
         lootLine:Hide()
         warnText:Hide()
     end
 
+    -- ── Per-spec remaining counts (shown whenever option is on) ───────────────
     if IsSpecListEnabled() and source and source.sourceType and source.sourceID then
         local specs = VCA.SpecInfo.GetPlayerSpecs()
         if specs and #specs > 0 then
@@ -354,9 +376,12 @@ local function LayoutDynamicSection(source, specID, dynY)
                     items = VCA.LootPool.GetItemsForSpec(source.sourceType, source.sourceID, source.difficultyID,
                         spec.classID, spec.specID)
                 end
+                -- Always count the full pool for each spec — the per-spec list
+                -- shows dungeon-wide remaining counts, not the user's selection.
+                local pool = items or {}
+                local total = #pool
                 local remaining = 0
-                local total = #(items or {})
-                for _, itemID in ipairs(items or {}) do
+                for _, itemID in ipairs(pool) do
                     if not VCA.Data.IsObtained(source.sourceType, source.sourceID, source.difficultyID, spec.specID,
                         itemID) then
                         remaining = remaining + 1
@@ -443,8 +468,8 @@ function BRC.Show()
     specIcon:SetTexture(sIcon or "Interface\\Icons\\INV_Misc_QuestionMark")
     specName:SetText("|cffdddddd" .. (sName or "?") .. "|r")
 
-    rollBtn:SetText(L["BONUS_ROLL_CONFIRM_ROLL"])
-    passBtn:SetText(L["BONUS_ROLL_CONFIRM_PASS"])
+    rollBtn:SetText(ROLL_BTN_TEXT)
+    passBtn:SetText(PASS_BTN_TEXT)
 
     -- Dynamic loot odds section
     -- dynY cursor: top of spec row = -108, row height = 22, gap = 8  â†’  -138
@@ -466,7 +491,7 @@ function BRC.Show()
                      VCA.VoidcoreCost.MYTHIC_PLUS
     winVoidcoreInfo:SetText(string.format(L["BONUS_ROLL_CONFIRM_COST"], cost, owned))
 
-    local dynY = LayoutDynamicSection(source, specID, -178)
+    local dynY = LayoutDynamicSection(source, specID, -198)
     local btnW, btnH = 140, 28
     local winH = math.abs(dynY) + 8 + btnH + 16
     win:SetSize(360, winH)
@@ -555,8 +580,8 @@ function BRC.ShowPreview()
     specIcon:SetTexture(sIcon or "Interface\\Icons\\INV_Misc_QuestionMark")
     specName:SetText("|cffdddddd" .. (sName or "?") .. "|r")
 
-    rollBtn:SetText(L["BONUS_ROLL_CONFIRM_ROLL"])
-    passBtn:SetText(L["BONUS_ROLL_CONFIRM_PASS"])
+    rollBtn:SetText(ROLL_BTN_TEXT)
+    passBtn:SetText(PASS_BTN_TEXT)
 
     local currInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(VCA.VOIDCORE_CURRENCY_ID)
     local owned = currInfo and currInfo.quantity or 0
@@ -567,7 +592,7 @@ function BRC.ShowPreview()
         source.difficultyID = VCA.MythicPlusEJDifficulty
     end
 
-    local dynY = LayoutDynamicSection(source, specID, -178)
+    local dynY = LayoutDynamicSection(source, specID, -198)
     local btnW, btnH = 140, 28
     local winH = math.abs(dynY) + 8 + btnH + 16
     win:SetSize(360, winH)
