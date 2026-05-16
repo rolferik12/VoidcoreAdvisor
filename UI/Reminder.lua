@@ -167,6 +167,45 @@ recName:SetPoint("LEFT", recIcon, "RIGHT", 8, 0)
 local recStats = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 recStats:SetPoint("TOPLEFT", frame, "TOPLEFT", 24, -184)
 
+-- ── Dynamic warning section (1-item-remaining) ───────────────────────────────
+
+local dynWarnDivider = frame:CreateTexture(nil, "ARTWORK")
+dynWarnDivider:SetColorTexture(1.0, 0.5, 0.0, 0.4)
+dynWarnDivider:SetHeight(1)
+dynWarnDivider:Hide()
+
+local dynWarnIcon = frame:CreateTexture(nil, "ARTWORK")
+dynWarnIcon:SetSize(20, 20)
+dynWarnIcon:SetAtlas("Ping_Wheel_Icon_Warning")
+dynWarnIcon:Hide()
+
+local dynWarnText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+dynWarnText:SetWidth(292)
+dynWarnText:SetJustifyH("LEFT")
+dynWarnText:Hide()
+
+-- ── Spec-list section ────────────────────────────────────────────────────────
+
+local dynSpecDivider = frame:CreateTexture(nil, "ARTWORK")
+dynSpecDivider:SetColorTexture(0.58, 0.0, 0.82, 0.4)
+dynSpecDivider:SetHeight(1)
+dynSpecDivider:Hide()
+
+local dynSpecHeader = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+dynSpecHeader:Hide()
+
+local dynSpecRows = {}
+for i = 1, 4 do
+    local row = {}
+    row.icon = frame:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(18, 18)
+    row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    row.label = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.icon:Hide()
+    row.label:Hide()
+    dynSpecRows[i] = row
+end
+
 -- ── Prompt ────────────────────────────────────────────────────────────────────
 
 local prompt = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -198,9 +237,61 @@ noBtn:SetScript("OnClick", function()
     frame:Hide()
 end)
 
+-- ── Shared spec-list builder ─────────────────────────────────────────────────
+-- Populates up to 4 pre-built spec rows starting at dynY and returns the new dynY.
+-- rows: array of {icon=Texture, label=FontString}
+-- rankings: spec ranking table from RankCurrentPlayerSpecsForItemsCached
+-- highlightSpecID: specID to colour green (favored/current)
+-- parentFrame: frame used for TOPLEFT anchoring
+local function BuildSpecList(parentFrame, startY, rows, rankings, highlightSpecID)
+    local dynY = startY
+    local rowsUsed = 0
+    for _, r in ipairs(rankings or {}) do
+        if rowsUsed >= 4 then
+            break
+        end
+        local row = rows[rowsUsed + 1]
+
+        row.icon:ClearAllPoints()
+        row.icon:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 24, dynY)
+        row.icon:SetTexture(r.specIcon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        row.icon:Show()
+
+        local nameColor = (r.specID == highlightSpecID) and "cffffff00" or "cffa0a0a0"
+        local remainStr
+        if r.allObtained then
+            remainStr = "|cff00ff00" .. L["ALL_OBTAINED"] .. "|r"
+        elseif r.remainingCount > 0 then
+            remainStr = "|cffdddddd" .. string.format(L["REMINDER_SPEC_REMAINING"], r.remainingCount) .. "|r"
+        else
+            remainStr = "|cff888888" .. L["REMINDER_SPEC_NONE"] .. "|r"
+        end
+
+        -- Attach a warning marker on any spec that has exactly 1 item left.
+        local warnPrefix = ""
+        if r.remainingCount == 1 then
+            warnPrefix = CreateAtlasMarkup("Ping_Wheel_Icon_Warning", 14, 14) .. " "
+        end
+
+        row.label:ClearAllPoints()
+        row.label:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
+        row.label:SetText(warnPrefix .. "|" .. nameColor .. r.specName .. "|r: " .. remainStr)
+        row.label:Show()
+
+        dynY = dynY - 22
+        rowsUsed = rowsUsed + 1
+    end
+    -- Hide unused rows.
+    for i = rowsUsed + 1, 4 do
+        rows[i].icon:Hide()
+        rows[i].label:Hide()
+    end
+    return dynY
+end
+
 -- ── Show / Hide ───────────────────────────────────────────────────────────────
 
-function Reminder.Show(currentSpecID, bestEntry, selectedCount)
+function Reminder.Show(currentSpecID, bestEntry, selectedCount, rankings)
     -- Voidcore count
     local currInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(VCA.VOIDCORE_CURRENCY_ID)
     local owned = currInfo and currInfo.quantity or 0
@@ -220,6 +311,52 @@ function Reminder.Show(currentSpecID, bestEntry, selectedCount)
                          "|cffffff00" .. string.format(L["REMINDER_SELECTED_CHANCE"], pct) .. "|r")
 
     prompt:SetText(string.format(L["REMINDER_CHANGE_PROMPT"], bestEntry.specName or "?"))
+
+    -- ── Dynamic section ──────────────────────────────────────────────────────
+    -- Content above the dynamic section ends at approximately y=-200.
+    local dynY = -208
+
+    if bestEntry.remainingCount == 1 then
+        -- Orange divider before warning.
+        dynWarnDivider:ClearAllPoints()
+        dynWarnDivider:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, dynY)
+        dynWarnDivider:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, dynY)
+        dynWarnDivider:Show()
+        dynY = dynY - 12
+
+        dynWarnIcon:ClearAllPoints()
+        dynWarnIcon:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, dynY)
+        dynWarnIcon:Show()
+
+        dynWarnText:ClearAllPoints()
+        dynWarnText:SetPoint("TOPLEFT", frame, "TOPLEFT", 46, dynY)
+        dynWarnText:SetText(L["REMINDER_WARNING_ONE_ITEM"])
+        dynWarnText:Show()
+
+        dynY = dynY - 80
+    else
+        dynWarnDivider:Hide()
+        dynWarnIcon:Hide()
+        dynWarnText:Hide()
+    end
+
+    -- Purple divider before spec list.
+    dynSpecDivider:ClearAllPoints()
+    dynSpecDivider:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, dynY)
+    dynSpecDivider:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, dynY)
+    dynSpecDivider:Show()
+    dynY = dynY - 14
+
+    dynSpecHeader:ClearAllPoints()
+    dynSpecHeader:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, dynY)
+    dynSpecHeader:SetText("|cff888888" .. L["REMINDER_SPEC_LIST_HEADER"] .. "|r")
+    dynSpecHeader:Show()
+    dynY = dynY - 20
+
+    dynY = BuildSpecList(frame, dynY, dynSpecRows, rankings, bestEntry.specID)
+
+    -- Resize frame to fit all content + room for prompt + buttons.
+    frame:SetHeight(math.abs(dynY) + 90)
 
     pendingSpecID = bestEntry.specID
     frame:Show()
@@ -247,15 +384,175 @@ function Reminder.ShowExample()
 
     local _, recSpecName, _, recSpecIcon = GetSpecializationInfoByID(recSpecID)
 
+    -- Build a minimal rankings list for the preview.
+    local exampleRankings = {}
+    for i = 1, GetNumSpecializations() do
+        local sid, sname, _, sicon = GetSpecializationInfo(i)
+        if sid then
+            exampleRankings[#exampleRankings + 1] = {
+                specID = sid,
+                specName = sname or "Unknown",
+                specIcon = sicon,
+                remainingCount = (sid == recSpecID) and 1 or math.random(2, 6),
+                allObtained = false
+            }
+        end
+    end
+
     Reminder.Show(currentSpecID, {
         specID = recSpecID,
         specName = recSpecName or "Unknown",
         specIcon = recSpecIcon,
-        selectedOdds = 0.42
-    }, 5)
+        selectedOdds = 0.42,
+        remainingCount = 1
+    }, 5, exampleRankings)
 
     -- Prevent the "Yes" button from actually changing the loot spec.
     pendingSpecID = nil
+end
+
+-- ── Warning popup (already on the favored loot spec) ────────────────────────
+
+local warnFrame = CreateFrame("Frame", "VoidcoreAdvisorWarning", UIParent, "BackdropTemplate")
+warnFrame:SetSize(360, 340)
+warnFrame:SetPoint("CENTER")
+warnFrame:SetFrameStrata("DIALOG")
+warnFrame:SetClampedToScreen(true)
+warnFrame:EnableMouse(true)
+warnFrame:Hide()
+
+warnFrame:SetBackdrop({
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+    tile = true,
+    tileSize = 32,
+    edgeSize = 32,
+    insets = {
+        left = 11,
+        right = 12,
+        top = 12,
+        bottom = 11
+    }
+})
+warnFrame:SetBackdropColor(0.05, 0.02, 0.12, 0.95)
+warnFrame:SetBackdropBorderColor(0.58, 0.0, 0.82, 1)
+
+tinsert(UISpecialFrames, "VoidcoreAdvisorWarning")
+
+local wf_title = warnFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+wf_title:SetPoint("TOP", 0, -14)
+wf_title:SetText(L["WARNING_TITLE"])
+
+local wf_subtitle = warnFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+wf_subtitle:SetPoint("TOP", wf_title, "BOTTOM", 0, -4)
+wf_subtitle:SetText("|cffff8000" .. L["WARNING_SUBTITLE"] .. "|r")
+
+local wf_voidcoreCount = warnFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+wf_voidcoreCount:SetPoint("TOP", wf_subtitle, "BOTTOM", 0, -3)
+
+local wf_divider1 = warnFrame:CreateTexture(nil, "ARTWORK")
+wf_divider1:SetColorTexture(0.58, 0.0, 0.82, 0.4)
+wf_divider1:SetPoint("TOPLEFT", warnFrame, "TOPLEFT", 16, -56)
+wf_divider1:SetPoint("TOPRIGHT", warnFrame, "TOPRIGHT", -16, -56)
+wf_divider1:SetHeight(1)
+
+local wf_specHeader = warnFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+wf_specHeader:SetPoint("TOPLEFT", warnFrame, "TOPLEFT", 20, -68)
+wf_specHeader:SetText("|cff888888" .. L["WARNING_FAVORED_SPEC"] .. "|r")
+
+local wf_curIcon = warnFrame:CreateTexture(nil, "ARTWORK")
+wf_curIcon:SetSize(28, 28)
+wf_curIcon:SetPoint("TOPLEFT", warnFrame, "TOPLEFT", 24, -88)
+wf_curIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+local wf_curName = warnFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+wf_curName:SetPoint("LEFT", wf_curIcon, "RIGHT", 8, 0)
+
+-- Warning section (always shown)
+local wf_warnDivider = warnFrame:CreateTexture(nil, "ARTWORK")
+wf_warnDivider:SetColorTexture(1.0, 0.5, 0.0, 0.4)
+wf_warnDivider:SetPoint("TOPLEFT", warnFrame, "TOPLEFT", 16, -130)
+wf_warnDivider:SetPoint("TOPRIGHT", warnFrame, "TOPRIGHT", -16, -130)
+wf_warnDivider:SetHeight(1)
+
+local wf_warnIcon = warnFrame:CreateTexture(nil, "ARTWORK")
+wf_warnIcon:SetSize(20, 20)
+wf_warnIcon:SetPoint("TOPLEFT", warnFrame, "TOPLEFT", 20, -148)
+wf_warnIcon:SetAtlas("Ping_Wheel_Icon_Warning")
+
+local wf_warnText = warnFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+wf_warnText:SetWidth(292)
+wf_warnText:SetJustifyH("LEFT")
+wf_warnText:SetPoint("TOPLEFT", warnFrame, "TOPLEFT", 46, -148)
+
+-- Spec-list section (dynamic height, positioned by ShowWarning)
+local wf_specListDivider = warnFrame:CreateTexture(nil, "ARTWORK")
+wf_specListDivider:SetColorTexture(0.58, 0.0, 0.82, 0.4)
+wf_specListDivider:SetHeight(1)
+wf_specListDivider:Hide()
+
+local wf_specListHeader = warnFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+wf_specListHeader:Hide()
+
+local wf_specRows = {}
+for i = 1, 4 do
+    local row = {}
+    row.icon = warnFrame:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(18, 18)
+    row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    row.label = warnFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.icon:Hide()
+    row.label:Hide()
+    wf_specRows[i] = row
+end
+
+local wf_closeBtn = CreateFrame("Button", nil, warnFrame, "UIPanelButtonTemplate")
+wf_closeBtn:SetSize(140, 28)
+wf_closeBtn:SetPoint("BOTTOM", warnFrame, "BOTTOM", 0, 18)
+wf_closeBtn:SetText(L["WARNING_CLOSE"])
+wf_closeBtn:SetScript("OnClick", function()
+    warnFrame:Hide()
+end)
+
+function Reminder.ShowWarning(currentSpecID, currentEntry, rankings)
+    -- Voidcore count
+    local currInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(VCA.VOIDCORE_CURRENCY_ID)
+    local owned = currInfo and currInfo.quantity or 0
+    wf_voidcoreCount:SetText(string.format(L["WARNING_VOIDCORE_COUNT"], owned))
+
+    -- Current (favored) spec
+    local _, curSpecName, _, curSpecIcon = GetSpecializationInfoByID(currentSpecID)
+    wf_curIcon:SetTexture(curSpecIcon or "Interface\\Icons\\INV_Misc_QuestionMark")
+    wf_curName:SetText("|cffffff00" .. (curSpecName or "Unknown") .. "|r")
+
+    -- Warning text
+    wf_warnText:SetText(string.format(L["WARNING_ONE_ITEM"], currentEntry.remainingCount or 1))
+
+    -- Spec list (dynamic, starts at y=-220 which is well below the 2-3 line warning text)
+    local dynY = -220
+
+    wf_specListDivider:ClearAllPoints()
+    wf_specListDivider:SetPoint("TOPLEFT", warnFrame, "TOPLEFT", 16, dynY)
+    wf_specListDivider:SetPoint("TOPRIGHT", warnFrame, "TOPRIGHT", -16, dynY)
+    wf_specListDivider:Show()
+    dynY = dynY - 14
+
+    wf_specListHeader:ClearAllPoints()
+    wf_specListHeader:SetPoint("TOPLEFT", warnFrame, "TOPLEFT", 20, dynY)
+    wf_specListHeader:SetText("|cff888888" .. L["WARNING_SPEC_LIST_HEADER"] .. "|r")
+    wf_specListHeader:Show()
+    dynY = dynY - 20
+
+    dynY = BuildSpecList(warnFrame, dynY, wf_specRows, rankings, currentSpecID)
+
+    -- Resize to fit.
+    warnFrame:SetHeight(math.abs(dynY) + 70)
+
+    warnFrame:Show()
+end
+
+function Reminder.HideWarning()
+    warnFrame:Hide()
 end
 
 -- ── Evaluation ────────────────────────────────────────────────────────────────
@@ -334,9 +631,14 @@ function Reminder.Evaluate()
         return
     end
 
-    -- Already on the best spec — no reminder needed.
+    -- Already on the best spec.
     local currentLootSpecID = VCA.SpecInfo.GetEffectiveLootSpecID()
     if currentLootSpecID == bestSpec.specID then
+        -- If the favored spec has only 1 item remaining, warn about pool reset.
+        if bestSpec.remainingCount == 1 then
+            lastShownInstanceID = ejInstanceID
+            Reminder.ShowWarning(currentLootSpecID, bestSpec, rankings)
+        end
         return
     end
 
@@ -355,7 +657,7 @@ function Reminder.Evaluate()
     end
 
     lastShownInstanceID = ejInstanceID
-    Reminder.Show(currentLootSpecID, bestSpec, #selectedList)
+    Reminder.Show(currentLootSpecID, bestSpec, #selectedList, rankings)
 end
 
 function Reminder.ForceEvaluate()

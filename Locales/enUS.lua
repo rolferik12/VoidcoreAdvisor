@@ -65,6 +65,21 @@ L["REMINDER_SELECTED_CHANCE"] = "%d%% chance for selected item(s)"
 L["REMINDER_CHANGE_PROMPT"] = "Change loot spec to |cffffff00%s|r?"
 L["REMINDER_YES"] = "Yes, Change"
 L["REMINDER_NO"] = "No Thanks"
+L["REMINDER_WARNING_ONE_ITEM"] =
+    "|cffff8000Warning:|r This spec has |cffff0000only 1 item|r remaining in this dungeon. Using a Nebulous Voidcore as this spec will |cffff0000reset the loot pool for every specialization|r in this dungeon!"
+L["REMINDER_SPEC_LIST_HEADER"] = "Items remaining per spec:"
+L["REMINDER_SPEC_REMAINING"] = "%d remaining"
+L["REMINDER_SPEC_NONE"] = "none remaining"
+
+-- ── Voidcore Pool Reset warning popup (Reminder.lua) ─────────────────────────
+L["WARNING_TITLE"] = "|cffb048f8Voidcore|r|cffddddddAdvisor|r"
+L["WARNING_SUBTITLE"] = "Loot Pool Reset Risk"
+L["WARNING_VOIDCORE_COUNT"] = "You have |cffffff00%d|r Nebulous Voidcore(s)"
+L["WARNING_FAVORED_SPEC"] = "You are using the favored loot spec:"
+L["WARNING_ONE_ITEM"] =
+    "|cffff8000Warning:|r This spec has |cffff0000only %d item|r remaining in this dungeon. Using a Nebulous Voidcore will |cffff0000reset the loot pool for every specialization|r in this dungeon!"
+L["WARNING_SPEC_LIST_HEADER"] = "Items remaining per spec:"
+L["WARNING_CLOSE"] = "Close"
 
 -- ── Options panel (Options.lua) ───────────────────────────────────────────────
 
