@@ -126,6 +126,7 @@ local winItemIcon = win:CreateTexture(nil, "ARTWORK")
 winItemIcon:SetSize(40, 40)
 winItemIcon:SetPoint("TOPLEFT", win, "TOPLEFT", 16, -74)
 winItemIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+winItemIcon:Hide()
 
 -- Transparent button over the icon for tooltip hit-testing
 local winIconBtn = CreateFrame("Button", nil, win)
@@ -155,8 +156,8 @@ end)
 
 -- Item name label
 local winItemName = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-winItemName:SetPoint("TOPLEFT", winItemIcon, "TOPRIGHT", 8, -2)
-winItemName:SetWidth(280)
+winItemName:SetPoint("TOPLEFT", win, "TOPLEFT", 16, -74)
+winItemName:SetWidth(328)
 winItemName:SetJustifyH("LEFT")
 winItemName:SetWordWrap(true)
 
@@ -236,6 +237,10 @@ winRollPrompt:Hide()
 
 local rollBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
 rollBtn:SetHeight(22)
+rollBtn:SetNormalTexture("")
+rollBtn:SetPushedTexture("")
+rollBtn:SetHighlightTexture("")
+rollBtn:SetDisabledTexture("")
 rollBtn:SetText(L["BONUS_ROLL_CONFIRM_ROLL"])
 rollBtn:SetScript("OnClick", function()
     StaticPopup_Show("VOIDCORE_BONUS_ROLL", L["BONUS_ROLL_POPUP_ROLL"])
@@ -245,6 +250,10 @@ end)
 
 local passBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
 passBtn:SetHeight(22)
+passBtn:SetNormalTexture("")
+passBtn:SetPushedTexture("")
+passBtn:SetHighlightTexture("")
+passBtn:SetDisabledTexture("")
 passBtn:SetText(L["BONUS_ROLL_CONFIRM_PASS"])
 passBtn:SetScript("OnClick", function()
     StaticPopup_Show("VOIDCORE_BONUS_PASS", L["BONUS_ROLL_POPUP_PASS"])
@@ -405,10 +414,6 @@ function BRC.Show()
 
     local pf = BonusRollFrame.PromptFrame
 
-    if pf.Icon then
-        winItemIcon:SetTexture(pf.Icon:GetTexture())
-    end
-
     cachedDisplayItemID = nil
     cachedItemLink = nil
     local ejBtn = pf.EncounterJournalLinkButton
@@ -431,15 +436,8 @@ function BRC.Show()
     specIcon:SetTexture(sIcon or "Interface\\Icons\\INV_Misc_QuestionMark")
     specName:SetText("|cffdddddd" .. (sName or "?") .. "|r")
 
-    if pf.RollButton then
-        SyncButtonAppearance(pf.RollButton, rollBtn)
-    end
     rollBtn:SetText(L["BONUS_ROLL_CONFIRM_ROLL"])
-    local passText = (pf.PassButton and pf.PassButton:GetText()) or "Pass"
-    if pf.PassButton then
-        SyncButtonAppearance(pf.PassButton, passBtn)
-    end
-    passBtn:SetText(passText)
+    passBtn:SetText(L["BONUS_ROLL_CONFIRM_PASS"])
 
     -- Dynamic loot odds section
     -- dynY cursor: top of spec row = -108, row height = 22, gap = 8  â†’  -138
@@ -462,11 +460,9 @@ function BRC.Show()
     winVoidcoreInfo:SetText(string.format(L["BONUS_ROLL_CONFIRM_COST"], cost, owned))
 
     local dynY = LayoutDynamicSection(source, specID, -178)
-
-    local winW = math.max(BonusRollFrame:GetWidth() or 0, 360)
     local btnW, btnH = 140, 28
     local winH = math.abs(dynY) + 8 + btnH + 16
-    win:SetSize(winW, winH)
+    win:SetSize(360, winH)
 
     rollBtn:SetSize(btnW, btnH)
     passBtn:SetSize(btnW, btnH)
@@ -536,7 +532,6 @@ function BRC.ShowPreview()
     -- Algeth'ar Academy cache item as a live-data stand-in
     cachedDisplayItemID = 268465
     cachedItemLink = nil
-    winItemIcon:SetTexture("Interface\\Icons\\Trade_VoidShards")
     winItemName:SetText("|cff888888Nebulous Voidcore Roll (Preview)|r")
 
     local specID = VCA.SpecInfo.GetEffectiveLootSpecID()
