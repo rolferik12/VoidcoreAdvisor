@@ -66,6 +66,22 @@ L["REMINDER_SELECTED_CHANCE"] = "%d%% Chance für ausgewählte Gegenstände"
 L["REMINDER_CHANGE_PROMPT"] = "Beutespezialisierung zu |cffffff00%s|r wechseln?"
 L["REMINDER_YES"] = "Ja, wechseln"
 L["REMINDER_NO"] = "Nein danke"
+L["REMINDER_WARNING_ONE_ITEM"] =
+    "|cffff8000Warnung:|r Diese Spezialisierung hat in diesem Dungeon |cffff0000nur noch 1 Gegenstand|r übrig. Die Verwendung eines Nebulösen Leerkerns mit dieser Spezialisierung |cffff0000setzt den Beutepool für alle Spezialisierungen|r in diesem Dungeon zurück!"
+L["REMINDER_SPEC_LIST_HEADER"] = "Verbleibende Gegenstände pro Spezialisierung:"
+L["REMINDER_SPEC_REMAINING"] = "%d übrig"
+L["REMINDER_SPEC_NONE"] = "nichts übrig"
+
+-- ── Voidcore-Pool-Reset-Warnungs-Popup (Reminder.lua) ────────────────────────
+
+L["WARNING_TITLE"] = "|cffb048f8Voidcore|r|cffddddddBerater|r"
+L["WARNING_SUBTITLE"] = "Risiko: Beutepool-Rücksetzung"
+L["WARNING_VOIDCORE_COUNT"] = "Du hast |cffffff00%d|r Nebulösen Leerenkern(e)"
+L["WARNING_FAVORED_SPEC"] = "Du verwendest die bevorzugte Beutespezialisierung:"
+L["WARNING_ONE_ITEM"] =
+    "|cffff8000Warnung:|r Diese Spezialisierung hat in diesem Dungeon |cffff0000nur noch %d Gegenstand|r übrig. Die Verwendung eines Nebulösen Leerkerns |cffff0000setzt den Beutepool für alle Spezialisierungen|r in diesem Dungeon zurück!"
+L["WARNING_SPEC_LIST_HEADER"] = "Verbleibende Gegenstände pro Spezialisierung:"
+L["WARNING_CLOSE"] = "Schließen"
 
 -- ── Optionspanel (Options.lua) ────────────────────────────────────────────────
 

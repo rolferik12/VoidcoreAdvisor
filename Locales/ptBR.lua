@@ -66,6 +66,22 @@ L["REMINDER_SELECTED_CHANCE"] = "%d%% de chance para item(ns) selecionado(s)"
 L["REMINDER_CHANGE_PROMPT"] = "Alterar especialização de saque para |cffffff00%s|r?"
 L["REMINDER_YES"] = "Sim, alterar"
 L["REMINDER_NO"] = "Não, obrigado"
+L["REMINDER_WARNING_ONE_ITEM"] =
+    "|cffff8000Aviso:|r Esta especialização tem |cffff0000apenas 1 item|r restante nesta masmorra. Usar um Núcleo do Vazio Nebuloso com esta especialização |cffff0000redefinirá o grupo de saque de todas as especializações|r nesta masmorra!"
+L["REMINDER_SPEC_LIST_HEADER"] = "Itens restantes por especialização:"
+L["REMINDER_SPEC_REMAINING"] = "%d restante(s)"
+L["REMINDER_SPEC_NONE"] = "nenhum restante"
+
+-- ── Popup de aviso de redefinição do grupo de saque (Reminder.lua) ───────────
+
+L["WARNING_TITLE"] = "|cffb048f8Voidcore|r|cffddddddAdvisor|r"
+L["WARNING_SUBTITLE"] = "Risco de redefinição do grupo de saque"
+L["WARNING_VOIDCORE_COUNT"] = "Você tem |cffffff00%d|r Núcleo(s) do Vazio Nebuloso"
+L["WARNING_FAVORED_SPEC"] = "Você está usando a especialização de saque favorita:"
+L["WARNING_ONE_ITEM"] =
+    "|cffff8000Aviso:|r Esta especialização tem |cffff0000apenas %d item|r restante nesta masmorra. Usar um Núcleo do Vazio Nebuloso |cffff0000redefinirá o grupo de saque de todas as especializações|r nesta masmorra!"
+L["WARNING_SPEC_LIST_HEADER"] = "Itens restantes por especialização:"
+L["WARNING_CLOSE"] = "Fechar"
 
 -- ── Painel de opções (Options.lua) ────────────────────────────────────────────
 

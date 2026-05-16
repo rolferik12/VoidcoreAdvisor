@@ -66,6 +66,22 @@ L["REMINDER_SELECTED_CHANCE"] = "%d%% de chance pour l'objet sélectionné"
 L["REMINDER_CHANGE_PROMPT"] = "Changer la spécialisation de butin pour |cffffff00%s|r ?"
 L["REMINDER_YES"] = "Oui, changer"
 L["REMINDER_NO"] = "Non merci"
+L["REMINDER_WARNING_ONE_ITEM"] =
+    "|cffff8000Avertissement :|r Cette spécialisation n'a plus que |cffff00001 objet|r restant dans ce donjon. Utiliser un Noyau du Vide nébuleux avec cette spécialisation |cffff0000réinitialisera le groupe de butin de toutes les spécialisations|r dans ce donjon !"
+L["REMINDER_SPEC_LIST_HEADER"] = "Objets restants par spécialisation :"
+L["REMINDER_SPEC_REMAINING"] = "%d restant(s)"
+L["REMINDER_SPEC_NONE"] = "aucun restant"
+
+-- ── Popup d'avertissement de réinitialisation du groupe de butin (Reminder.lua) ──
+
+L["WARNING_TITLE"] = "|cffb048f8Voidcore|r|cffddddddConseiller|r"
+L["WARNING_SUBTITLE"] = "Risque de réinitialisation du groupe de butin"
+L["WARNING_VOIDCORE_COUNT"] = "Vous avez |cffffff00%d|r Noyau(x) du Vide nébuleux"
+L["WARNING_FAVORED_SPEC"] = "Vous utilisez la spécialisation de butin favorite :"
+L["WARNING_ONE_ITEM"] =
+    "|cffff8000Avertissement :|r Cette spécialisation n'a plus que |cffff0000%d objet|r restant dans ce donjon. Utiliser un Noyau du Vide nébuleux |cffff0000réinitialisera le groupe de butin de toutes les spécialisations|r dans ce donjon !"
+L["WARNING_SPEC_LIST_HEADER"] = "Objets restants par spécialisation :"
+L["WARNING_CLOSE"] = "Fermer"
 
 -- ── Panneau d'options (Options.lua) ──────────────────────────────────────────
 

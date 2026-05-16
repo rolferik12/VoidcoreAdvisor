@@ -66,6 +66,22 @@ L["REMINDER_SELECTED_CHANCE"] = "선택한 아이템 %d%% 확률"
 L["REMINDER_CHANGE_PROMPT"] = "전리품 전문화를 |cffffff00%s|r(으)로 변경하시겠습니까?"
 L["REMINDER_YES"] = "예, 변경"
 L["REMINDER_NO"] = "아니요"
+L["REMINDER_WARNING_ONE_ITEM"] =
+    "|cffff8000경고:|r 이 전문화는 이 던전에 |cffff0000아이템이 1개|r 남아 있습니다. 이 전문화로 성운의 공허핵을 사용하면 이 던전의 |cffff0000모든 전문화의 전리품 풀이 초기화|r됩니다!"
+L["REMINDER_SPEC_LIST_HEADER"] = "전문화별 남은 아이템:"
+L["REMINDER_SPEC_REMAINING"] = "%d개 남음"
+L["REMINDER_SPEC_NONE"] = "남은 아이템 없음"
+
+-- ── 공허 풀 초기화 경고 팝업 (Reminder.lua) ──────────────────────────────────
+
+L["WARNING_TITLE"] = "|cffb048f8공허핵|r|cffdddddd도우미|r"
+L["WARNING_SUBTITLE"] = "전리품 풀 초기화 위험"
+L["WARNING_VOIDCORE_COUNT"] = "성운의 공허핵 |cffffff00%d|r개 보유 중"
+L["WARNING_FAVORED_SPEC"] = "현재 선호 전리품 전문화를 사용 중입니다:"
+L["WARNING_ONE_ITEM"] =
+    "|cffff8000경고:|r 이 전문화는 이 던전에 |cffff0000아이템이 %d개|r 남아 있습니다. 성운의 공허핵을 사용하면 이 던전의 |cffff0000모든 전문화의 전리품 풀이 초기화|r됩니다!"
+L["WARNING_SPEC_LIST_HEADER"] = "전문화별 남은 아이템:"
+L["WARNING_CLOSE"] = "닫기"
 
 -- ── 옵션 패널 (Options.lua) ───────────────────────────────────────────────────
 

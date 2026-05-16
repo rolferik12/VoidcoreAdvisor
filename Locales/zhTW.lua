@@ -66,6 +66,22 @@ L["REMINDER_SELECTED_CHANCE"] = "選中物品的機率 %d%%"
 L["REMINDER_CHANGE_PROMPT"] = "將拾取專精更改為 |cffffff00%s|r？"
 L["REMINDER_YES"] = "是，更改"
 L["REMINDER_NO"] = "不，謝謝"
+L["REMINDER_WARNING_ONE_ITEM"] =
+    "|cffff8000警告：|r 該專精在本地城中|cffff0000只剩1件物品|r。以該專精使用星雲虛無核心將|cffff0000重置本地城所有專精的戰利品池|r！"
+L["REMINDER_SPEC_LIST_HEADER"] = "各專精剩餘物品："
+L["REMINDER_SPEC_REMAINING"] = "剩餘 %d 件"
+L["REMINDER_SPEC_NONE"] = "無剩餘"
+
+-- ── 戰利品池重置警告彈窗（Reminder.lua）─────────────────────────────────────
+
+L["WARNING_TITLE"] = "|cffb048f8虛無核心|r|cffdddddd助手|r"
+L["WARNING_SUBTITLE"] = "戰利品池重置風險"
+L["WARNING_VOIDCORE_COUNT"] = "你有 |cffffff00%d|r 個星雲虛無核心"
+L["WARNING_FAVORED_SPEC"] = "你正在使用首選拾取專精："
+L["WARNING_ONE_ITEM"] =
+    "|cffff8000警告：|r 該專精在本地城中|cffff0000只剩 %d 件物品|r。使用星雲虛無核心將|cffff0000重置本地城所有專精的戰利品池|r！"
+L["WARNING_SPEC_LIST_HEADER"] = "各專精剩餘物品："
+L["WARNING_CLOSE"] = "關閉"
 
 -- ── 選項面板（Options.lua）───────────────────────────────────────────────────
 

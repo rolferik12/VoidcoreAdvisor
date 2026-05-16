@@ -66,6 +66,22 @@ L["REMINDER_SELECTED_CHANCE"] = "%d%% di probabilità per oggetti selezionati"
 L["REMINDER_CHANGE_PROMPT"] = "Cambiare specializzazione bottino in |cffffff00%s|r?"
 L["REMINDER_YES"] = "Sì, cambia"
 L["REMINDER_NO"] = "No grazie"
+L["REMINDER_WARNING_ONE_ITEM"] =
+    "|cffff8000Attenzione:|r Questa specializzazione ha |cffff0000solo 1 oggetto|r rimanente in questa spedizione. Usare un Nucleo del Vuoto nebuloso con questa specializzazione |cffff0000azzererà il pool bottino per tutte le specializzazioni|r in questa spedizione!"
+L["REMINDER_SPEC_LIST_HEADER"] = "Oggetti rimanenti per specializzazione:"
+L["REMINDER_SPEC_REMAINING"] = "%d rimanente/i"
+L["REMINDER_SPEC_NONE"] = "nessuno rimanente"
+
+-- ── Popup avviso reset pool bottino (Reminder.lua) ────────────────────────────
+
+L["WARNING_TITLE"] = "|cffb048f8Voidcore|r|cffddddddAdvisor|r"
+L["WARNING_SUBTITLE"] = "Rischio reset pool bottino"
+L["WARNING_VOIDCORE_COUNT"] = "Hai |cffffff00%d|r Nucleo/i del Vuoto nebuloso"
+L["WARNING_FAVORED_SPEC"] = "Stai usando la specializzazione bottino preferita:"
+L["WARNING_ONE_ITEM"] =
+    "|cffff8000Attenzione:|r Questa specializzazione ha |cffff0000solo %d oggetto|r rimanente in questa spedizione. Usare un Nucleo del Vuoto nebuloso |cffff0000azzererà il pool bottino per tutte le specializzazioni|r in questa spedizione!"
+L["WARNING_SPEC_LIST_HEADER"] = "Oggetti rimanenti per specializzazione:"
+L["WARNING_CLOSE"] = "Chiudi"
 
 -- ── Pannello opzioni (Options.lua) ────────────────────────────────────────────
 

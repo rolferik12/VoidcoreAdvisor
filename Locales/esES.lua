@@ -67,6 +67,22 @@ L["REMINDER_SELECTED_CHANCE"] = "%d%% de probabilidad para objeto(s) seleccionad
 L["REMINDER_CHANGE_PROMPT"] = "¿Cambiar especialización de botín a |cffffff00%s|r?"
 L["REMINDER_YES"] = "Sí, cambiar"
 L["REMINDER_NO"] = "No, gracias"
+L["REMINDER_WARNING_ONE_ITEM"] =
+    "|cffff8000Advertencia:|r Esta especialización solo tiene |cffff00001 objeto|r restante en esta mazmorra. Usar un Núcleo del Vacío nebuloso con esta especialización |cffff0000reiniciará el grupo de botín de todas las especializaciones|r en esta mazmorra."
+L["REMINDER_SPEC_LIST_HEADER"] = "Objetos restantes por especialización:"
+L["REMINDER_SPEC_REMAINING"] = "%d restante(s)"
+L["REMINDER_SPEC_NONE"] = "ninguno restante"
+
+-- ── Popup de aviso de reinicio del grupo de botín (Reminder.lua) ─────────────
+
+L["WARNING_TITLE"] = "|cffb048f8Voidcore|r|cffddddddAdvisor|r"
+L["WARNING_SUBTITLE"] = "Riesgo de reinicio del grupo de botín"
+L["WARNING_VOIDCORE_COUNT"] = "Tienes |cffffff00%d|r Núcleo(s) del Vacío nebuloso"
+L["WARNING_FAVORED_SPEC"] = "Estás usando la especialización de botín favorita:"
+L["WARNING_ONE_ITEM"] =
+    "|cffff8000Advertencia:|r Esta especialización solo tiene |cffff0000%d objeto|r restante en esta mazmorra. Usar un Núcleo del Vacío nebuloso |cffff0000reiniciará el grupo de botín de todas las especializaciones|r en esta mazmorra."
+L["WARNING_SPEC_LIST_HEADER"] = "Objetos restantes por especialización:"
+L["WARNING_CLOSE"] = "Cerrar"
 
 -- ── Panel de opciones (Options.lua) ──────────────────────────────────────────
 
