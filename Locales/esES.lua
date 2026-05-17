@@ -153,3 +153,44 @@ L["SCAN_UNAVAILABLE_INSTANCE"] = "No se puede escanear dentro de una mazmorra."
 L["RAID_SCAN_CONFIRM_TITLE"] = "¿Escanear espec. de botín de banda?"
 L["RAID_SCAN_CONFIRM_BODY"] =
     "Se escaneará el texto del Vacíocache nebuloso para cada una de tus especializaciones de botín en todos los encuentros de banda Mítica.\n\nLos datos de banda Mítica existentes serán restablecidos.\n\nNo entres en combate durante el escán."
+
+-- ── Comandos slash (adiciones) ────────────────────────────────────────────────
+
+L["HELP_REPLAYLOG"] = "  /vca replaylog – reaplicar todas las entradas del registro de tiradas como obtenidas"
+L["RESTORE_COMPLETE"] = "%d objeto(s) restaurado(s) desde el respaldo."
+L["RESTORE_NO_BACKUP"] = "No hay respaldo disponible. Realiza un escaneo primero."
+L["RESTORE_FAILED"] = "La restauración falló."
+
+-- ── Ventana de confirmación de tirada extra (BonusRollConfirm.lua) ────────────
+
+L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Confirmar tirada de Núcleo del Vacío nebuloso"
+L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Especialización de botín activa:"
+L["BONUS_ROLL_CONFIRM_POOL"] = "%d objeto(s) restante(s) en el grupo"
+L["BONUS_ROLL_CONFIRM_WANTED_ONE"] = "%d objeto deseado"
+L["BONUS_ROLL_CONFIRM_WANTED_MANY"] = "%d objetos deseados"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de probabilidad de tirada"
+L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Todos los objetos obtenidos para esta especialización"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "No hay objetos disponibles para esta especialización"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "No hay objetos deseados para esta mazmorra"
+L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Fuente no rastreada — sin probabilidades disponibles"
+L["BONUS_ROLL_CONFIRM_WARNING"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00La protección de mala suerte se reiniciará|r\nTras esta tirada, los objetos previamente saqueados\npueden volver a caer para todas las especializaciones."
+L["BONUS_ROLL_CONFIRM_QUESTION"] = "¿Deseas tirar por botín?"
+L["BONUS_ROLL_CONFIRM_ROLL"] = "Tirar"
+L["BONUS_ROLL_CONFIRM_PASS"] = "Pasar"
+L["BONUS_ROLL_CONFIRM_CONFIRM"] = "Confirmar tirada"
+L["BONUS_ROLL_CONFIRM_PASS_CONFIRM"] = "Confirmar pasar"
+L["BONUS_ROLL_CONFIRM_CLOSE"] = "Cerrar"
+L["BONUS_ROLL_POPUP_ROLL"] = "¿Gastar tu Núcleo del Vacío nebuloso en una tirada extra?"
+L["BONUS_ROLL_POPUP_PASS"] = "¿Pasar esta tirada extra?"
+
+-- ── Panel de opciones (adiciones) ────────────────────────────────────────────
+
+L["OPTIONS_PREVIEW_BONUS_ROLL"] = "Vista previa"
+L["BONUS_ROLL_CONFIRM_COST"] = "Coste: |cffffff00%d|r  \194\183  Tienes |cffffff00%d|r"
+L["OPTIONS_BONUS_ROLL_CONFIRM"] = "Ventana de tirada extra"
+L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
+    "Muestra información de VoidcoreAdvisor cuando aparece la ventana de tirada extra del Núcleo del Vacío nebuloso, incluyendo tu especialización de botín activa y las probabilidades de objetos."
+L["OPTIONS_BRC_SPEC_LIST"] = "Mostrar objetos restantes por especialización"
+L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
+    "Muestra una lista de objetos restantes para cada una de tus especializaciones en la ventana de tirada extra."

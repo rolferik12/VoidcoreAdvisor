@@ -152,3 +152,44 @@ L["SCAN_UNAVAILABLE_INSTANCE"] = "Scan innerhalb eines Dungeons nicht möglich."
 L["RAID_SCAN_CONFIRM_TITLE"] = "Raidbeutespeccs scannen?"
 L["RAID_SCAN_CONFIRM_BODY"] =
     "Dabei wird der Nebulöse-Leerencache-Tooltip für jede Beutespezialisierung in allen mythischen Raidbegegnungen gescannt.\n\nVorhandene mythische Raid-Beutedaten werden zurückgesetzt.\n\nWähre des Scans nicht in den Kampf eintreten."
+
+-- ── Slash-Befehle (Ergänzungen) ───────────────────────────────────────────────
+
+L["HELP_REPLAYLOG"] = "  /vca replaylog – alle Roll-Protokolleinträge erneut als erhalten anwenden"
+L["RESTORE_COMPLETE"] = "%d Gegenstand/Gegenstände aus Backup wiederhergestellt."
+L["RESTORE_NO_BACKUP"] = "Kein Backup verfügbar. Führe zuerst einen Scan durch."
+L["RESTORE_FAILED"] = "Wiederherstellung fehlgeschlagen."
+
+-- ── Bonuswurf-Bestätigungsfenster (BonusRollConfirm.lua) ─────────────────────
+
+L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Nebulösen Leerenkern-Zug bestätigen"
+L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Aktive Beutespezialisierung:"
+L["BONUS_ROLL_CONFIRM_POOL"] = "%d Gegenstand/Gegenstände im Pool übrig"
+L["BONUS_ROLL_CONFIRM_WANTED_ONE"] = "%d gewünschter Gegenstand"
+L["BONUS_ROLL_CONFIRM_WANTED_MANY"] = "%d gewünschte Gegenstände"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% Rollchance"
+L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Alle Gegenstände für diese Spezialisierung erhalten"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Keine Gegenstände für diese Spezialisierung verfügbar"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Keine gewünschten Gegenstände für diesen Dungeon"
+L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Quelle nicht verfolgt — keine Chancenangaben verfügbar"
+L["BONUS_ROLL_CONFIRM_WARNING"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00Pechschutz wird zurückgesetzt|r\nNach diesem Zug können vorher geplünderte\nGegenstände wieder für alle Spezialisierungen fallen."
+L["BONUS_ROLL_CONFIRM_QUESTION"] = "Möchtest du auf Beute würfeln?"
+L["BONUS_ROLL_CONFIRM_ROLL"] = "Würfeln"
+L["BONUS_ROLL_CONFIRM_PASS"] = "Passen"
+L["BONUS_ROLL_CONFIRM_CONFIRM"] = "Würfeln bestätigen"
+L["BONUS_ROLL_CONFIRM_PASS_CONFIRM"] = "Passen bestätigen"
+L["BONUS_ROLL_CONFIRM_CLOSE"] = "Schließen"
+L["BONUS_ROLL_POPUP_ROLL"] = "Nebulösen Leerenkern für einen Bonuswurf ausgeben?"
+L["BONUS_ROLL_POPUP_PASS"] = "Diesen Bonuswurf passen?"
+
+-- ── Optionspanel (Ergänzungen) ────────────────────────────────────────────────
+
+L["OPTIONS_PREVIEW_BONUS_ROLL"] = "Vorschau"
+L["BONUS_ROLL_CONFIRM_COST"] = "Kosten: |cffffff00%d|r  \194\183  Du hast |cffffff00%d|r"
+L["OPTIONS_BONUS_ROLL_CONFIRM"] = "Bonuswurf-Fenster"
+L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
+    "Zeigt VoidcoreAdvisor-Informationen an, wenn das Nebulöse Leerenkern-Bonuswurffenster erscheint, einschließlich der aktiven Beutespezialisierung und Gegenstandschancen."
+L["OPTIONS_BRC_SPEC_LIST"] = "Verbleibende Gegenstände pro Spezialisierung anzeigen"
+L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
+    "Zeigt eine Liste verbleibender Gegenstände für jede deiner Spezialisierungen im Bonuswurffenster an."

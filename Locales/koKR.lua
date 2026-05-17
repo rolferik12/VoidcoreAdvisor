@@ -152,3 +152,44 @@ L["SCAN_UNAVAILABLE_INSTANCE"] = "던전 안에서는 스캔할 수 없습니다
 L["RAID_SCAN_CONFIRM_TITLE"] = "공격대 전리품 특성을 스캔하시겠습니까?"
 L["RAID_SCAN_CONFIRM_BODY"] =
     "모든 신화 공격대 전투에서 각 전리품 특성에 대한 성운 허공 캐시 툴팁을 스캔합니다.\n\n기존 신화 공격대 획득 데이터가 초기화됩니다.\n\n스캔 중 전투에 참여하지 마십시오."
+
+-- ── 슬래시 명령어 (추가) ──────────────────────────────────────────────────────
+
+L["HELP_REPLAYLOG"] = "  /vca replaylog – 모든 주사위 기록 항목을 다시 획득으로 적용"
+L["RESTORE_COMPLETE"] = "백업에서 %d개 아이템이 복원되었습니다."
+L["RESTORE_NO_BACKUP"] = "사용 가능한 백업이 없습니다. 먼저 스캔을 실행하세요."
+L["RESTORE_FAILED"] = "복원에 실패했습니다."
+
+-- ── 보너스 주사위 확인 창 (BonusRollConfirm.lua) ─────────────────────────────
+
+L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "성운의 공허핵 주사위 확인"
+L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "활성 전리품 전문화:"
+L["BONUS_ROLL_CONFIRM_POOL"] = "풀에 %d개 아이템 남음"
+L["BONUS_ROLL_CONFIRM_WANTED_ONE"] = "원하는 아이템 %d개"
+L["BONUS_ROLL_CONFIRM_WANTED_MANY"] = "원하는 아이템 %d개"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% 주사위 확률"
+L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "이 전문화의 모든 아이템 획득됨"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "이 전문화에 사용 가능한 아이템 없음"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "이 던전의 원하는 아이템 없음"
+L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "출처 미추적 — 확률 정보 없음"
+L["BONUS_ROLL_CONFIRM_WARNING"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00악운 보호가 초기화됩니다|r\n이번 주사위 후 이전에 획득한 아이템이\n모든 전문화에 다시 드롭될 수 있습니다."
+L["BONUS_ROLL_CONFIRM_QUESTION"] = "전리품을 위해 주사위를 굴리시겠습니까?"
+L["BONUS_ROLL_CONFIRM_ROLL"] = "주사위"
+L["BONUS_ROLL_CONFIRM_PASS"] = "패스"
+L["BONUS_ROLL_CONFIRM_CONFIRM"] = "주사위 확인"
+L["BONUS_ROLL_CONFIRM_PASS_CONFIRM"] = "패스 확인"
+L["BONUS_ROLL_CONFIRM_CLOSE"] = "닫기"
+L["BONUS_ROLL_POPUP_ROLL"] = "성운의 공허핵을 보너스 주사위에 사용하시겠습니까?"
+L["BONUS_ROLL_POPUP_PASS"] = "이 보너스 주사위를 패스하시겠습니까?"
+
+-- ── 옵션 패널 (추가) ──────────────────────────────────────────────────────────
+
+L["OPTIONS_PREVIEW_BONUS_ROLL"] = "미리 보기"
+L["BONUS_ROLL_CONFIRM_COST"] = "비용: |cffffff00%d|r  \194\183  보유: |cffffff00%d|r"
+L["OPTIONS_BONUS_ROLL_CONFIRM"] = "보너스 주사위 창"
+L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
+    "성운의 공허핵 보너스 주사위 창이 나타날 때 VoidcoreAdvisor 정보(활성 전리품 전문화 및 아이템 확률 포함)를 표시합니다."
+L["OPTIONS_BRC_SPEC_LIST"] = "전문화별 남은 아이템 표시"
+L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
+    "보너스 주사위 창에서 각 전문화의 남은 아이템 목록을 표시합니다."

@@ -152,3 +152,44 @@ L["SCAN_UNAVAILABLE_INSTANCE"] = "Não é possível escanear dentro de uma masmo
 L["RAID_SCAN_CONFIRM_TITLE"] = "Escanear Specs de Saque de Raide?"
 L["RAID_SCAN_CONFIRM_BODY"] =
     "Isso irá escanear o tooltip do Voidcache Nebuloso para cada uma de suas especializações de saque em todos os encontros de Raide Mítico.\n\nOs dados de Raide Mítico existentes serão redefinidos.\n\nNão entre em combate durante o escaneamento."
+
+-- ── Comandos slash (adições) ──────────────────────────────────────────────────
+
+L["HELP_REPLAYLOG"] = "  /vca replaylog – reaplicar todas as entradas do registro de rolagens como obtidas"
+L["RESTORE_COMPLETE"] = "%d item(ns) restaurado(s) do backup."
+L["RESTORE_NO_BACKUP"] = "Nenhum backup disponível. Execute um escaneamento primeiro."
+L["RESTORE_FAILED"] = "A restauração falhou."
+
+-- ── Janela de confirmação de rolagem bônus (BonusRollConfirm.lua) ─────────────
+
+L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Confirmar rolagem de Núcleo do Vazio Nebuloso"
+L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Especialização de saque ativa:"
+L["BONUS_ROLL_CONFIRM_POOL"] = "%d item(ns) restante(s) no grupo"
+L["BONUS_ROLL_CONFIRM_WANTED_ONE"] = "%d item desejado"
+L["BONUS_ROLL_CONFIRM_WANTED_MANY"] = "%d itens desejados"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de chance na rolagem"
+L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Todos os itens obtidos para esta especialização"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Nenhum item disponível para esta especialização"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Nenhum item desejado para esta masmorra"
+L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Fonte não rastreada — sem probabilidades disponíveis"
+L["BONUS_ROLL_CONFIRM_WARNING"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00A proteção contra má sorte será redefinida|r\nApós esta rolagem, itens previamente saqueados\npodem cair novamente para todas as especializações."
+L["BONUS_ROLL_CONFIRM_QUESTION"] = "Deseja rolar por saque?"
+L["BONUS_ROLL_CONFIRM_ROLL"] = "Rolar"
+L["BONUS_ROLL_CONFIRM_PASS"] = "Passar"
+L["BONUS_ROLL_CONFIRM_CONFIRM"] = "Confirmar rolagem"
+L["BONUS_ROLL_CONFIRM_PASS_CONFIRM"] = "Confirmar passagem"
+L["BONUS_ROLL_CONFIRM_CLOSE"] = "Fechar"
+L["BONUS_ROLL_POPUP_ROLL"] = "Gastar seu Núcleo do Vazio Nebuloso em uma rolagem bônus?"
+L["BONUS_ROLL_POPUP_PASS"] = "Passar esta rolagem bônus?"
+
+-- ── Painel de opções (adições) ────────────────────────────────────────────────
+
+L["OPTIONS_PREVIEW_BONUS_ROLL"] = "Pré-visualizar"
+L["BONUS_ROLL_CONFIRM_COST"] = "Custo: |cffffff00%d|r  \194\183  Você tem |cffffff00%d|r"
+L["OPTIONS_BONUS_ROLL_CONFIRM"] = "Janela de rolagem bônus"
+L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
+    "Exibe informações do VoidcoreAdvisor quando a janela de rolagem bônus do Núcleo do Vazio Nebuloso aparece, incluindo sua especialização de saque ativa e as probabilidades de itens."
+L["OPTIONS_BRC_SPEC_LIST"] = "Mostrar itens restantes por especialização"
+L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
+    "Exibe uma lista de itens restantes para cada uma de suas especializações na janela de rolagem bônus."

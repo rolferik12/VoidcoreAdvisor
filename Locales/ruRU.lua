@@ -159,3 +159,50 @@ L["SCAN_UNAVAILABLE_INSTANCE"] = "Сканирование невозможно 
 L["RAID_SCAN_CONFIRM_TITLE"] = "Сканировать спеки добычи рейда?"
 L["RAID_SCAN_CONFIRM_BODY"] =
     "Будет выполнено сканирование подсказки Туманного кэша Пустоты для каждой специализации добычи во всех Мифических столкновениях рейда.\n\nСуществующие данные о Мифических рейдовых предметах будут сброшены.\n\nНе входите в бой во время сканирования."
+
+-- ── Команды (дополнения) ──────────────────────────────────────────────────────
+
+L["HELP_REPLAYLOG"] =
+    "  /vca replaylog – повторно применить все записи журнала бросков как полученные"
+L["RESTORE_COMPLETE"] = "Из резервной копии восстановлено %d предмет(ов)."
+L["RESTORE_NO_BACKUP"] =
+    "Резервная копия отсутствует. Сначала выполните сканирование."
+L["RESTORE_FAILED"] = "Восстановление не удалось."
+
+-- ── Окно подтверждения бонусного броска (BonusRollConfirm.lua) ───────────────
+
+L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Подтвердить бросок Туманного ядра Бездны"
+L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Активная специализация добычи:"
+L["BONUS_ROLL_CONFIRM_POOL"] = "Осталось %d предмет(ов) в пуле"
+L["BONUS_ROLL_CONFIRM_WANTED_ONE"] = "%d желаемый предмет"
+L["BONUS_ROLL_CONFIRM_WANTED_MANY"] = "%d желаемых предмета(ов)"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% шанс броска"
+L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] =
+    "Все предметы получены для данной специализации"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Нет предметов для данной специализации"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Нет желаемых предметов в данном подземелье"
+L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] =
+    "Источник не отслеживается — шансы недоступны"
+L["BONUS_ROLL_CONFIRM_WARNING"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00Защита от неудач сбросится|r\nПосле этого броска ранее полученные предметы\nснова могут упасть для всех специализаций."
+L["BONUS_ROLL_CONFIRM_QUESTION"] = "Хотите бросить кубик на добычу?"
+L["BONUS_ROLL_CONFIRM_ROLL"] = "Бросить"
+L["BONUS_ROLL_CONFIRM_PASS"] = "Пропустить"
+L["BONUS_ROLL_CONFIRM_CONFIRM"] = "Подтвердить бросок"
+L["BONUS_ROLL_CONFIRM_PASS_CONFIRM"] = "Подтвердить пропуск"
+L["BONUS_ROLL_CONFIRM_CLOSE"] = "Закрыть"
+L["BONUS_ROLL_POPUP_ROLL"] =
+    "Потратить Туманное ядро Бездны на бонусный бросок?"
+L["BONUS_ROLL_POPUP_PASS"] = "Пропустить этот бонусный бросок?"
+
+-- ── Панель настроек (дополнения) ─────────────────────────────────────────────
+
+L["OPTIONS_PREVIEW_BONUS_ROLL"] = "Предпросмотр"
+L["BONUS_ROLL_CONFIRM_COST"] = "Стоимость: |cffffff00%d|r  \194\183  У вас: |cffffff00%d|r"
+L["OPTIONS_BONUS_ROLL_CONFIRM"] = "Окно бонусного броска"
+L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
+    "Показывает информацию VoidcoreAdvisor при появлении окна бонусного броска Туманного ядра Бездны, включая активную специализацию добычи и шансы на предметы."
+L["OPTIONS_BRC_SPEC_LIST"] =
+    "Показывать оставшиеся предметы по специализациям"
+L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
+    "Показывает список оставшихся предметов для каждой из ваших специализаций в окне бонусного броска."

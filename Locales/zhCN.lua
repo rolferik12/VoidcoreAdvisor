@@ -152,3 +152,43 @@ L["SCAN_UNAVAILABLE_INSTANCE"] = "副本中无法扫描。"
 L["RAID_SCAN_CONFIRM_TITLE"] = "扫描团队副本拾取专精？"
 L["RAID_SCAN_CONFIRM_BODY"] =
     "将扫描所有神话团队副本遭遇中每个拾取专精的星云虚空缓存提示。\n\n现有神话团队副本已获得数据将被重置。\n\n扫描期间请勿进入战斗。"
+
+-- ── 斜线命令（补充）──────────────────────────────────────────────────────────
+
+L["HELP_REPLAYLOG"] = "  /vca replaylog – 重新将所有掷骰日志条目标记为已获得"
+L["RESTORE_COMPLETE"] = "已从备份恢复 %d 件物品。"
+L["RESTORE_NO_BACKUP"] = "没有可用备份。请先运行扫描。"
+L["RESTORE_FAILED"] = "恢复失败。"
+
+-- ── 额外掷骰确认窗口（BonusRollConfirm.lua）─────────────────────────────────
+
+L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "确认星云虚空核心掷骰"
+L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "活跃拾取专精："
+L["BONUS_ROLL_CONFIRM_POOL"] = "池中剩余 %d 件物品"
+L["BONUS_ROLL_CONFIRM_WANTED_ONE"] = "%d 件想要的物品"
+L["BONUS_ROLL_CONFIRM_WANTED_MANY"] = "%d 件想要的物品"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% 掷骰概率"
+L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "该专精的所有物品已获取"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "该专精没有可用物品"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "此地下城没有想要的物品"
+L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "来源未追踪 — 无概率信息"
+L["BONUS_ROLL_CONFIRM_WARNING"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00倒霉保护将被重置|r\n此次掷骰后，之前已掉落的物品\n可再次为所有专精掉落。"
+L["BONUS_ROLL_CONFIRM_QUESTION"] = "是否要掷骰获取战利品？"
+L["BONUS_ROLL_CONFIRM_ROLL"] = "掷骰"
+L["BONUS_ROLL_CONFIRM_PASS"] = "跳过"
+L["BONUS_ROLL_CONFIRM_CONFIRM"] = "确认掷骰"
+L["BONUS_ROLL_CONFIRM_PASS_CONFIRM"] = "确认跳过"
+L["BONUS_ROLL_CONFIRM_CLOSE"] = "关闭"
+L["BONUS_ROLL_POPUP_ROLL"] = "消耗星云虚空核心进行额外掷骰？"
+L["BONUS_ROLL_POPUP_PASS"] = "跳过此次额外掷骰？"
+
+-- ── 选项面板（补充）──────────────────────────────────────────────────────────
+
+L["OPTIONS_PREVIEW_BONUS_ROLL"] = "预览"
+L["BONUS_ROLL_CONFIRM_COST"] = "费用：|cffffff00%d|r  \194\183  拥有：|cffffff00%d|r"
+L["OPTIONS_BONUS_ROLL_CONFIRM"] = "额外掷骰窗口"
+L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
+    "当星云虚空核心额外掷骰窗口出现时，显示 VoidcoreAdvisor 信息，包括活跃拾取专精和物品概率。"
+L["OPTIONS_BRC_SPEC_LIST"] = "显示每个专精的剩余物品"
+L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] = "在额外掷骰窗口中显示每个专精的剩余物品列表。"

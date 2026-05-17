@@ -152,3 +152,44 @@ L["SCAN_UNAVAILABLE_INSTANCE"] = "Impossible de scanner dans un donjon."
 L["RAID_SCAN_CONFIRM_TITLE"] = "Scanner les specs de butin du raid ?"
 L["RAID_SCAN_CONFIRM_BODY"] =
     "Cela analysera l'infobulle du Voidcache nébuleux pour chacune de vos spécialisations de butin dans tous les affrontements de raid Mythique.\n\nLes données de raid Mythique existantes seront réinitialisées.\n\nN'entrez pas en combat pendant le scan."
+
+-- ── Commandes slash (ajouts) ──────────────────────────────────────────────────
+
+L["HELP_REPLAYLOG"] = "  /vca replaylog – réappliquer toutes les entrées du journal de jets comme obtenues"
+L["RESTORE_COMPLETE"] = "%d objet(s) restauré(s) depuis la sauvegarde."
+L["RESTORE_NO_BACKUP"] = "Aucune sauvegarde disponible. Effectuez d'abord un scan."
+L["RESTORE_FAILED"] = "La restauration a échoué."
+
+-- ── Fenêtre de confirmation de jet bonus (BonusRollConfirm.lua) ───────────────
+
+L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Confirmer le jet de Noyau du Vide nébuleux"
+L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Spécialisation de butin active :"
+L["BONUS_ROLL_CONFIRM_POOL"] = "%d objet(s) restant dans le groupe"
+L["BONUS_ROLL_CONFIRM_WANTED_ONE"] = "%d objet désiré"
+L["BONUS_ROLL_CONFIRM_WANTED_MANY"] = "%d objets désirés"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de chance au jet"
+L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Tous les objets obtenus pour cette spécialisation"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Aucun objet disponible pour cette spécialisation"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Aucun objet désiré pour ce donjon"
+L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Source non suivie — aucune estimation disponible"
+L["BONUS_ROLL_CONFIRM_WARNING"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00La protection contre la malchance sera réinitialisée|r\nAprès ce jet, les objets précédemment pillés\npeuvent à nouveau tomber pour toutes les spécialisations."
+L["BONUS_ROLL_CONFIRM_QUESTION"] = "Voulez-vous lancer pour du butin ?"
+L["BONUS_ROLL_CONFIRM_ROLL"] = "Lancer"
+L["BONUS_ROLL_CONFIRM_PASS"] = "Passer"
+L["BONUS_ROLL_CONFIRM_CONFIRM"] = "Confirmer le lancer"
+L["BONUS_ROLL_CONFIRM_PASS_CONFIRM"] = "Confirmer le passage"
+L["BONUS_ROLL_CONFIRM_CLOSE"] = "Fermer"
+L["BONUS_ROLL_POPUP_ROLL"] = "Dépenser votre Noyau du Vide nébuleux pour un jet bonus ?"
+L["BONUS_ROLL_POPUP_PASS"] = "Passer ce jet bonus ?"
+
+-- ── Panneau d'options (ajouts) ────────────────────────────────────────────────
+
+L["OPTIONS_PREVIEW_BONUS_ROLL"] = "Aperçu"
+L["BONUS_ROLL_CONFIRM_COST"] = "Coût : |cffffff00%d|r  \194\183  Vous avez |cffffff00%d|r"
+L["OPTIONS_BONUS_ROLL_CONFIRM"] = "Fenêtre de jet bonus"
+L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
+    "Affiche les informations de VoidcoreAdvisor lorsque la fenêtre de jet bonus du Noyau du Vide nébuleux apparaît, incluant votre spécialisation de butin active et les probabilités d'objets."
+L["OPTIONS_BRC_SPEC_LIST"] = "Afficher les objets restants par spécialisation"
+L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
+    "Affiche une liste des objets restants pour chacune de vos spécialisations dans la fenêtre de jet bonus."
