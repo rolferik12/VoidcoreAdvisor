@@ -96,7 +96,7 @@ L["BONUS_ROLL_CONFIRM_WANTED_MANY"] = "%d wanted items"
 L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% roll chance"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "All items obtained for this spec"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "No items available for this spec"
-L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "No items selected for this dungeon"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "No wanted items for this dungeon"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Source not tracked — no odds available"
 L["BONUS_ROLL_CONFIRM_WARNING"] =
     "|A:Ping_Chat_Warning:14:14|a |cffffff00Bad luck protection will reset|r\nAfter this roll, previously looted items\ncan drop again for all specs."

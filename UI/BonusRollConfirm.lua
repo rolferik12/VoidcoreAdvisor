@@ -6,7 +6,7 @@
 -- Roll/Pass buttons (which sit at level 5-6).
 --
 -- Roll button requires TWO clicks (confirm) â€” this is intentional and critical.
--- Pass button also requires two clicks.
+-- Pass button fires immediately (no confirmation).
 local addonName, VCA = ...
 local L = VCA.L
 
@@ -272,7 +272,10 @@ passBtn:SetHighlightTexture("")
 passBtn:SetDisabledTexture("")
 passBtn:SetText(PASS_BTN_TEXT)
 passBtn:SetScript("OnClick", function()
-    StaticPopup_Show("VOIDCORE_BONUS_PASS", L["BONUS_ROLL_POPUP_PASS"])
+    BRC.Hide()
+    if BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.PassButton then
+        BonusRollFrame.PromptFrame.PassButton:Click()
+    end
 end)
 
 -- â”€â”€ Timer mirroring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -545,7 +548,6 @@ function BRC.Uninject()
     end
     win:Hide()
     StaticPopup_Hide("VOIDCORE_BONUS_ROLL")
-    StaticPopup_Hide("VOIDCORE_BONUS_PASS")
     isActive = false
     cachedItemLink = nil
     cachedDisplayItemID = nil
@@ -561,22 +563,6 @@ StaticPopupDialogs["VOIDCORE_BONUS_ROLL"] = {
         BRC.Hide()
         if BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.RollButton then
             BonusRollFrame.PromptFrame.RollButton:Click()
-        end
-    end,
-    timeout = 0,
-    whileDead = true,
-    hideOnEscape = true,
-    preferredIndex = 3
-}
-
-StaticPopupDialogs["VOIDCORE_BONUS_PASS"] = {
-    text = "%s",
-    button1 = L["BONUS_ROLL_CONFIRM_PASS"],
-    button2 = CANCEL,
-    OnAccept = function()
-        BRC.Hide()
-        if BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.PassButton then
-            BonusRollFrame.PromptFrame.PassButton:Click()
         end
     end,
     timeout = 0,
