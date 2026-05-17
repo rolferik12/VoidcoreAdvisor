@@ -479,6 +479,12 @@ function BRC.Show()
     end
 
     local iName, _, iQuality, _, _, _, _, _, _, iTexture = GetItemInfo(cachedDisplayItemID or 0)
+    -- If GetItemInfo hasn't cached the item yet (common for delve voidcaches), fall back to
+    -- the texture Blizzard already placed on the EncounterJournalLinkButton's NormalTexture.
+    if not iTexture and ejBtn then
+        local t = ejBtn:GetNormalTexture()
+        iTexture = t and t:GetTexture()
+    end
     if iTexture then
         winItemIcon:SetTexture(iTexture)
         winItemIcon:Show()
