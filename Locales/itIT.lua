@@ -147,4 +147,49 @@ L["SCAN_ABORTED"] = "Scansione annullata"
 L["SCAN_CONFIRM_TITLE"] = "Scansionare spec. di bottino?"
 L["SCAN_CONFIRM_BODY"] =
     "Verranno analizzati i tooltip del Voidcache Nebuloso per ogni specializzazione bottino in tutti i dungeon della stagione.\n\nI dati esistenti sugli oggetti ottenuti saranno reimpostati.\n\nNon entrare in combattimento o in un dungeon durante la scansione."
-L["SCAN_UNAVAILABLE_COMBAT"]
+L["SCAN_UNAVAILABLE_COMBAT"] = "Impossibile eseguire la scansione in combattimento."
+L["SCAN_UNAVAILABLE_INSTANCE"] = "Impossibile eseguire la scansione all'interno di un dungeon."
+L["RAID_SCAN_CONFIRM_TITLE"] = "Scansionare spec. di bottino dell'incursione?"
+L["RAID_SCAN_CONFIRM_BODY"] =
+    "Verranno analizzati i tooltip del Voidcache Nebuloso per ogni specializzazione bottino in tutti gli scontri Mitico dell'incursione.\n\nI dati esistenti degli oggetti Mitico dell'incursione saranno reimpostati.\n\nNon entrare in combattimento durante la scansione."
+
+-- ── Comandi slash (aggiunte) ──────────────────────────────────────────────────
+
+L["HELP_REPLAYLOG"] = "  /vca replaylog – riapplica tutte le voci del registro dei tiri come ottenute"
+L["RESTORE_COMPLETE"] = "%d oggetto/i ripristinato/i dal backup."
+L["RESTORE_NO_BACKUP"] = "Nessun backup disponibile. Esegui prima una scansione."
+L["RESTORE_FAILED"] = "Ripristino fallito."
+
+-- ── Finestra di conferma tiro bonus (BonusRollConfirm.lua) ───────────────────
+
+L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Conferma tiro Nucleo del Vuoto nebuloso"
+L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Spec. bottino attiva:"
+L["BONUS_ROLL_CONFIRM_POOL"] = "%d oggetto/i rimanente/i nel gruppo"
+L["BONUS_ROLL_CONFIRM_WANTED_ONE"] = "%d oggetto desiderato"
+L["BONUS_ROLL_CONFIRM_WANTED_MANY"] = "%d oggetti desiderati"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% di probabilità al tiro"
+L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Tutti gli oggetti ottenuti per questa specializzazione"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Nessun oggetto disponibile per questa specializzazione"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Nessun oggetto desiderato per questa spedizione"
+L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Fonte non tracciata — nessuna probabilità disponibile"
+L["BONUS_ROLL_CONFIRM_WARNING"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00La protezione dalla sfortuna verrà azzerata|r\nDopo questo tiro, oggetti precedentemente ottenuti\npossono droppare di nuovo per tutte le specializzazioni."
+L["BONUS_ROLL_CONFIRM_QUESTION"] = "Vuoi tirare per il bottino?"
+L["BONUS_ROLL_CONFIRM_ROLL"] = "Tira"
+L["BONUS_ROLL_CONFIRM_PASS"] = "Passa"
+L["BONUS_ROLL_CONFIRM_CONFIRM"] = "Conferma tiro"
+L["BONUS_ROLL_CONFIRM_PASS_CONFIRM"] = "Conferma passaggio"
+L["BONUS_ROLL_CONFIRM_CLOSE"] = "Chiudi"
+L["BONUS_ROLL_POPUP_ROLL"] = "Usare il Nucleo del Vuoto nebuloso per un tiro bonus?"
+L["BONUS_ROLL_POPUP_PASS"] = "Passare questo tiro bonus?"
+
+-- ── Pannello opzioni (aggiunte) ───────────────────────────────────────────────
+
+L["OPTIONS_PREVIEW_BONUS_ROLL"] = "Anteprima"
+L["BONUS_ROLL_CONFIRM_COST"] = "Costo: |cffffff00%d|r  \194\183  Hai |cffffff00%d|r"
+L["OPTIONS_BONUS_ROLL_CONFIRM"] = "Finestra tiro bonus"
+L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
+    "Mostra le informazioni di VoidcoreAdvisor quando appare la finestra di tiro bonus del Nucleo del Vuoto nebuloso, inclusa la specializzazione bottino attiva e le probabilità degli oggetti."
+L["OPTIONS_BRC_SPEC_LIST"] = "Mostra oggetti rimanenti per specializzazione"
+L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
+    "Mostra un elenco di oggetti rimanenti per ciascuna delle tue specializzazioni nella finestra di tiro bonus."

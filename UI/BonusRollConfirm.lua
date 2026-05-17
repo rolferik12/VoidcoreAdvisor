@@ -273,7 +273,7 @@ passBtn:SetDisabledTexture("")
 passBtn:SetText(PASS_BTN_TEXT)
 passBtn:SetScript("OnClick", function()
     BRC.Hide()
-    if BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.PassButton then
+    if isActive and BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.PassButton then
         BonusRollFrame.PromptFrame.PassButton:Click()
     end
 end)
@@ -567,7 +567,7 @@ StaticPopupDialogs["VOIDCORE_BONUS_ROLL"] = {
     button2 = CANCEL,
     OnAccept = function()
         BRC.Hide()
-        if BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.RollButton then
+        if isActive and BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.RollButton then
             BonusRollFrame.PromptFrame.RollButton:Click()
         end
     end,
@@ -652,6 +652,7 @@ eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("BONUS_ROLL_STARTED")
 eventFrame:RegisterEvent("BONUS_ROLL_ACTIVATE")
 eventFrame:RegisterEvent("BONUS_ROLL_RESULT")
+eventFrame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
 
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" then
@@ -667,5 +668,26 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         end
     elseif event == "BONUS_ROLL_ACTIVATE" or event == "BONUS_ROLL_RESULT" then
         BRC.Uninject()
+    elseif event == "GET_ITEM_INFO_RECEIVED" then
+        -- If our window is open and the icon is still hidden, try again now the
+        -- item data has arrived from the server.
+        local itemID = ...
+        if win:IsShown() and itemID == cachedDisplayItemID and not winItemIcon:IsShown() then
+            local _, _, iQuality, _, _, _, _, _, _, iTexture = GetItemInfo(itemID)
+            if iTexture then
+                winItemIcon:SetTexture(iTexture)
+                winItemIcon:Show()
+                if not iQuality then
+                    return
+                end
+                local _, _, _, hex = GetItemQualityColor(iQuality)
+                if hex then
+                    local iName = GetItemInfo(itemID)
+                    if iName then
+                        winItemName:SetText("|c" .. hex .. iName .. "|r")
+                    end
+                end
+            end
+        end
     end
 end)
