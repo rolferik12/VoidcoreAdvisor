@@ -15,9 +15,11 @@ When you zone into a current-season Mythic or Mythic+ dungeon, VoidcoreAdvisor c
 - Item selection to compare which spec gives the best odds for specific pieces.
 - Automatic detection of items received via Nebulous Voidcores after encounters.
 - Loot spec reminder popup when entering a Mythic+ dungeon on a suboptimal spec for your selected items.
+- Bonus roll confirmation overlay that replaces the default Voidcore prompt with a two-click Roll button, preventing accidental spends.
 - Support for both raid bosses (Normal, Heroic, Mythic) and Mythic+ dungeons.
 - Adjustable key level selector for M+ that updates tooltip item levels to match the Voidcore reward track.
 - Spec and item filtering with cross-column highlighting.
+- Voidcache loot spec scanner that reads each specialization's Nebulous Voidcache tooltip and automatically marks items unavailable to each spec as obtained.
 - Persistent per-character tracking of obtained items and selections.
 - Localized in 11 languages: English, German, Spanish (EU/MX), French, Italian, Korean, Portuguese (BR), Russian, and Chinese (Simplified/Traditional).
 
@@ -29,20 +31,27 @@ When the Encounter Journal is open on the instance list, a separate overview pan
 
 When the Encounter Journal is open on a raid's main page without a specific boss selected, a raid overview panel lists every boss in Encounter Journal order. Each row shows the best spec for that boss, items remaining, and the probability percentage — giving you a quick picture of which bosses are still worth rolling on and which spec to use for each.
 
-### Options
+### Voidcache Loot Spec Scan
 
-VoidcoreAdvisor registers a settings page under Game Menu → Options → AddOns. From there you can enable or disable the loot spec reminder popup and preview the reminder dialog without having to enter a dungeon.
+VoidcoreAdvisor can scan the Nebulous Voidcache tooltip for every one of your loot specializations to determine exactly which items each spec is eligible to receive. Items that a given spec cannot receive are automatically marked as obtained, which removes them from that spec's remaining pool and keeps probability numbers accurate without any manual work.
 
-## Recent Changes (2.1.0)
+The scan iterates over every spec and dungeon (or raid boss) in a sequence designed to avoid the client returning stale cached data between consecutive reads. For each tooltip it waits until the line count reaches the required minimum, then keeps re-reading until two consecutive reads return the same number of lines, confirming the tooltip has fully loaded. The scan is automatically cancelled if you enter combat or if your loot spec is changed manually while it is running.
 
-### Scan Backup and Restore
+**Mythic+ dungeon scan** — click the **Scan Loot Specs** button in the top-right corner of the Dungeon Overview panel. The Dungeon Overview appears when the Encounter Journal is open on the instance list (not on a specific boss). The button is disabled while inside any instance or while a scan is already in progress.
 
-- Before a Voidcache scan finalizes (both M+ and raid), all existing obtained entries for that content type are snapshotted into `db.obtainedBackup` in `SavedVariables`. The backup survives `/reload` and logout.
-- M+ and raid backups are stored independently. Running an M+ scan does not overwrite the raid backup, and vice versa.
-- A new `/vca restore` command rolls back `db.obtained` to the pre-scan snapshot and immediately refreshes all open panels. If no backup exists (no scan has ever completed), the command prints a clear message rather than silently doing nothing.
-- Aborted scans (combat interrupt, manual cancel, or loot spec change) never modify `db.obtained`, so no backup is needed or taken for those cases — only a scan that runs to completion can overwrite existing data.
+**Raid scan** — click the **Scan Loot Specs** button in the top-right corner of the Raid Overview panel. The Raid Overview appears when the Encounter Journal is open on a raid's main page without a specific boss selected. The same restrictions apply: must be outside an instance and not already scanning.
 
----
+Before the scan writes its results, a snapshot of all existing obtained data for that content type is saved to `SavedVariables`. If the results look wrong, run `/vca restore` to roll back to the pre-scan state. M+ and raid backups are stored independently so running one scan never overwrites the other's backup.
+
+### Bonus Roll Confirmation
+
+When a Nebulous Voidcore prompt appears, VoidcoreAdvisor replaces the default `BonusRollFrame` with a custom overlay window. The overlay sits at a higher frame level than the original so accidental mouse clicks on the underlying Roll and Pass buttons are blocked.
+
+The window displays the item icon (hoverable for a full tooltip), the item name, your current Voidcore count and the cost of the roll, and a live timer bar that mirrors the countdown on the original frame. Your active loot specialization icon and name are shown inline. When the current dungeon or raid boss is recognized, the overlay also shows how many items from that source you still need and the per-specialization remaining counts, giving you the key information to decide whether to roll before committing.
+
+**Roll** requires two clicks — a first click reveals a confirmation prompt, and a second click actually spends the Voidcore. This prevents accidental rolls. **Pass** fires immediately with a single click. Both buttons copy the appearance of the original Blizzard Roll and Pass buttons so the interface feels familiar.
+
+The overlay can be enabled or disabled on the Options page. The per-spec item count list can also be toggled independently.
 
 ### Loot Pool Accuracy
 
