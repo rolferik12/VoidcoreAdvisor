@@ -9,7 +9,9 @@
 -- avoids the client cache returning stale spec data.
 --
 -- If a tooltip returns fewer than MIN_LINES lines it is retried in-place
--- with a small delay (up to MAX_RETRIES times) before moving on.
+-- with a small delay (up to MAX_RETRIES times) before moving on.  Once
+-- MIN_LINES is reached the scan continues retrying until two consecutive
+-- reads return the same line count, confirming the tooltip has fully loaded.
 local _, VCA = ...
 
 VCA.VoidcacheScan = {}
@@ -288,42 +290,45 @@ ScanStep = function()
     local parsed = ParseVoidcacheTooltip(tooltipData, numLines)
 
     if not parsed then
-        -- Not enough lines yet — retry in place.
+        -- Phase 1: tooltip not yet ready (< MIN_LINES) — retry in place.
         _state.retries = _state.retries + 1
         if _state.retries <= MAX_RETRIES then
             C_Timer.After(RETRY_DELAY, ScanStep)
             return
         end
+        -- Gave up after MAX_RETRIES — treat as empty result.
         parsed = {}
+    else
+        -- Phase 2: tooltip has MIN_LINES+ lines — keep reading until two
+        -- consecutive reads return the same line count (tooltip is stable).
+        if _state.stableLines == nil then
+            -- First good read — record baseline and re-read.
+            _state.stableLines = numLines
+            _state.stableParsed = parsed
+            _state.retries = 0
+            C_Timer.After(RETRY_DELAY, ScanStep)
+            return
+        elseif numLines ~= _state.stableLines then
+            -- Line count still changing — update baseline and retry.
+            _state.stableLines = numLines
+            _state.stableParsed = parsed
+            _state.retries = _state.retries + 1
+            if _state.retries <= MAX_RETRIES then
+                C_Timer.After(RETRY_DELAY, ScanStep)
+                return
+            end
+            -- Timed out waiting for stability — use the last good read.
+            parsed = _state.stableParsed
+        end
+        -- else: line count matches previous read — tooltip is stable, proceed.
     end
-
-    -- First successful read — do one confirmation pass to catch any lines that
-    -- may have been missing at the tail of the tooltip.
-    if not _state.confirmPending then
-        _state.confirmPending = true
-        _state.confirmResult = parsed
-        C_Timer.After(RETRY_DELAY, ScanStep)
-        return
-    end
-
-    -- Confirmation pass — merge both reads (union) so no item is missed.
-    local merged = {}
-    for k, v in pairs(_state.confirmResult) do
-        merged[k] = v
-    end
-    for k, v in pairs(parsed) do
-        merged[k] = v
-    end
-    parsed = merged
-    _state.confirmPending = false
-    _state.confirmResult = nil
 
     -- Store result.
     _state.results[specEntry.specID] = _state.results[specEntry.specID] or {}
     _state.results[specEntry.specID][dungeonEntry.instanceID] = parsed
     _state.retries = 0
-    _state.confirmPending = false
-    _state.confirmResult = nil
+    _state.stableLines = nil
+    _state.stableParsed = nil
 
     -- Advance position.
     _state.dungeonIdx = _state.dungeonIdx + 1
@@ -403,8 +408,8 @@ function Scan.Start()
         specIdx = 1,
         dungeonIdx = 1,
         retries = 0,
-        confirmPending = false,
-        confirmResult = nil,
+        stableLines = nil,
+        stableParsed = nil,
         specSwitchDone = false,
         expectingSpecChange = false,
         results = {},
@@ -597,36 +602,44 @@ RaidScanStep = function()
     local parsed = ParseVoidcacheTooltip(tooltipData, numLines)
 
     if not parsed then
+        -- Phase 1: tooltip not yet ready (< MIN_LINES) — retry in place.
         _raidState.retries = _raidState.retries + 1
         if _raidState.retries <= MAX_RETRIES then
             C_Timer.After(RETRY_DELAY, RaidScanStep)
             return
         end
+        -- Gave up after MAX_RETRIES — treat as empty result.
         parsed = {}
+    else
+        -- Phase 2: tooltip has MIN_LINES+ lines — keep reading until two
+        -- consecutive reads return the same line count (tooltip is stable).
+        if _raidState.stableLines == nil then
+            -- First good read — record baseline and re-read.
+            _raidState.stableLines = numLines
+            _raidState.stableParsed = parsed
+            _raidState.retries = 0
+            C_Timer.After(RETRY_DELAY, RaidScanStep)
+            return
+        elseif numLines ~= _raidState.stableLines then
+            -- Line count still changing — update baseline and retry.
+            _raidState.stableLines = numLines
+            _raidState.stableParsed = parsed
+            _raidState.retries = _raidState.retries + 1
+            if _raidState.retries <= MAX_RETRIES then
+                C_Timer.After(RETRY_DELAY, RaidScanStep)
+                return
+            end
+            -- Timed out waiting for stability — use the last good read.
+            parsed = _raidState.stableParsed
+        end
+        -- else: line count matches previous read — tooltip is stable, proceed.
     end
-
-    -- Confirmation pass.
-    if not _raidState.confirmPending then
-        _raidState.confirmPending = true
-        _raidState.confirmResult = parsed
-        C_Timer.After(RETRY_DELAY, RaidScanStep)
-        return
-    end
-
-    local merged = {}
-    for k, v in pairs(_raidState.confirmResult) do
-        merged[k] = v
-    end
-    for k, v in pairs(parsed) do
-        merged[k] = v
-    end
-    parsed = merged
-    _raidState.confirmPending = false
-    _raidState.confirmResult = nil
 
     _raidState.results[specEntry.specID] = _raidState.results[specEntry.specID] or {}
     _raidState.results[specEntry.specID][encounterEntry.encounterID] = parsed
     _raidState.retries = 0
+    _raidState.stableLines = nil
+    _raidState.stableParsed = nil
 
     -- Advance.
     _raidState.encounterIdx = _raidState.encounterIdx + 1
@@ -707,8 +720,8 @@ function Scan.StartRaid()
         specIdx = 1,
         encounterIdx = 1,
         retries = 0,
-        confirmPending = false,
-        confirmResult = nil,
+        stableLines = nil,
+        stableParsed = nil,
         specSwitchDone = false,
         expectingSpecChange = false,
         results = {},
