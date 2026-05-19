@@ -111,6 +111,9 @@ L["BONUS_ROLL_POPUP_PASS"] = "Pass on this bonus roll?"
 
 -- ── Options panel (Options.lua) ───────────────────────────────────────────────
 
+L["OPTIONS_CAT_REMINDER"] = "Loot Spec Reminder"
+L["OPTIONS_CAT_BONUS_ROLL"] = "Bonus Roll"
+
 L["OPTIONS_REMINDER_ENABLE"] = "Loot spec reminder"
 L["OPTIONS_REMINDER_TOOLTIP"] =
     "Show a popup when entering a current-season mythic dungeon if a different loot specialization would give better odds for your selected items."

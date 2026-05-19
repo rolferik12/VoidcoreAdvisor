@@ -86,6 +86,9 @@ L["WARNING_CLOSE"] = "Fermer"
 
 -- ── Panneau d'options (Options.lua) ──────────────────────────────────────────
 
+L["OPTIONS_CAT_REMINDER"] = "Rappel de spécialisation de butin"
+L["OPTIONS_CAT_BONUS_ROLL"] = "Jet bonus"
+
 L["OPTIONS_REMINDER_ENABLE"] = "Rappel de spécialisation de butin"
 L["OPTIONS_REMINDER_TOOLTIP"] =
     "Affiche un popup lors de l'entrée dans un donjon mythique de la saison actuelle si une spécialisation de butin différente donnerait de meilleures chances pour vos objets sélectionnés."

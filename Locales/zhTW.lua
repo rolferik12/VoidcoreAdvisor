@@ -86,6 +86,9 @@ L["WARNING_CLOSE"] = "關閉"
 
 -- ── 選項面板（Options.lua）───────────────────────────────────────────────────
 
+L["OPTIONS_CAT_REMINDER"] = "拾取專精提醒"
+L["OPTIONS_CAT_BONUS_ROLL"] = "額外擲骰"
+
 L["OPTIONS_REMINDER_ENABLE"] = "拾取專精提醒"
 L["OPTIONS_REMINDER_TOOLTIP"] =
     "當進入當前賽季傳奇鑰石地城時，如果其他拾取專精能為選定物品提供更好的機率，則顯示彈出視窗。"

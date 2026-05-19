@@ -86,6 +86,9 @@ L["WARNING_CLOSE"] = "닫기"
 
 -- ── 옵션 패널 (Options.lua) ───────────────────────────────────────────────────
 
+L["OPTIONS_CAT_REMINDER"] = "전리품 전문화 알림"
+L["OPTIONS_CAT_BONUS_ROLL"] = "보너스 주사위"
+
 L["OPTIONS_REMINDER_ENABLE"] = "전리품 전문화 알림"
 L["OPTIONS_REMINDER_TOOLTIP"] =
     "현재 시즌 쐐기돌 던전에 입장할 때 다른 전리품 전문화가 선택한 아이템에 더 나은 확률을 제공하면 팝업을 표시합니다."

@@ -17,6 +17,8 @@ frame:SetScript("OnEvent", function(self, event, loadedAddon)
 
     -- Create a vertical-layout category for the AddOns tab.
     local category = Settings.RegisterVerticalLayoutCategory("VoidcoreAdvisor")
+    local reminderCategory = Settings.RegisterVerticalLayoutSubcategory(category, L["OPTIONS_CAT_REMINDER"])
+    local bonusRollCategory = Settings.RegisterVerticalLayoutSubcategory(category, L["OPTIONS_CAT_BONUS_ROLL"])
 
     -- ── Loot Spec Reminder toggle ─────────────────────────────────────────
     do
@@ -26,10 +28,10 @@ frame:SetScript("OnEvent", function(self, event, loadedAddon)
         local variableTbl = _G[VCA.GLOBAL_DB_NAME]
         local default = true
 
-        local setting = Settings.RegisterAddOnSetting(category, variable, variableKey, variableTbl, type(default), name,
-            default)
+        local setting = Settings.RegisterAddOnSetting(reminderCategory, variable, variableKey, variableTbl,
+            type(default), name, default)
 
-        local initializer = Settings.CreateCheckbox(category, setting, L["OPTIONS_REMINDER_TOOLTIP"])
+        local initializer = Settings.CreateCheckbox(reminderCategory, setting, L["OPTIONS_REMINDER_TOOLTIP"])
 
         -- Add a "Preview" button on the same row as the checkbox.
         hooksecurefunc(SettingsCheckboxControlMixin, "Init", function(self, init)
@@ -63,9 +65,10 @@ frame:SetScript("OnEvent", function(self, event, loadedAddon)
         local variableTbl = _G[VCA.GLOBAL_DB_NAME]
         local default = false
 
-        local setting = Settings.RegisterAddOnSetting(category, variable, variableKey, variableTbl, type(default), name,
-            default)
-        local brcInitializer = Settings.CreateCheckbox(category, setting, L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"])
+        local setting = Settings.RegisterAddOnSetting(bonusRollCategory, variable, variableKey, variableTbl,
+            type(default), name, default)
+        local brcInitializer = Settings.CreateCheckbox(bonusRollCategory, setting,
+            L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"])
 
         hooksecurefunc(SettingsCheckboxControlMixin, "Init", function(self, init)
             if init == brcInitializer then
@@ -98,9 +101,9 @@ frame:SetScript("OnEvent", function(self, event, loadedAddon)
         local variableTbl = _G[VCA.GLOBAL_DB_NAME]
         local default = true
 
-        local setting = Settings.RegisterAddOnSetting(category, variable, variableKey, variableTbl, type(default), name,
-            default)
-        Settings.CreateCheckbox(category, setting, L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"])
+        local setting = Settings.RegisterAddOnSetting(bonusRollCategory, variable, variableKey, variableTbl,
+            type(default), name, default)
+        Settings.CreateCheckbox(bonusRollCategory, setting, L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"])
     end
 
     -- ── Finish ────────────────────────────────────────────────────────────

@@ -87,6 +87,9 @@ L["WARNING_CLOSE"] = "Cerrar"
 
 -- ── Panel de opciones (Options.lua) ──────────────────────────────────────────
 
+L["OPTIONS_CAT_REMINDER"] = "Recordatorio de especialización de botín"
+L["OPTIONS_CAT_BONUS_ROLL"] = "Tirada extra"
+
 L["OPTIONS_REMINDER_ENABLE"] = "Recordatorio de especialización de botín"
 L["OPTIONS_REMINDER_TOOLTIP"] =
     "Muestra un popup al entrar en un calabozo mítico de la temporada actual si una especialización de botín diferente daría mejores probabilidades para los objetos seleccionados."

@@ -86,6 +86,9 @@ L["WARNING_CLOSE"] = "关闭"
 
 -- ── 选项面板（Options.lua）───────────────────────────────────────────────────
 
+L["OPTIONS_CAT_REMINDER"] = "拾取专精提醒"
+L["OPTIONS_CAT_BONUS_ROLL"] = "额外掷骰"
+
 L["OPTIONS_REMINDER_ENABLE"] = "拾取专精提醒"
 L["OPTIONS_REMINDER_TOOLTIP"] =
     "当进入当前赛季史诗钥石地下城时，如果其他拾取专精能为选定物品提供更好的概率，则显示弹出窗口。"

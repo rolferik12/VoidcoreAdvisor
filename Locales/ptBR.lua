@@ -86,6 +86,9 @@ L["WARNING_CLOSE"] = "Fechar"
 
 -- ── Painel de opções (Options.lua) ────────────────────────────────────────────
 
+L["OPTIONS_CAT_REMINDER"] = "Lembrete de especialização de saque"
+L["OPTIONS_CAT_BONUS_ROLL"] = "Rolagem bônus"
+
 L["OPTIONS_REMINDER_ENABLE"] = "Lembrete de especialização de saque"
 L["OPTIONS_REMINDER_TOOLTIP"] =
     "Exibe um popup ao entrar em uma masmorra mítica da temporada atual se uma especialização de saque diferente ofereceria melhores chances para os itens selecionados."

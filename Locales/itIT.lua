@@ -86,6 +86,9 @@ L["WARNING_CLOSE"] = "Chiudi"
 
 -- ── Pannello opzioni (Options.lua) ────────────────────────────────────────────
 
+L["OPTIONS_CAT_REMINDER"] = "Promemoria specializzazione bottino"
+L["OPTIONS_CAT_BONUS_ROLL"] = "Tiro bonus"
+
 L["OPTIONS_REMINDER_ENABLE"] = "Promemoria specializzazione bottino"
 L["OPTIONS_REMINDER_TOOLTIP"] =
     "Mostra un popup quando si entra in una spedizione mitica della stagione corrente se una specializzazione bottino diversa darebbe migliori probabilità per gli oggetti selezionati."

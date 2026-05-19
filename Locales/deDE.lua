@@ -86,6 +86,9 @@ L["WARNING_CLOSE"] = "Schließen"
 
 -- ── Optionspanel (Options.lua) ────────────────────────────────────────────────
 
+L["OPTIONS_CAT_REMINDER"] = "Beutespezialisierungs-Erinnerung"
+L["OPTIONS_CAT_BONUS_ROLL"] = "Bonuswurf"
+
 L["OPTIONS_REMINDER_ENABLE"] = "Beutespezialisierungs-Erinnerung"
 L["OPTIONS_REMINDER_TOOLTIP"] =
     "Zeigt ein Popup beim Betreten eines aktuellen saisonalen mythischen Dungeons, wenn eine andere Beutespezialisierung bessere Chancen für deine ausgewählten Gegenstände bietet."
