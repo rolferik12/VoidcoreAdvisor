@@ -179,7 +179,8 @@ L["BONUS_ROLL_CONFIRM_WANTED_MANY"] = "%d желаемых предмета(ов
 L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% шанс броска"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] =
     "Все предметы получены для данной специализации"
-L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Нет предметов для данной специализации"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS"] =
+    "Нет желаемых предметов для данной специализации"
 L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Нет желаемых предметов в данном подземелье"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] =
     "Источник не отслеживается — шансы недоступны"
