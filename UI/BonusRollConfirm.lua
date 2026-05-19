@@ -270,7 +270,6 @@ passBtn:SetHighlightTexture("")
 passBtn:SetDisabledTexture("")
 passBtn:SetText(PASS_BTN_TEXT)
 passBtn:SetScript("OnClick", function()
-    BRC.Hide()
     if not isPreview and BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.PassButton then
         BonusRollFrame.PromptFrame.PassButton:Click()
     end
