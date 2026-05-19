@@ -78,9 +78,9 @@ end
 -- Offset from BonusRollFrame TOPLEFT so the original peeks from behind.
 
 local win = CreateFrame("Frame", "VCARollWindow", UIParent, "BackdropTemplate")
-win:SetFrameStrata("DIALOG")
 win:SetFrameLevel(7)
-win:EnableMouse(true) -- blocks clicks falling through to BonusRollFrame (level 5)
+win:EnableMouse(true)
+win:EnableMouseMotion(true)
 win:Hide()
 win:SetBackdrop({
     bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
@@ -538,7 +538,28 @@ function BRC.Show()
 
     win:ClearAllPoints()
     win:SetPoint("CENTER", BonusRollFrame, "CENTER", 0, 0)
+    win:SetFrameStrata(BonusRollFrame:GetFrameStrata())
+    win:SetFrameLevel(BonusRollFrame:GetFrameLevel() + 10)
     BonusRollFrame:SetAlpha(0)
+    local pf = BonusRollFrame.PromptFrame
+    if pf then
+        if pf.RollButton then
+            pf.RollButton:EnableMouse(false)
+            pf.RollButton:EnableMouseMotion(false)
+        end
+        if pf.PassButton then
+            pf.PassButton:EnableMouse(false)
+            pf.PassButton:EnableMouseMotion(false)
+        end
+        if pf.EncounterJournalLinkButton then
+            pf.EncounterJournalLinkButton:EnableMouse(false)
+            pf.EncounterJournalLinkButton:EnableMouseMotion(false)
+        end
+    end
+    if BonusRollFrame.CurrentCountFrame then
+        BonusRollFrame.CurrentCountFrame:EnableMouse(false)
+        BonusRollFrame.CurrentCountFrame:EnableMouseMotion(false)
+    end
     isPreview = false
     win:Show()
 end
@@ -548,6 +569,25 @@ end
 function BRC.Uninject()
     if BonusRollFrame then
         BonusRollFrame:SetAlpha(1)
+        local pf = BonusRollFrame.PromptFrame
+        if pf then
+            if pf.RollButton then
+                pf.RollButton:EnableMouse(true)
+                pf.RollButton:EnableMouseMotion(true)
+            end
+            if pf.PassButton then
+                pf.PassButton:EnableMouse(true)
+                pf.PassButton:EnableMouseMotion(true)
+            end
+            if pf.EncounterJournalLinkButton then
+                pf.EncounterJournalLinkButton:EnableMouse(true)
+                pf.EncounterJournalLinkButton:EnableMouseMotion(true)
+            end
+        end
+        if BonusRollFrame.CurrentCountFrame then
+            BonusRollFrame.CurrentCountFrame:EnableMouse(true)
+            BonusRollFrame.CurrentCountFrame:EnableMouseMotion(true)
+        end
     end
     win:Hide()
     StaticPopup_Hide("VOIDCORE_BONUS_ROLL")
