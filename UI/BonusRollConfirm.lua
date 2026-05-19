@@ -13,7 +13,7 @@ local L = VCA.L
 VCA.BonusRollConfirm = {}
 local BRC = VCA.BonusRollConfirm
 
-local isActive = false
+local isPreview = false
 local cachedItemLink = nil -- item link for icon tooltip
 local cachedDisplayItemID = nil -- numeric item ID from EJLinkButton.displayItemID
 
@@ -273,7 +273,7 @@ passBtn:SetDisabledTexture("")
 passBtn:SetText(PASS_BTN_TEXT)
 passBtn:SetScript("OnClick", function()
     BRC.Hide()
-    if isActive and BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.PassButton then
+    if not isPreview and BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.PassButton then
         BonusRollFrame.PromptFrame.PassButton:Click()
     end
 end)
@@ -542,7 +542,7 @@ function BRC.Show()
     win:ClearAllPoints()
     win:SetPoint("TOP", BonusRollFrame, "BOTTOM", 0, WIN_GAP_Y)
     BonusRollFrame:SetAlpha(0)
-    isActive = true
+    isPreview = false
     win:Show()
 end
 
@@ -554,7 +554,6 @@ function BRC.Uninject()
     end
     win:Hide()
     StaticPopup_Hide("VOIDCORE_BONUS_ROLL")
-    isActive = false
     cachedItemLink = nil
     cachedDisplayItemID = nil
 end
@@ -567,7 +566,7 @@ StaticPopupDialogs["VOIDCORE_BONUS_ROLL"] = {
     button2 = CANCEL,
     OnAccept = function()
         BRC.Hide()
-        if isActive and BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.RollButton then
+        if not isPreview and BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.RollButton then
             BonusRollFrame.PromptFrame.RollButton:Click()
         end
     end,
@@ -580,6 +579,7 @@ StaticPopupDialogs["VOIDCORE_BONUS_ROLL"] = {
 BRC.Hide = BRC.Uninject
 
 function BRC.ShowPreview()
+    isPreview = true
     -- Algeth'ar Academy cache item as a live-data stand-in
     cachedDisplayItemID = 268465
     cachedItemLink = nil
