@@ -77,8 +77,6 @@ end
 -- â”€â”€ Custom window â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- Offset from BonusRollFrame TOPLEFT so the original peeks from behind.
 
-local WIN_GAP_Y = -6 -- gap between BonusRollFrame bottom and our window top
-
 local win = CreateFrame("Frame", "VCARollWindow", UIParent, "BackdropTemplate")
 win:SetFrameStrata("DIALOG")
 win:SetFrameLevel(7)
@@ -540,7 +538,7 @@ function BRC.Show()
     passBtn:SetPoint("BOTTOM", win, "BOTTOM", (btnW / 2 + 4), 12)
 
     win:ClearAllPoints()
-    win:SetPoint("TOP", BonusRollFrame, "BOTTOM", 0, WIN_GAP_Y)
+    win:SetPoint("CENTER", BonusRollFrame, "CENTER", 0, 0)
     BonusRollFrame:SetAlpha(0)
     isPreview = false
     win:Show()
