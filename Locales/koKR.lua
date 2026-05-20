@@ -178,8 +178,9 @@ L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "이 전문화의 모든 아이템 획득
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "이 전문화에 원하는 아이템 없음"
 L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "원하는 아이템 없음"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "출처 미추적 — 확률 정보 없음"
-L["BONUS_ROLL_CONFIRM_WARNING"] =
-    "|A:Ping_Chat_Warning:14:14|a |cffffff00악운 보호가 초기화됩니다|r\n이번 주사위 후 이전에 획득한 아이템이\n모든 전문화에 다시 드롭될 수 있습니다."
+L["BONUS_ROLL_CONFIRM_WARNING_HEADER"] = "|A:Ping_Chat_Warning:14:14|a |cffffff00악운 보호가 초기화됩니다|r"
+L["BONUS_ROLL_CONFIRM_WARNING_BODY"] =
+    "이번 주사위 후 이전에 획득한 아이템이 모든 전문화에 다시 드롭될 수 있습니다."
 L["BONUS_ROLL_CONFIRM_QUESTION"] = "전리품을 위해 주사위를 굴리시겠습니까?"
 L["BONUS_ROLL_CONFIRM_ROLL"] = "주사위"
 L["BONUS_ROLL_CONFIRM_PASS"] = "패스"

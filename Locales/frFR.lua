@@ -178,8 +178,10 @@ L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Tous les objets obtenus pour cette spéc
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Aucun objet souhaité pour cette spéc"
 L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Aucun objet désiré"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Source non suivie — aucune estimation disponible"
-L["BONUS_ROLL_CONFIRM_WARNING"] =
-    "|A:Ping_Chat_Warning:14:14|a |cffffff00La protection contre la malchance sera réinitialisée|r\nAprès ce jet, les objets précédemment pillés\npeuvent à nouveau tomber pour toutes les spécialisations."
+L["BONUS_ROLL_CONFIRM_WARNING_HEADER"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00La protection contre la malchance sera réinitialisée|r"
+L["BONUS_ROLL_CONFIRM_WARNING_BODY"] =
+    "Après ce jet, les objets précédemment pillés peuvent à nouveau tomber pour toutes les spécialisations."
 L["BONUS_ROLL_CONFIRM_QUESTION"] = "Voulez-vous lancer pour du butin ?"
 L["BONUS_ROLL_CONFIRM_ROLL"] = "Lancer"
 L["BONUS_ROLL_CONFIRM_PASS"] = "Passer"

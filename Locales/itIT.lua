@@ -178,8 +178,10 @@ L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Tutti gli oggetti ottenuti per questa sp
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Nessun oggetto desiderato per questa spec"
 L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Nessun oggetto desiderato"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Fonte non tracciata — nessuna probabilità disponibile"
-L["BONUS_ROLL_CONFIRM_WARNING"] =
-    "|A:Ping_Chat_Warning:14:14|a |cffffff00La protezione dalla sfortuna verrà azzerata|r\nDopo questo tiro, oggetti precedentemente ottenuti\npossono droppare di nuovo per tutte le specializzazioni."
+L["BONUS_ROLL_CONFIRM_WARNING_HEADER"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00La protezione dalla sfortuna verrà azzerata|r"
+L["BONUS_ROLL_CONFIRM_WARNING_BODY"] =
+    "Dopo questo tiro, oggetti precedentemente ottenuti possono droppare di nuovo per tutte le specializzazioni."
 L["BONUS_ROLL_CONFIRM_QUESTION"] = "Vuoi tirare per il bottino?"
 L["BONUS_ROLL_CONFIRM_ROLL"] = "Tira"
 L["BONUS_ROLL_CONFIRM_PASS"] = "Passa"

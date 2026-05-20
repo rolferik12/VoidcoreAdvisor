@@ -319,10 +319,15 @@ lootCountLine:SetWidth(320)
 lootCountLine:SetJustifyH("CENTER")
 lootCountLine:Hide()
 
-local warnText = win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-warnText:SetWidth(320)
-warnText:SetJustifyH("CENTER")
-warnText:Hide()
+local warnHeader = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+warnHeader:SetWidth(320)
+warnHeader:SetJustifyH("CENTER")
+warnHeader:Hide()
+
+local warnBody = win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+warnBody:SetWidth(320)
+warnBody:SetJustifyH("CENTER")
+warnBody:Hide()
 
 -- Per-spec remaining item counts section
 local specListSep = win:CreateTexture(nil, "ARTWORK")
@@ -552,7 +557,8 @@ local function LayoutDynamicSection(source, specID, dynY)
         lootLine:Hide()
         lootCountLine:Hide()
         chanceText:Hide()
-        warnText:Hide()
+        warnHeader:Hide()
+        warnBody:Hide()
         specName:SetText("")
     end
 
@@ -563,16 +569,23 @@ local function LayoutDynamicSection(source, specID, dynY)
     if source and source.sourceType and source.sourceID then
         if probFull and probFull.remainingCount == 1 then
             dynY = dynY - 6 -- spacing above warning
-            warnText:ClearAllPoints()
-            warnText:SetPoint("TOP", win, "TOP", 0, dynY)
-            warnText:SetText(L["BONUS_ROLL_CONFIRM_WARNING"])
-            warnText:Show()
-            dynY = dynY - 52 - 6 -- text height + spacing below
+            warnHeader:ClearAllPoints()
+            warnHeader:SetPoint("TOP", win, "TOP", 0, dynY)
+            warnHeader:SetText(L["BONUS_ROLL_CONFIRM_WARNING_HEADER"])
+            warnHeader:Show()
+            dynY = dynY - 20 -- header height
+            warnBody:ClearAllPoints()
+            warnBody:SetPoint("TOP", win, "TOP", 0, dynY)
+            warnBody:SetText(L["BONUS_ROLL_CONFIRM_WARNING_BODY"])
+            warnBody:Show()
+            dynY = dynY - 18 - 6 -- body height + spacing below
         else
-            warnText:Hide()
+            warnHeader:Hide()
+            warnBody:Hide()
         end
     else
-        warnText:Hide()
+        warnHeader:Hide()
+        warnBody:Hide()
     end
 
     -- Compact: nothing was rendered below the spec row; snap to remove the gap
@@ -753,7 +766,7 @@ BRC.Hide = BRC.Uninject
 function BRC.ShowPreview()
     isPreview = true
     -- Algeth'ar Academy cache item as a live-data stand-in
-    cachedDisplayItemID = 269768
+    cachedDisplayItemID = 268464
     cachedItemLink = nil
 
     local iName, _, iQuality, _, _, _, _, _, _, iTexture = GetItemInfo(cachedDisplayItemID)

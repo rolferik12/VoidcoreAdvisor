@@ -190,8 +190,10 @@ L["BONUS_ROLL_CONFIRM_NO_ITEMS"] =
 L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Нет желаемых предметов"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] =
     "Источник не отслеживается — шансы недоступны"
-L["BONUS_ROLL_CONFIRM_WARNING"] =
-    "|A:Ping_Chat_Warning:14:14|a |cffffff00Защита от неудач сбросится|r\nПосле этого броска ранее полученные предметы\nснова могут упасть для всех специализаций."
+L["BONUS_ROLL_CONFIRM_WARNING_HEADER"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00Защита от неудач сбросится|r"
+L["BONUS_ROLL_CONFIRM_WARNING_BODY"] =
+    "После этого броска ранее полученные предметы снова могут упасть для всех специализаций."
 L["BONUS_ROLL_CONFIRM_QUESTION"] = "Хотите бросить кубик на добычу?"
 L["BONUS_ROLL_CONFIRM_ROLL"] = "Бросить"
 L["BONUS_ROLL_CONFIRM_PASS"] = "Пропустить"
