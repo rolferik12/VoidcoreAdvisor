@@ -430,6 +430,8 @@ local function ShowSpecListTooltip(owner, anchor)
     if not specs or #specs == 0 then
         return
     end
+    local selectedSet = VCA.Data.GetSelectedItems(cachedSource.sourceType, cachedSource.sourceID,
+        cachedSource.difficultyID)
     GameTooltip:SetOwner(owner, anchor)
     GameTooltip:SetText(L["SPEC_LIST_TOOLTIP_TITLE"], 1, 0.82, 0)
     GameTooltip:AddLine(" ")
@@ -441,7 +443,8 @@ local function ShowSpecListTooltip(owner, anchor)
                 cachedSource.difficultyID, spec.classID, spec.specID)
         end
         local pool = items or {}
-        local total = #pool
+        local poolSet = {}
+        for _, itemID in ipairs(pool) do poolSet[itemID] = true end
         local remaining = 0
         for _, itemID in ipairs(pool) do
             if not VCA.Data.IsObtained(cachedSource.sourceType, cachedSource.sourceID, cachedSource.difficultyID,
@@ -449,19 +452,17 @@ local function ShowSpecListTooltip(owner, anchor)
                 remaining = remaining + 1
             end
         end
+        local wanted = 0
+        if selectedSet then
+            for itemID in pairs(selectedSet) do
+                if poolSet[itemID] then wanted = wanted + 1 end
+            end
+        end
         local _, sName = GetSpecializationInfoByID(spec.specID)
         local iconT = "|T" .. (spec.icon or "Interface\\Icons\\INV_Misc_QuestionMark") .. ":14:14|t"
-        local countStr
-        if total == 0 then
-            countStr = "|cff888888" .. L["REMINDER_SPEC_NONE"] .. "|r"
-        elseif remaining == 0 then
-            countStr = "|cff00ff00" .. L["SPEC_LIST_ALL_OBTAINED"] .. "|r"
-        elseif remaining == 1 then
-            countStr = "|cffff4444" .. L["SPEC_LIST_ITEM_ONE"] .. "|r"
-        else
-            countStr = "|cffdddddd" .. string.format(L["SPEC_LIST_ITEM_MANY"], remaining) .. "|r"
-        end
-        GameTooltip:AddLine(iconT .. " " .. (sName or "?") .. ": " .. countStr, 1, 1, 1)
+        local wantedColor = wanted > 0 and "|cffffff00" or "|cff888888"
+        local rightStr = wantedColor .. wanted .. " wanted|r |cff888888-  " .. remaining .. " remaining|r"
+        GameTooltip:AddDoubleLine(iconT .. " " .. (sName or "?"), rightStr, 1, 1, 1, 1, 1, 1)
     end
     GameTooltip:Show()
 end
