@@ -601,14 +601,33 @@ local function LayoutDynamicSection(source, specID, dynY)
             local prob = VCA.Probability.CalculateForSpec(source.sourceType, source.sourceID, source.difficultyID,
                 VCA.SpecInfo.GetPlayerClassID(), specID, nil, selectedSet)
             if prob.noItems then
-                dynY = dynY - 10
-                lootLine:ClearAllPoints()
-                lootLine:SetPoint("TOP", win, "TOP", 0, dynY)
+                -- Check if any other spec has wanted items in the selection
+                local otherSpecHasItems = false
+                local specs = VCA.SpecInfo.GetPlayerSpecs()
+                if specs then
+                    for _, spec in ipairs(specs) do
+                        if spec.specID ~= specID then
+                            local op = VCA.Probability.CalculateForSpec(source.sourceType, source.sourceID,
+                                source.difficultyID, spec.classID, spec.specID, nil, selectedSet)
+                            if not op.noItems then
+                                otherSpecHasItems = true
+                                break
+                            end
+                        end
+                    end
+                end
                 chanceText:Hide()
-                lootLine:SetText("|cff888888" .. L["BONUS_ROLL_CONFIRM_NO_ITEMS"] .. "|r")
-                lootLine:Show()
+                specName:SetText("|cff888888" .. L["BONUS_ROLL_CONFIRM_NO_ITEMS"] .. "|r")
+                if otherSpecHasItems then
+                    lootLine:ClearAllPoints()
+                    lootLine:SetPoint("TOP", specName, "BOTTOM", 0, -4)
+                    lootLine:SetText("|cffffff00" .. L["BONUS_ROLL_CONFIRM_NO_ITEMS_OTHER_SPECS"] .. "|r")
+                    lootLine:Show()
+                    dynY = dynY - 18
+                else
+                    lootLine:Hide()
+                end
                 lootCountLine:Hide()
-                dynY = dynY - 20
             elseif prob.allObtained then
                 dynY = dynY - 10
                 lootLine:ClearAllPoints()
@@ -869,16 +888,16 @@ BRC.Hide = BRC.Uninject
 
 -- Skyreach +10 Voidcache as a realistic preview stand-in (M+ keystone context).
 local PREVIEW_PROMPT_DATA = {
-    treasureContextLevel = 0,
-    duration = 121,
-    currencyID = 3418,
-    difficultyID = 14,
     confirmType = 1,
-    itemContext = 55,
-    displayItemID = 269768,
     currencyCost = 1,
+    currencyID = 3418,
+    difficultyID = 8,
+    displayItemID = 268470,
+    duration = 174,
+    itemContext = 16,
+    spellID = 259072,
     text = "",
-    spellID = 259072
+    treasureContextLevel = 10
 }
 
 function BRC.ShowPreview()
