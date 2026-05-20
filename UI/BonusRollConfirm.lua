@@ -81,6 +81,7 @@ local win = CreateFrame("Frame", "VCARollWindow", UIParent, "BackdropTemplate")
 win:SetFrameLevel(7)
 win:EnableMouse(true)
 win:EnableMouseMotion(true)
+win:SetClampedToScreen(true)
 win:Hide()
 win:SetBackdrop({
     bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
