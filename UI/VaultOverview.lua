@@ -95,6 +95,16 @@ scrollFrame:SetScrollChild(scrollChild)
 
 -- ── Row pool ──────────────────────────────────────────────────────────────────
 
+-- Lazy cache for the Nebulous Voidcore currency icon (currency ID 3418).
+local _voidcoreIconID = nil
+local function GetVoidcoreIconID()
+    if not _voidcoreIconID then
+        local info = C_CurrencyInfo.GetCurrencyInfo(3418)
+        _voidcoreIconID = info and info.iconFileID
+    end
+    return _voidcoreIconID
+end
+
 local _rows = {}
 
 local function GetOrCreateRow(index)
@@ -127,15 +137,22 @@ local function GetOrCreateRow(index)
 
     -- Percentage label (top-right, aligned with nameLabel)
     r.pctLabel = r.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    r.pctLabel:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -2, -1)
-    r.pctLabel:SetWidth(46)
+    r.pctLabel:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -2, -5)
     r.pctLabel:SetJustifyH("RIGHT")
     r.pctLabel:SetWordWrap(false)
 
-    -- Item name (top line; right edge stops before pctLabel)
+    -- Nebulous Voidcore currency icon, 14×14, sits 2px to the left of pctLabel.
+    -- pctLabel left edge = frameRight-48; icon right edge = frameRight-50; icon left = frameRight-64.
+    r.pctIcon = r.frame:CreateTexture(nil, "ARTWORK")
+    r.pctIcon:SetSize(14, 14)
+    r.pctIcon:SetPoint("RIGHT", r.pctLabel, "LEFT", -1, 0)
+    r.pctIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    r.pctIcon:Hide()
+
+    -- Item name (top line; right edge stops before pctIcon: frameRight-64 minus 4px gap = -68)
     r.nameLabel = r.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     r.nameLabel:SetPoint("TOPLEFT", r.iconButton, "TOPRIGHT", 5, -1)
-    r.nameLabel:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -52, -1)
+    r.nameLabel:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -68, -1)
     r.nameLabel:SetJustifyH("LEFT")
     r.nameLabel:SetWordWrap(false)
     r.nameLabel:SetHeight(14)
@@ -633,10 +650,19 @@ function VaultOverview.Refresh()
             local pct = math.floor(bestOdds * 100 + 0.5)
             local pctColor = isWanted and "|cffb048f8" or "|cff888888"
             row.pctLabel:SetText(pctColor .. pct .. "%|r")
+            local iconID = GetVoidcoreIconID()
+            if iconID then
+                row.pctIcon:SetTexture(iconID)
+                row.pctIcon:Show()
+            else
+                row.pctIcon:Hide()
+            end
         elseif sourceInfo then
             row.pctLabel:SetText("|cff44ff44" .. L["VAULT_OVERVIEW_OBTAINED"] .. "|r")
+            row.pctIcon:Hide()
         else
             row.pctLabel:SetText("")
+            row.pctIcon:Hide()
         end
 
         -- Source name below the item name
