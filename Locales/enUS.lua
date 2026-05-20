@@ -193,3 +193,14 @@ L["SPEC_PICKER_OK"] = "OK"
 L["OBTAINED_UNKNOWN_SPEC"] = "Obtained (spec unknown)"
 L["UNKNOWN_KEYLEVEL"] = "unknown keylevel"
 L["MANUAL_ENTRY"] = "manual entry"
+
+-- ── Vault Overview (VaultOverview.lua) ────────────────────────────────────────
+
+L["VAULT_OVERVIEW_TITLE"] = "|cffb048f8Voidcore|r|cffddddddAdvisor|r — Great Vault"
+L["VAULT_OVERVIEW_NO_DATA"] = "Vault data not available"
+L["VAULT_OVERVIEW_NO_QUALIFYING"] = "No Myth-tier vault items this week"
+L["VAULT_OVERVIEW_NO_TRACKED"] = "No tracked vault items found"
+L["VAULT_OVERVIEW_COUNT"] = "%d vault item(s)"
+L["VAULT_OVERVIEW_EXAMPLES_SUFFIX"] = "(preview — not yet generated)"
+L["VAULT_OVERVIEW_OBTAINED"] = "all obtained"
+L["VAULT_OVERVIEW_UNKNOWN_SOURCE"] = "Source not tracked"

@@ -39,3 +39,4 @@ UI\Options.lua
 UI\BonusRollConfirm.lua
 UI\EJHook.lua
 UI\EJHookView.lua
+UI\VaultOverview.lua
