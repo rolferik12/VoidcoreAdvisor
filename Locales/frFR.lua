@@ -202,3 +202,4 @@ L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
 L["OPTIONS_BRC_SPEC_LIST"] = "Afficher les objets restants par spécialisation"
 L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
     "Affiche une liste des objets restants pour chacune de vos spécialisations dans la fenêtre de jet bonus."
+L["BRC_SWITCH_SPEC_TIP"] = "Switch specialization to %s"

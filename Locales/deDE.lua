@@ -202,3 +202,4 @@ L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
 L["OPTIONS_BRC_SPEC_LIST"] = "Verbleibende Gegenstände pro Spezialisierung anzeigen"
 L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
     "Zeigt eine Liste verbleibender Gegenstände für jede deiner Spezialisierungen im Bonuswurffenster an."
+L["BRC_SWITCH_SPEC_TIP"] = "Switch specialization to %s"

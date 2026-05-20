@@ -202,3 +202,4 @@ L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
 L["OPTIONS_BRC_SPEC_LIST"] = "Mostra oggetti rimanenti per specializzazione"
 L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
     "Mostra un elenco di oggetti rimanenti per ciascuna delle tue specializzazioni nella finestra di tiro bonus."
+L["BRC_SWITCH_SPEC_TIP"] = "Switch specialization to %s"

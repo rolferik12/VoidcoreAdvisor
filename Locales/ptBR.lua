@@ -202,3 +202,4 @@ L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
 L["OPTIONS_BRC_SPEC_LIST"] = "Mostrar itens restantes por especialização"
 L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
     "Exibe uma lista de itens restantes para cada uma de suas especializações na janela de rolagem bônus."
+L["BRC_SWITCH_SPEC_TIP"] = "Switch specialization to %s"

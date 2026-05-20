@@ -199,3 +199,4 @@ L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
     "当星云虚空核心额外掷骰窗口出现时，显示 VoidcoreAdvisor 信息，包括活跃拾取专精和物品概率。"
 L["OPTIONS_BRC_SPEC_LIST"] = "显示每个专精的剩余物品"
 L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] = "在额外掷骰窗口中显示每个专精的剩余物品列表。"
+L["BRC_SWITCH_SPEC_TIP"] = "Switch specialization to %s"

@@ -202,3 +202,4 @@ L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
 L["OPTIONS_BRC_SPEC_LIST"] = "전문화별 남은 아이템 표시"
 L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
     "보너스 주사위 창에서 각 전문화의 남은 아이템 목록을 표시합니다."
+L["BRC_SWITCH_SPEC_TIP"] = "Switch specialization to %s"

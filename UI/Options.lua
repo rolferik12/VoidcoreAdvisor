@@ -93,6 +93,19 @@ frame:SetScript("OnEvent", function(self, event, loadedAddon)
         end)
     end
 
+    -- ── Show items remaining per spec toggle ─────────────────────────────
+    do
+        local variable = "VoidcoreAdvisor_BRCSpecList"
+        local name = L["OPTIONS_BRC_SPEC_LIST"]
+        local variableKey = "brcSpecListEnabled"
+        local variableTbl = _G[VCA.GLOBAL_DB_NAME]
+        local default = false
+
+        local setting = Settings.RegisterAddOnSetting(bonusRollCategory, variable, variableKey, variableTbl,
+            type(default), name, default)
+        Settings.CreateCheckbox(bonusRollCategory, setting, L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"])
+    end
+
     -- ── Finish ────────────────────────────────────────────────────────────
     Settings.RegisterAddOnCategory(category)
 end)

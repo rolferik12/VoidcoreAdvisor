@@ -217,3 +217,4 @@ L["OPTIONS_BRC_SPEC_LIST"] =
     "Показывать оставшиеся предметы по специализациям"
 L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
     "Показывает список оставшихся предметов для каждой из ваших специализаций в окне бонусного броска."
+L["BRC_SWITCH_SPEC_TIP"] = "Switch specialization to %s"

@@ -23,12 +23,18 @@ local cachedSpecID = nil -- specID used when the window is currently displayed
 local previewTimerStart = nil -- GetTime() when ShowPreview was called (nil in live mode)
 local previewTimerDuration = 30 -- seconds; mirrors a typical bonus-roll countdown
 local cachedPromptData = nil -- structured payload from SPELL_CONFIRMATION_PROMPT
+local isSpecChangePending = false -- true while SetLootSpecialization is in-flight; suppresses Uninject
 
 -- â”€â”€ Guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 local function IsEnabled()
     local gdb = _G[VCA.GLOBAL_DB_NAME]
     return gdb and gdb.bonusRollConfirmEnabled == true
+end
+
+local function IsSpecListEnabled()
+    local gdb = _G[VCA.GLOBAL_DB_NAME]
+    return gdb and gdb.brcSpecListEnabled == true
 end
 
 -- Reverse lookup: Voidcache itemID -> { sourceType, sourceID }
@@ -404,11 +410,23 @@ specListHeader:Hide()
 local specListRows = {}
 for i = 1, 4 do
     local row = {}
-    row.icon = win:CreateTexture(nil, "ARTWORK")
-    row.icon:SetSize(18, 18)
+    -- Clickable button; spec icon fills the button face
+    row.btn = CreateFrame("Button", nil, win)
+    row.btn:SetSize(22, 22)
+    -- Soft glow border shown when this spec is the active loot spec
+    row.glow = row.btn:CreateTexture(nil, "BACKGROUND")
+    row.glow:SetPoint("TOPLEFT", row.btn, "TOPLEFT", -3, 3)
+    row.glow:SetPoint("BOTTOMRIGHT", row.btn, "BOTTOMRIGHT", 3, -3)
+    row.glow:SetColorTexture(0.69, 0.28, 0.97, 0.75)
+    row.glow:Hide()
+    row.icon = row.btn:CreateTexture(nil, "ARTWORK")
+    row.icon:SetAllPoints(row.btn)
     row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    local hl = row.btn:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints(row.btn)
+    hl:SetColorTexture(1, 1, 1, 0.2)
     row.label = win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.icon:Hide()
+    row.btn:Hide()
     row.label:Hide()
     specListRows[i] = row
 end
@@ -563,9 +581,107 @@ local function HideSpecList()
     specListHeader:Hide()
     specListHitFrame:Hide()
     for i = 1, 4 do
-        specListRows[i].icon:Hide()
+        specListRows[i].btn:Hide()
+        specListRows[i].glow:Hide()
         specListRows[i].label:Hide()
     end
+end
+
+-- Renders per-spec remaining-item icon buttons into the window on a single row.
+-- Returns the updated dynY after the row.
+local function ShowSpecList(source, dynY)
+    if not (source and source.sourceType and source.sourceID) then
+        HideSpecList()
+        return dynY
+    end
+    local specs = VCA.SpecInfo.GetPlayerSpecs()
+    if not (specs and #specs > 0) then
+        HideSpecList()
+        return dynY
+    end
+
+    specListHeader:Hide()
+    specListHitFrame:Hide()
+
+    dynY = dynY - 8
+    specListSep:ClearAllPoints()
+    specListSep:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
+    specListSep:SetPoint("TOPRIGHT", win, "TOPRIGHT", -16, dynY)
+    specListSep:Show()
+    dynY = dynY - 10
+
+    -- Horizontal layout: [icon] count  [icon] count  …
+    -- Cell = 22px icon + 4px gap + ~16px number + 10px between cells = 52px
+    local CELL_W = 52
+    local WIN_W = 360
+    local specCount = math.min(#specs, 4)
+    -- Total row width: (N-1) gaps + last cell (icon 22 + gap 4 + number ~16)
+    local rowW = (specCount - 1) * CELL_W + 42
+    local startX = math.floor((WIN_W - rowW) / 2)
+
+    local activeSpecID = VCA.SpecInfo.GetEffectiveLootSpecID()
+
+    for i, spec in ipairs(specs) do
+        if i > 4 then
+            break
+        end
+        local row = specListRows[i]
+
+        local items = VCA.LootPool.GetCachedItemsForSpec(source.sourceType, source.sourceID, source.difficultyID,
+            spec.classID, spec.specID)
+        if not items then
+            items = VCA.LootPool.GetItemsForSpec(source.sourceType, source.sourceID, source.difficultyID, spec.classID,
+                spec.specID)
+        end
+        local remaining = 0
+        for _, itemID in ipairs(items or {}) do
+            if not VCA.Data.IsObtained(source.sourceType, source.sourceID, source.difficultyID, spec.specID, itemID) then
+                remaining = remaining + 1
+            end
+        end
+
+        row.btn:ClearAllPoints()
+        row.btn:SetPoint("TOPLEFT", win, "TOPLEFT", startX + (i - 1) * CELL_W, dynY)
+        row.icon:SetTexture(spec.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        if spec.specID == activeSpecID then
+            row.glow:Show()
+        else
+            row.glow:Hide()
+        end
+
+        row.label:ClearAllPoints()
+        row.label:SetPoint("LEFT", row.btn, "RIGHT", 4, 0)
+        local remColor = remaining > 0 and "|cffffffff" or "|cff666666"
+        row.label:SetText(remColor .. remaining .. "|r")
+
+        -- Capture loop locals for closures
+        local capturedSpecID = spec.specID
+        local capturedSpecName = select(2, GetSpecializationInfoByID(spec.specID)) or "?"
+        row.btn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(string.format(L["BRC_SWITCH_SPEC_TIP"], capturedSpecName))
+            GameTooltip:Show()
+        end)
+        row.btn:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        row.btn:SetScript("OnClick", function()
+            isSpecChangePending = true
+            SetLootSpecialization(capturedSpecID)
+        end)
+
+        row.btn:Show()
+        row.label:Show()
+    end
+
+    -- Hide unused slots
+    for i = (#specs + 1), 4 do
+        specListRows[i].btn:Hide()
+        specListRows[i].label:Hide()
+    end
+
+    dynY = dynY - 26 -- single row height
+    return dynY
 end
 
 -- Renders the loot-odds row, per-spec list, and the roll-prompt label onto the
@@ -655,8 +771,12 @@ local function LayoutDynamicSection(source, specID, dynY)
         specName:SetText("")
     end
 
-    -- Per-spec remaining counts; tooltip on corner icon hover
-    HideSpecList()
+    -- Per-spec remaining counts (shown when option is enabled)
+    if IsSpecListEnabled() then
+        dynY = ShowSpecList(source, dynY)
+    else
+        HideSpecList()
+    end
 
     -- ── Warning (shown last, just above buttons) ──────────────────────────────
     if source and source.sourceType and source.sourceID then
@@ -829,6 +949,9 @@ end
 -- â”€â”€ BRC.Hide / Uninject â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function BRC.Uninject()
+    if isSpecChangePending then
+        return
+    end
     if BonusRollFrame then
         BonusRollFrame:SetAlpha(1)
         local pf = BonusRollFrame.PromptFrame
@@ -1053,6 +1176,11 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
                 end
             end
         end
+        -- Defer clearing the flag so any BonusRollFrame:OnHide that Blizzard fires
+        -- as part of its own PLAYER_LOOT_SPEC_UPDATED handling is still suppressed.
+        C_Timer.After(0, function()
+            isSpecChangePending = false
+        end)
     elseif event == "BONUS_ROLL_ACTIVATE" or event == "BONUS_ROLL_RESULT" then
         BRC.Uninject()
     elseif event == "GET_ITEM_INFO_RECEIVED" then

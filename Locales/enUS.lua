@@ -132,6 +132,7 @@ L["OPTIONS_BONUS_ROLL_CONFIRM_TOOLTIP"] =
 L["OPTIONS_BRC_SPEC_LIST"] = "Show items remaining per spec"
 L["OPTIONS_BRC_SPEC_LIST_TOOLTIP"] =
     "Show a list of remaining items for each of your specializations in the bonus roll window."
+L["BRC_SWITCH_SPEC_TIP"] = "Switch specialization to %s"
 
 -- ── Dungeon Overview panel (DungeonOverview.lua) ─────────────────────────────
 
