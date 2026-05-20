@@ -19,6 +19,7 @@ local cachedDisplayItemID = nil -- numeric item ID from EJLinkButton.displayItem
 local cachedSpecIcon = nil -- spec icon texture path for |T|t embedding
 local cachedSpecName = nil -- spec name for combined spec row text
 local cachedSource = nil -- source table for spec list tooltip
+local cachedSpecID = nil -- specID used when the window is currently displayed
 
 -- â”€â”€ Guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -201,6 +202,106 @@ specName:SetWidth(340)
 -- chanceText retained as upvalue, permanently hidden (merged into specName text)
 local chanceText = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 chanceText:Hide()
+
+-- Transparent hit-testing frame covering the chance text for the wanted-items tooltip.
+local chanceHitFrame = CreateFrame("Frame", nil, win)
+chanceHitFrame:SetPoint("TOP", win, "TOP", 0, -90)
+chanceHitFrame:SetSize(340, 22)
+chanceHitFrame:EnableMouse(true)
+chanceHitFrame:Hide()
+
+-- Slot sort order for the wanted-items tooltip (mirrors DungeonOverview).
+local CHANCE_TIP_SLOT_ORDER = {
+    INVTYPE_HEAD = 1,
+    INVTYPE_NECK = 2,
+    INVTYPE_SHOULDER = 3,
+    INVTYPE_CLOAK = 4,
+    INVTYPE_CHEST = 5,
+    INVTYPE_ROBE = 5,
+    INVTYPE_WRIST = 6,
+    INVTYPE_HAND = 7,
+    INVTYPE_WAIST = 8,
+    INVTYPE_LEGS = 9,
+    INVTYPE_FEET = 10,
+    INVTYPE_FINGER = 11,
+    INVTYPE_TRINKET = 12,
+    INVTYPE_WEAPON = 13,
+    INVTYPE_WEAPONMAINHAND = 13,
+    INVTYPE_2HWEAPON = 13,
+    INVTYPE_WEAPONOFFHAND = 14,
+    INVTYPE_SHIELD = 14,
+    INVTYPE_HOLDABLE = 14,
+    INVTYPE_RANGED = 15,
+    INVTYPE_RANGEDRIGHT = 15
+}
+
+-- Builds and shows the wanted-items tooltip for the chance text row.
+local function ShowChanceTooltip(owner)
+    if not (cachedSource and cachedSource.sourceType and cachedSource.sourceID) then
+        return
+    end
+    if not cachedSpecID then
+        return
+    end
+    local source = cachedSource
+    local specID = cachedSpecID
+
+    -- Items lootable by the current spec
+    local specItems = VCA.LootPool.GetItemsForSpec(source.sourceType, source.sourceID, source.difficultyID,
+        VCA.SpecInfo.GetPlayerClassID(), specID)
+    local specItemSet = {}
+    for _, itemID in ipairs(specItems) do
+        specItemSet[itemID] = true
+    end
+
+    -- Wanted items: selected + lootable by this spec + not yet obtained
+    local selectedSet = VCA.Data.GetSelectedItems(source.sourceType, source.sourceID, source.difficultyID)
+    local rows = {}
+    for itemID in pairs(selectedSet) do
+        if specItemSet[itemID] and
+            not VCA.Data
+                .IsObtainedForKeyTier(source.sourceType, source.sourceID, source.difficultyID, specID, itemID, nil) then
+            local itemName, _, _, _, _, _, _, _, equipLoc, itemTexture = GetItemInfo(itemID)
+            if itemName then
+                rows[#rows + 1] = {
+                    itemName = itemName,
+                    itemTexture = itemTexture,
+                    equipLoc = equipLoc,
+                    sortKey = CHANCE_TIP_SLOT_ORDER[equipLoc] or 99
+                }
+            end
+        end
+    end
+
+    if #rows == 0 then
+        return
+    end
+
+    table.sort(rows, function(a, b)
+        if a.sortKey ~= b.sortKey then
+            return a.sortKey < b.sortKey
+        end
+        return (a.itemName or "") < (b.itemName or "")
+    end)
+
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L["BONUS_ROLL_WANTED_TOOLTIP_TITLE"], 0.85, 0.3, 1)
+    for _, row in ipairs(rows) do
+        local iconMarkup = row.itemTexture and ("|T" .. row.itemTexture .. ":14:14:0:0:64:64:4:60:4:60|t ") or "  "
+        local nameColored = "|cnIQ4:" .. row.itemName .. "|r"
+        local slotText = (row.equipLoc and _G[row.equipLoc] and _G[row.equipLoc] ~= "") and
+                             (" |cff888888[" .. _G[row.equipLoc] .. "]|r") or ""
+        GameTooltip:AddLine("  " .. iconMarkup .. nameColored .. slotText)
+    end
+    GameTooltip:Show()
+end
+
+chanceHitFrame:SetScript("OnEnter", function(self)
+    ShowChanceTooltip(self)
+end)
+chanceHitFrame:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
 
 -- Dynamic loot section (only shown when Detection recognises the source)
 local lootSep = win:CreateTexture(nil, "ARTWORK")
@@ -396,6 +497,7 @@ end
 local function LayoutDynamicSection(source, specID, dynY)
     local initialDynY = dynY
     specName:SetText("")
+    chanceHitFrame:Hide()
     local selectedSet = (source and source.sourceType and source.sourceID) and
                             VCA.Data.GetSelectedItems(source.sourceType, source.sourceID, source.difficultyID) or nil
     local hasSelection = selectedSet and next(selectedSet)
@@ -442,6 +544,7 @@ local function LayoutDynamicSection(source, specID, dynY)
                 specName:SetText("|cffffff00" .. chanceStr .. "|r")
                 lootLine:Hide()
                 lootCountLine:Hide()
+                chanceHitFrame:Show()
             end
         end
     else
@@ -525,6 +628,7 @@ function BRC.Show()
     local _, sName, _, sIcon = GetSpecializationInfoByID(specID)
     cachedSpecIcon = sIcon or "Interface\\Icons\\INV_Misc_QuestionMark"
     cachedSpecName = sName or "?"
+    cachedSpecID = specID
     specCornerIcon:SetTexture(cachedSpecIcon)
     specCornerIcon:Show()
 
@@ -622,6 +726,7 @@ function BRC.Uninject()
     cachedDisplayItemID = nil
     cachedSpecIcon = nil
     cachedSpecName = nil
+    cachedSpecID = nil
     cachedSource = nil
 end
 
@@ -648,7 +753,7 @@ BRC.Hide = BRC.Uninject
 function BRC.ShowPreview()
     isPreview = true
     -- Algeth'ar Academy cache item as a live-data stand-in
-    cachedDisplayItemID = 268464
+    cachedDisplayItemID = 269768
     cachedItemLink = nil
 
     local iName, _, iQuality, _, _, _, _, _, _, iTexture = GetItemInfo(cachedDisplayItemID)
@@ -666,6 +771,7 @@ function BRC.ShowPreview()
     local _, sName, _, sIcon = GetSpecializationInfoByID(specID)
     cachedSpecIcon = sIcon or "Interface\\Icons\\INV_Misc_QuestionMark"
     cachedSpecName = sName or "?"
+    cachedSpecID = specID
     specCornerIcon:SetTexture(cachedSpecIcon)
     specCornerIcon:Show()
 
