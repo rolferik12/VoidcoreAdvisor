@@ -72,6 +72,10 @@ L["REMINDER_WARNING_ONE_ITEM"] =
 L["REMINDER_SPEC_LIST_HEADER"] = "各專精剩餘物品："
 L["REMINDER_SPEC_REMAINING"] = "剩餘 %d 件"
 L["REMINDER_SPEC_NONE"] = "無剩餘"
+L["SPEC_LIST_TOOLTIP_TITLE"] = "戰利品保護"
+L["SPEC_LIST_ITEM_ONE"] = "還有1件想要的物品"
+L["SPEC_LIST_ITEM_MANY"] = "還有%d件想要的物品"
+L["SPEC_LIST_ALL_OBTAINED"] = "全部已獲得"
 
 -- ── 戰利品池重置警告彈窗（Reminder.lua）─────────────────────────────────────
 
@@ -168,11 +172,11 @@ L["RESTORE_FAILED"] = "還原失敗。"
 L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "確認星雲虛無核心擲骰"
 L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "活躍拾取專精："
 L["BONUS_ROLL_CONFIRM_POOL"] = "池中剩餘 %d 件物品"
-L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% 機率（%d 件）"
-L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% 機率（%d 件）"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% 機率（%d 件想要的物品）"
+L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% 機率（1 件想要的物品）"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "該專精的所有物品已取得"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "該專精沒有想要的物品"
-L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "此地城沒有想要的物品"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "沒有想要的物品"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "來源未追蹤 — 無機率資訊"
 L["BONUS_ROLL_CONFIRM_WARNING"] =
     "|A:Ping_Chat_Warning:14:14|a |cffffff00倒楣保護將被重置|r\n此次擲骰後，先前已掉落的物品\n可再次為所有專精掉落。"

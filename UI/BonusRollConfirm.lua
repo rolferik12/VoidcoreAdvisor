@@ -18,6 +18,7 @@ local cachedItemLink = nil -- item link for icon tooltip
 local cachedDisplayItemID = nil -- numeric item ID from EJLinkButton.displayItemID
 local cachedSpecIcon = nil -- spec icon texture path for |T|t embedding
 local cachedSpecName = nil -- spec name for combined spec row text
+local cachedSource = nil -- source table for spec list tooltip
 
 -- â”€â”€ Guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -244,6 +245,62 @@ for i = 1, 4 do
     specListRows[i] = row
 end
 
+-- Hover frame over the spec row — shows per-spec remaining loot as a tooltip
+local specListHitFrame = CreateFrame("Frame", nil, win)
+specListHitFrame:SetPoint("TOP", win, "TOP", 0, -82)
+specListHitFrame:SetSize(340, 26)
+specListHitFrame:EnableMouse(true)
+specListHitFrame:SetScript("OnEnter", function(self)
+    if not IsSpecListEnabled() then
+        return
+    end
+    if not (cachedSource and cachedSource.sourceType and cachedSource.sourceID) then
+        return
+    end
+    local specs = VCA.SpecInfo.GetPlayerSpecs()
+    if not specs or #specs == 0 then
+        return
+    end
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+    GameTooltip:SetText(L["SPEC_LIST_TOOLTIP_TITLE"], 1, 0.82, 0)
+    GameTooltip:AddLine(" ")
+    for _, spec in ipairs(specs) do
+        local items = VCA.LootPool.GetCachedItemsForSpec(cachedSource.sourceType, cachedSource.sourceID,
+            cachedSource.difficultyID, spec.classID, spec.specID)
+        if not items then
+            items = VCA.LootPool.GetItemsForSpec(cachedSource.sourceType, cachedSource.sourceID,
+                cachedSource.difficultyID, spec.classID, spec.specID)
+        end
+        local pool = items or {}
+        local total = #pool
+        local remaining = 0
+        for _, itemID in ipairs(pool) do
+            if not VCA.Data.IsObtained(cachedSource.sourceType, cachedSource.sourceID, cachedSource.difficultyID,
+                spec.specID, itemID) then
+                remaining = remaining + 1
+            end
+        end
+        local _, sName = GetSpecializationInfoByID(spec.specID)
+        local iconT = "|T" .. (spec.icon or "Interface\\Icons\\INV_Misc_QuestionMark") .. ":14:14|t"
+        local countStr
+        if total == 0 then
+            countStr = "|cff888888" .. L["REMINDER_SPEC_NONE"] .. "|r"
+        elseif remaining == 0 then
+            countStr = "|cff00ff00" .. L["SPEC_LIST_ALL_OBTAINED"] .. "|r"
+        elseif remaining == 1 then
+            countStr = "|cffff4444" .. L["SPEC_LIST_ITEM_ONE"] .. "|r"
+        else
+            countStr = "|cffdddddd" .. string.format(L["SPEC_LIST_ITEM_MANY"], remaining) .. "|r"
+        end
+        GameTooltip:AddLine(iconT .. " " .. (sName or "?") .. ": " .. countStr, 1, 1, 1)
+    end
+    GameTooltip:Show()
+end)
+specListHitFrame:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
+specListHitFrame:Hide()
+
 -- â”€â”€ Roll button â€” 2-click confirmation (EXTREMELY IMPORTANT) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 -- Pre-built button label strings (atlas markup evaluated once at load time).
@@ -303,6 +360,7 @@ end)
 local function HideSpecList()
     specListSep:Hide()
     specListHeader:Hide()
+    specListHitFrame:Hide()
     for i = 1, 4 do
         specListRows[i].icon:Hide()
         specListRows[i].label:Hide()
@@ -313,6 +371,7 @@ end
 -- window, advancing `dynY` for each section shown.  Returns the final dynY.
 -- `source` must carry { sourceType, sourceID, difficultyID } or be nil.
 local function LayoutDynamicSection(source, specID, dynY)
+    local initialDynY = dynY
     -- Build the base spec row text (icon + name); valid-prob branch appends the chance.
     local specIconT = "|T" .. (cachedSpecIcon or "Interface\\Icons\\INV_Misc_QuestionMark") .. ":16:16|t"
     local specNameBase = specIconT .. " |cffdddddd" .. (cachedSpecName or "?") .. "|r"
@@ -327,31 +386,29 @@ local function LayoutDynamicSection(source, specID, dynY)
 
     if source and source.sourceType and source.sourceID then
 
-        lootSep:ClearAllPoints()
-        lootSep:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
-        lootSep:SetPoint("TOPRIGHT", win, "TOPRIGHT", -16, dynY)
-        lootSep:Show()
-        dynY = dynY - 10
+        lootSep:Hide()
 
         -- ── Loot probability (filtered by selection) ──────────────────────────
-        lootLine:ClearAllPoints()
-        lootLine:SetPoint("TOP", win, "TOP", 0, dynY)
         if not hasSelection then
-            chanceText:Hide()
-            lootLine:SetText("|cff888888" .. L["BONUS_ROLL_CONFIRM_NO_SELECTED"] .. "|r")
-            lootLine:Show()
+            specName:SetText(specNameBase .. " - |cff888888" .. L["BONUS_ROLL_CONFIRM_NO_SELECTED"] .. "|r")
+            lootLine:Hide()
             lootCountLine:Hide()
-            dynY = dynY - 20
         else
             local prob = VCA.Probability.CalculateForSpec(source.sourceType, source.sourceID, source.difficultyID,
                 VCA.SpecInfo.GetPlayerClassID(), specID, nil, selectedSet)
             if prob.noItems then
+                dynY = dynY - 10
+                lootLine:ClearAllPoints()
+                lootLine:SetPoint("TOP", win, "TOP", 0, dynY)
                 chanceText:Hide()
                 lootLine:SetText("|cff888888" .. L["BONUS_ROLL_CONFIRM_NO_ITEMS"] .. "|r")
                 lootLine:Show()
                 lootCountLine:Hide()
                 dynY = dynY - 20
             elseif prob.allObtained then
+                dynY = dynY - 10
+                lootLine:ClearAllPoints()
+                lootLine:SetPoint("TOP", win, "TOP", 0, dynY)
                 chanceText:Hide()
                 lootLine:SetText("|cff00ff00" .. L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] .. "|r")
                 lootLine:Show()
@@ -375,79 +432,10 @@ local function LayoutDynamicSection(source, specID, dynY)
         warnText:Hide()
     end
 
-    -- ── Per-spec remaining counts (shown whenever option is on) ───────────────
+    -- Per-spec remaining counts shown as tooltip on spec row hover
+    HideSpecList()
     if IsSpecListEnabled() and source and source.sourceType and source.sourceID then
-        local specs = VCA.SpecInfo.GetPlayerSpecs()
-        if specs and #specs > 0 then
-            specListSep:ClearAllPoints()
-            specListSep:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
-            specListSep:SetPoint("TOPRIGHT", win, "TOPRIGHT", -16, dynY)
-            specListSep:Show()
-            dynY = dynY - 10
-
-            specListHeader:ClearAllPoints()
-            specListHeader:SetPoint("TOPLEFT", win, "TOPLEFT", 16, dynY)
-            specListHeader:Show()
-            dynY = dynY - 20
-
-            local specCount = math.min(#specs, 4)
-            local approxRowWidth = specCount * 50 - 12
-            local rowStartX = math.floor((360 - approxRowWidth) / 2)
-            local rowsUsed = 0
-            for _, spec in ipairs(specs) do
-                if rowsUsed >= 4 then
-                    break
-                end
-                local items = VCA.LootPool.GetCachedItemsForSpec(source.sourceType, source.sourceID,
-                    source.difficultyID, spec.classID, spec.specID)
-                if not items then
-                    items = VCA.LootPool.GetItemsForSpec(source.sourceType, source.sourceID, source.difficultyID,
-                        spec.classID, spec.specID)
-                end
-                local pool = items or {}
-                local total = #pool
-                local remaining = 0
-                for _, itemID in ipairs(pool) do
-                    if not VCA.Data.IsObtained(source.sourceType, source.sourceID, source.difficultyID, spec.specID,
-                        itemID) then
-                        remaining = remaining + 1
-                    end
-                end
-                local row = specListRows[rowsUsed + 1]
-                row.icon:ClearAllPoints()
-                if rowsUsed == 0 then
-                    row.icon:SetPoint("TOPLEFT", win, "TOPLEFT", rowStartX, dynY)
-                else
-                    row.icon:SetPoint("LEFT", specListRows[rowsUsed].label, "RIGHT", 12, 0)
-                end
-                row.icon:SetTexture(spec.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-                row.icon:Show()
-                local countStr
-                if total == 0 then
-                    countStr = "|cff888888-|r"
-                elseif remaining == 0 then
-                    countStr = "|cff00ff00\226\156\147|r"
-                elseif remaining == 1 then
-                    countStr = "|cffff4444" .. remaining .. "|r"
-                else
-                    countStr = "|cffdddddd" .. remaining .. "|r"
-                end
-                row.label:ClearAllPoints()
-                row.label:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
-                row.label:SetText(countStr)
-                row.label:Show()
-                rowsUsed = rowsUsed + 1
-            end
-            dynY = dynY - 26
-            for i = rowsUsed + 1, 4 do
-                specListRows[i].icon:Hide()
-                specListRows[i].label:Hide()
-            end
-        else
-            HideSpecList()
-        end
-    else
-        HideSpecList()
+        specListHitFrame:Show()
     end
 
     -- ── Warning (shown last, just above buttons) ──────────────────────────────
@@ -464,6 +452,11 @@ local function LayoutDynamicSection(source, specID, dynY)
         end
     else
         warnText:Hide()
+    end
+
+    -- Compact: nothing was rendered below the spec row; snap to remove the gap
+    if dynY == initialDynY then
+        dynY = initialDynY + 12
     end
 
     return dynY
@@ -527,6 +520,7 @@ function BRC.Show()
             source.difficultyID = (VCA.EligibleRaidDifficulties[diffID] and diffID) or VCA.Difficulty.RAID_NORMAL
         end
     end
+    cachedSource = source
 
     -- Voidcore count + cost
     local currInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(VCA.VOIDCORE_CURRENCY_ID)
@@ -535,7 +529,7 @@ function BRC.Show()
                      VCA.VoidcoreCost.MYTHIC_PLUS
     winVoidcoreInfo:SetText(string.format(L["BONUS_ROLL_CONFIRM_COST"], cost, owned))
 
-    local dynY = LayoutDynamicSection(source, specID, -124)
+    local dynY = LayoutDynamicSection(source, specID, -112)
     local btnW, btnH = 140, 28
     local winH = math.abs(dynY) + 8 + btnH + 16
     win:SetSize(360, winH)
@@ -606,6 +600,7 @@ function BRC.Uninject()
     cachedDisplayItemID = nil
     cachedSpecIcon = nil
     cachedSpecName = nil
+    cachedSource = nil
 end
 
 -- ── Confirmation popups ──────────────────────────────────────────────────────────────────
@@ -631,7 +626,7 @@ BRC.Hide = BRC.Uninject
 function BRC.ShowPreview()
     isPreview = true
     -- Algeth'ar Academy cache item as a live-data stand-in
-    cachedDisplayItemID = 268465
+    cachedDisplayItemID = 268464
     cachedItemLink = nil
 
     local iName, _, iQuality, _, _, _, _, _, _, iTexture = GetItemInfo(cachedDisplayItemID)
@@ -660,8 +655,9 @@ function BRC.ShowPreview()
     if source then
         source.difficultyID = VCA.MythicPlusEJDifficulty
     end
+    cachedSource = source
 
-    local dynY = LayoutDynamicSection(source, specID, -124)
+    local dynY = LayoutDynamicSection(source, specID, -112)
     local btnW, btnH = 140, 28
     local winH = math.abs(dynY) + 8 + btnH + 16
     win:SetSize(360, winH)

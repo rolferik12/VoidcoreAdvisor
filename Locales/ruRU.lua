@@ -77,6 +77,10 @@ L["REMINDER_WARNING_ONE_ITEM"] =
 L["REMINDER_SPEC_LIST_HEADER"] = "Остаток предметов по специализациям:"
 L["REMINDER_SPEC_REMAINING"] = "%d осталось"
 L["REMINDER_SPEC_NONE"] = "не осталось"
+L["SPEC_LIST_TOOLTIP_TITLE"] = "Защита добычи"
+L["SPEC_LIST_ITEM_ONE"] = "1 нужный предмет остался"
+L["SPEC_LIST_ITEM_MANY"] = "%d нужных предмета(ов) осталось"
+L["SPEC_LIST_ALL_OBTAINED"] = "все получено"
 
 -- ── Всплывающее предупреждение о сбросе пула добычи (Reminder.lua) ─────────
 
@@ -177,13 +181,13 @@ L["RESTORE_FAILED"] = "Восстановление не удалось."
 L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Подтвердить бросок Туманного ядра Бездны"
 L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Активная специализация добычи:"
 L["BONUS_ROLL_CONFIRM_POOL"] = "Осталось %d предмет(ов) в пуле"
-L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% шанс (%d предм.)"
-L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% шанс (%d предм.)"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% шанс (%d нужных предмета(ов))"
+L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% шанс (1 нужный предмет)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] =
     "Все предметы получены для данной специализации"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] =
     "Нет желаемых предметов для данной специализации"
-L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Нет желаемых предметов в данном подземелье"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Нет желаемых предметов"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] =
     "Источник не отслеживается — шансы недоступны"
 L["BONUS_ROLL_CONFIRM_WARNING"] =

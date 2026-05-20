@@ -72,6 +72,10 @@ L["REMINDER_WARNING_ONE_ITEM"] =
 L["REMINDER_SPEC_LIST_HEADER"] = "Oggetti rimanenti per specializzazione:"
 L["REMINDER_SPEC_REMAINING"] = "%d rimanente/i"
 L["REMINDER_SPEC_NONE"] = "nessuno rimanente"
+L["SPEC_LIST_TOOLTIP_TITLE"] = "Protezione del bottino"
+L["SPEC_LIST_ITEM_ONE"] = "1 oggetto desiderato rimanente"
+L["SPEC_LIST_ITEM_MANY"] = "%d oggetti desiderati rimanenti"
+L["SPEC_LIST_ALL_OBTAINED"] = "tutti ottenuti"
 
 -- ── Popup avviso reset pool bottino (Reminder.lua) ────────────────────────────
 
@@ -168,11 +172,11 @@ L["RESTORE_FAILED"] = "Ripristino fallito."
 L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Conferma tiro Nucleo del Vuoto nebuloso"
 L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Spec. bottino attiva:"
 L["BONUS_ROLL_CONFIRM_POOL"] = "%d oggetto/i rimanente/i nel gruppo"
-L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% di probabilità (%d oggetti)"
-L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% di probabilità (%d oggetto)"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% di probabilità (%d oggetti desiderati)"
+L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% di probabilità (1 oggetto desiderato)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Tutti gli oggetti ottenuti per questa spec"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Nessun oggetto desiderato per questa spec"
-L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Nessun oggetto desiderato per questa spedizione"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Nessun oggetto desiderato"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Fonte non tracciata — nessuna probabilità disponibile"
 L["BONUS_ROLL_CONFIRM_WARNING"] =
     "|A:Ping_Chat_Warning:14:14|a |cffffff00La protezione dalla sfortuna verrà azzerata|r\nDopo questo tiro, oggetti precedentemente ottenuti\npossono droppare di nuovo per tutte le specializzazioni."

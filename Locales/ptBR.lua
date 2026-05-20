@@ -72,6 +72,10 @@ L["REMINDER_WARNING_ONE_ITEM"] =
 L["REMINDER_SPEC_LIST_HEADER"] = "Itens restantes por especialização:"
 L["REMINDER_SPEC_REMAINING"] = "%d restante(s)"
 L["REMINDER_SPEC_NONE"] = "nenhum restante"
+L["SPEC_LIST_TOOLTIP_TITLE"] = "Proteção de Saque"
+L["SPEC_LIST_ITEM_ONE"] = "1 item desejado restante"
+L["SPEC_LIST_ITEM_MANY"] = "%d itens desejados restantes"
+L["SPEC_LIST_ALL_OBTAINED"] = "todos obtidos"
 
 -- ── Popup de aviso de redefinição do grupo de saque (Reminder.lua) ───────────
 
@@ -168,11 +172,11 @@ L["RESTORE_FAILED"] = "A restauração falhou."
 L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Confirmar rolagem de Núcleo do Vazio Nebuloso"
 L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Especialização de saque ativa:"
 L["BONUS_ROLL_CONFIRM_POOL"] = "%d item(ns) restante(s) no grupo"
-L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de chance (%d itens)"
-L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% de chance (%d item)"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de chance (%d itens desejados)"
+L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% de chance (1 item desejado)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Todos os itens obtidos para esta espec."
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Nenhum item desejado para esta espec."
-L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Nenhum item desejado para esta masmorra"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Nenhum item desejado"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Fonte não rastreada — sem probabilidades disponíveis"
 L["BONUS_ROLL_CONFIRM_WARNING"] =
     "|A:Ping_Chat_Warning:14:14|a |cffffff00A proteção contra má sorte será redefinida|r\nApós esta rolagem, itens previamente saqueados\npodem cair novamente para todas as especializações."

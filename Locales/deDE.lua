@@ -72,6 +72,10 @@ L["REMINDER_WARNING_ONE_ITEM"] =
 L["REMINDER_SPEC_LIST_HEADER"] = "Verbleibende Gegenstände pro Spezialisierung:"
 L["REMINDER_SPEC_REMAINING"] = "%d übrig"
 L["REMINDER_SPEC_NONE"] = "nichts übrig"
+L["SPEC_LIST_TOOLTIP_TITLE"] = "Beuteschutz"
+L["SPEC_LIST_ITEM_ONE"] = "1 gewünschter Gegenstand übrig"
+L["SPEC_LIST_ITEM_MANY"] = "%d gewünschte Gegenstände übrig"
+L["SPEC_LIST_ALL_OBTAINED"] = "alle erhalten"
 
 -- ── Voidcore-Pool-Reset-Warnungs-Popup (Reminder.lua) ────────────────────────
 
@@ -168,11 +172,11 @@ L["RESTORE_FAILED"] = "Wiederherstellung fehlgeschlagen."
 L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Nebulösen Leerenkern-Zug bestätigen"
 L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Aktive Beutespezialisierung:"
 L["BONUS_ROLL_CONFIRM_POOL"] = "%d Gegenstand/Gegenstände im Pool übrig"
-L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% Chance (%d Gegenstände)"
-L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% Chance (%d Gegenstand)"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% Chance (%d gewünschte Gegenstände)"
+L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% Chance (1 gewünschter Gegenstand)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Alle Gegenstände für diese Spec erhalten"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Keine gewünschten Gegenstände für diese Spec"
-L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Keine gewünschten Gegenstände für diesen Dungeon"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Keine gewünschten Gegenstände"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Quelle nicht verfolgt — keine Chancenangaben verfügbar"
 L["BONUS_ROLL_CONFIRM_WARNING"] =
     "|A:Ping_Chat_Warning:14:14|a |cffffff00Pechschutz wird zurückgesetzt|r\nNach diesem Zug können vorher geplünderte\nGegenstände wieder für alle Spezialisierungen fallen."

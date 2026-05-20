@@ -73,6 +73,10 @@ L["REMINDER_WARNING_ONE_ITEM"] =
 L["REMINDER_SPEC_LIST_HEADER"] = "Objetos restantes por especialización:"
 L["REMINDER_SPEC_REMAINING"] = "%d restante(s)"
 L["REMINDER_SPEC_NONE"] = "ninguno restante"
+L["SPEC_LIST_TOOLTIP_TITLE"] = "Protección de botín"
+L["SPEC_LIST_ITEM_ONE"] = "1 objeto deseado restante"
+L["SPEC_LIST_ITEM_MANY"] = "%d objetos deseados restantes"
+L["SPEC_LIST_ALL_OBTAINED"] = "todos obtenidos"
 
 -- ── Popup de aviso de reinicio del grupo de botín (Reminder.lua) ─────────────
 
@@ -169,11 +173,11 @@ L["RESTORE_FAILED"] = "La restauración falló."
 L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Confirmar tirada de Núcleo del Vacío nebuloso"
 L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Especialización de botín activa:"
 L["BONUS_ROLL_CONFIRM_POOL"] = "%d objeto(s) restante(s) en el grupo"
-L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de probabilidad (%d objetos)"
-L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% de probabilidad (%d objeto)"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de probabilidad (%d objetos deseados)"
+L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% de probabilidad (1 objeto deseado)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Todos los objetos obtenidos para esta espec."
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "No hay objetos deseados para esta espec."
-L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "No hay objetos deseados para esta mazmorra"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Sin objetos deseados"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Fuente no rastreada — sin probabilidades disponibles"
 L["BONUS_ROLL_CONFIRM_WARNING"] =
     "|A:Ping_Chat_Warning:14:14|a |cffffff00La protección de mala suerte se reiniciará|r\nTras esta tirada, los objetos previamente saqueados\npueden volver a caer para todas las especializaciones."

@@ -72,6 +72,10 @@ L["REMINDER_WARNING_ONE_ITEM"] =
 L["REMINDER_SPEC_LIST_HEADER"] = "전문화별 남은 아이템:"
 L["REMINDER_SPEC_REMAINING"] = "%d개 남음"
 L["REMINDER_SPEC_NONE"] = "남은 아이템 없음"
+L["SPEC_LIST_TOOLTIP_TITLE"] = "전리품 보호"
+L["SPEC_LIST_ITEM_ONE"] = "원하는 아이템 1개 남음"
+L["SPEC_LIST_ITEM_MANY"] = "원하는 아이템 %d개 남음"
+L["SPEC_LIST_ALL_OBTAINED"] = "모두 획득"
 
 -- ── 공허 풀 초기화 경고 팝업 (Reminder.lua) ──────────────────────────────────
 
@@ -168,11 +172,11 @@ L["RESTORE_FAILED"] = "복원에 실패했습니다."
 L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "성운의 공허핵 주사위 확인"
 L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "활성 전리품 전문화:"
 L["BONUS_ROLL_CONFIRM_POOL"] = "풀에 %d개 아이템 남음"
-L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% 확률 (%d 아이템)"
-L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% 확률 (%d 아이템)"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% 확률 (원하는 아이템 %d개)"
+L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% 확률 (원하는 아이템 1개)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "이 전문화의 모든 아이템 획득됨"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "이 전문화에 원하는 아이템 없음"
-L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "이 던전의 원하는 아이템 없음"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "원하는 아이템 없음"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "출처 미추적 — 확률 정보 없음"
 L["BONUS_ROLL_CONFIRM_WARNING"] =
     "|A:Ping_Chat_Warning:14:14|a |cffffff00악운 보호가 초기화됩니다|r\n이번 주사위 후 이전에 획득한 아이템이\n모든 전문화에 다시 드롭될 수 있습니다."

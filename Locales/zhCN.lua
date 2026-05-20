@@ -72,6 +72,10 @@ L["REMINDER_WARNING_ONE_ITEM"] =
 L["REMINDER_SPEC_LIST_HEADER"] = "各专精剩余物品："
 L["REMINDER_SPEC_REMAINING"] = "剩余 %d 件"
 L["REMINDER_SPEC_NONE"] = "无剩余"
+L["SPEC_LIST_TOOLTIP_TITLE"] = "战利品保护"
+L["SPEC_LIST_ITEM_ONE"] = "还有1件想要的物品"
+L["SPEC_LIST_ITEM_MANY"] = "还有%d件想要的物品"
+L["SPEC_LIST_ALL_OBTAINED"] = "全部已获得"
 
 -- ── 战利品池重置警告弹窗（Reminder.lua）─────────────────────────────────────
 
@@ -168,11 +172,11 @@ L["RESTORE_FAILED"] = "恢复失败。"
 L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "确认星云虚空核心掷骰"
 L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "活跃拾取专精："
 L["BONUS_ROLL_CONFIRM_POOL"] = "池中剩余 %d 件物品"
-L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% 概率（%d 件）"
-L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% 概率（%d 件）"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% 概率（%d 件想要的物品）"
+L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% 概率（1 件想要的物品）"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "该专精的所有物品已获取"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "该专精没有想要的物品"
-L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "此地下城没有想要的物品"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "没有想要的物品"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "来源未追踪 — 无概率信息"
 L["BONUS_ROLL_CONFIRM_WARNING"] =
     "|A:Ping_Chat_Warning:14:14|a |cffffff00倒霉保护将被重置|r\n此次掷骰后，之前已掉落的物品\n可再次为所有专精掉落。"

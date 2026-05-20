@@ -72,6 +72,10 @@ L["REMINDER_WARNING_ONE_ITEM"] =
 L["REMINDER_SPEC_LIST_HEADER"] = "Objets restants par spécialisation :"
 L["REMINDER_SPEC_REMAINING"] = "%d restant(s)"
 L["REMINDER_SPEC_NONE"] = "aucun restant"
+L["SPEC_LIST_TOOLTIP_TITLE"] = "Protection du butin"
+L["SPEC_LIST_ITEM_ONE"] = "1 objet désiré restant"
+L["SPEC_LIST_ITEM_MANY"] = "%d objets désirés restants"
+L["SPEC_LIST_ALL_OBTAINED"] = "tous obtenus"
 
 -- ── Popup d'avertissement de réinitialisation du groupe de butin (Reminder.lua) ──
 
@@ -168,11 +172,11 @@ L["RESTORE_FAILED"] = "La restauration a échoué."
 L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Confirmer le jet de Noyau du Vide nébuleux"
 L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Spécialisation de butin active :"
 L["BONUS_ROLL_CONFIRM_POOL"] = "%d objet(s) restant dans le groupe"
-L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de chance (%d objets)"
-L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% de chance (%d objet)"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de chance (%d objets désirés)"
+L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% de chance (1 objet désiré)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Tous les objets obtenus pour cette spéc"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Aucun objet souhaité pour cette spéc"
-L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Aucun objet désiré pour ce donjon"
+L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Aucun objet désiré"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Source non suivie — aucune estimation disponible"
 L["BONUS_ROLL_CONFIRM_WARNING"] =
     "|A:Ping_Chat_Warning:14:14|a |cffffff00La protection contre la malchance sera réinitialisée|r\nAprès ce jet, les objets précédemment pillés\npeuvent à nouveau tomber pour toutes les spécialisations."
