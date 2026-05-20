@@ -31,11 +31,6 @@ local function IsEnabled()
     return gdb and gdb.bonusRollConfirmEnabled == true
 end
 
-local function IsSpecListEnabled()
-    local gdb = _G[VCA.GLOBAL_DB_NAME]
-    return gdb and gdb.bonusRollConfirmSpecListEnabled ~= false
-end
-
 -- Reverse lookup: Voidcache itemID -> { sourceType, sourceID }
 -- Built lazily on first call after Constants are loaded.
 local cacheItemSourceMap
@@ -420,9 +415,6 @@ end
 
 -- Shared: build and show the Loot Protection tooltip from any owner frame
 local function ShowSpecListTooltip(owner, anchor)
-    if not IsSpecListEnabled() then
-        return
-    end
     if not (cachedSource and cachedSource.sourceType and cachedSource.sourceID) then
         return
     end
@@ -444,7 +436,9 @@ local function ShowSpecListTooltip(owner, anchor)
         end
         local pool = items or {}
         local poolSet = {}
-        for _, itemID in ipairs(pool) do poolSet[itemID] = true end
+        for _, itemID in ipairs(pool) do
+            poolSet[itemID] = true
+        end
         local remaining = 0
         for _, itemID in ipairs(pool) do
             if not VCA.Data.IsObtained(cachedSource.sourceType, cachedSource.sourceID, cachedSource.difficultyID,
@@ -455,7 +449,9 @@ local function ShowSpecListTooltip(owner, anchor)
         local wanted = 0
         if selectedSet then
             for itemID in pairs(selectedSet) do
-                if poolSet[itemID] then wanted = wanted + 1 end
+                if poolSet[itemID] then
+                    wanted = wanted + 1
+                end
             end
         end
         local _, sName = GetSpecializationInfoByID(spec.specID)
