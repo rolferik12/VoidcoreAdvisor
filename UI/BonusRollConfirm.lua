@@ -22,6 +22,7 @@ local cachedSource = nil -- source table for spec list tooltip
 local cachedSpecID = nil -- specID used when the window is currently displayed
 local previewTimerStart = nil -- GetTime() when ShowPreview was called (nil in live mode)
 local previewTimerDuration = 30 -- seconds; mirrors a typical bonus-roll countdown
+local cachedPromptData = nil -- structured payload from SPELL_CONFIRMATION_PROMPT
 
 -- â”€â”€ Guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -61,6 +62,64 @@ local function GetSourceFromDisplayItemID(itemID)
 end
 
 -- â”€â”€ Texture-sync helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- Maps Enum.ItemCreationContext values from SPELL_CONFIRMATION_PROMPT to a content
+-- type and EJ difficulty ID.  For M+/delve contexts, ejDiffID is always
+-- VCA.MythicPlusEJDifficulty (23).  For raid contexts, the game difficulty ID
+-- coincides with the EJ difficulty ID (14/15/16/17).
+local ITEM_CONTEXT_TO_SOURCE = {
+    [3] = {
+        contentType = VCA.ContentType.RAID,
+        ejDiffID = VCA.Difficulty.RAID_NORMAL
+    }, -- RaidNormal
+    [4] = {
+        contentType = VCA.ContentType.RAID,
+        ejDiffID = VCA.Difficulty.RAID_LFR
+    }, -- RaidFinder
+    [5] = {
+        contentType = VCA.ContentType.RAID,
+        ejDiffID = VCA.Difficulty.RAID_HEROIC
+    }, -- RaidHeroic
+    [6] = {
+        contentType = VCA.ContentType.RAID,
+        ejDiffID = VCA.Difficulty.RAID_MYTHIC
+    }, -- RaidMythic
+    [16] = {
+        contentType = VCA.ContentType.MYTHIC_PLUS,
+        ejDiffID = VCA.MythicPlusEJDifficulty
+    }, -- Mythic Keystone
+    [55] = {
+        contentType = VCA.ContentType.MYTHIC_PLUS,
+        ejDiffID = VCA.MythicPlusEJDifficulty
+    } -- Nightmare Prey
+}
+
+-- Resolves a complete loot source from a SPELL_CONFIRMATION_PROMPT payload.
+-- Returns { sourceType, sourceID, difficultyID, keyLevel } or nil.
+local function ResolveSourceFromPromptData(promptData)
+    if not (promptData and promptData.displayItemID and promptData.itemContext) then
+        return nil
+    end
+    local mapping = ITEM_CONTEXT_TO_SOURCE[promptData.itemContext]
+    if not mapping then
+        return nil
+    end
+    local base = GetSourceFromDisplayItemID(promptData.displayItemID)
+    if not base then
+        return nil
+    end
+    local keyLevel = nil
+    if mapping.contentType == VCA.ContentType.MYTHIC_PLUS then
+        local lvl = promptData.treasureContextLevel
+        keyLevel = (lvl and lvl > 0) and lvl or nil
+    end
+    return {
+        sourceType = mapping.contentType,
+        sourceID = base.sourceID,
+        difficultyID = mapping.ejDiffID,
+        keyLevel = keyLevel
+    }
+end
+
 -- Copies Normal/Pushed/Highlight/Disabled textures from src onto dst so an
 -- interceptor button looks identical to the real Blizzard button.
 
@@ -136,11 +195,17 @@ winItemIcon:Hide()
 local winIconBtn = CreateFrame("Button", nil, win)
 winIconBtn:SetAllPoints(winItemIcon)
 winIconBtn:SetScript("OnEnter", function(self)
-    -- Try item link first, then bare item ID (covers both live and preview mode)
-    local link = cachedItemLink or (cachedDisplayItemID and ("item:" .. cachedDisplayItemID))
-    if link then
+    if cachedDisplayItemID then
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetHyperlink(link)
+        if cachedPromptData and cachedPromptData.itemContext then
+            -- Use the exact context from SPELL_CONFIRMATION_PROMPT for a correctly
+            -- contextualized tooltip (right ilvl, affixes, track, etc.).
+            GameTooltip:SetItemByID(cachedDisplayItemID, nil, cachedPromptData.itemContext,
+                cachedPromptData.treasureContextLevel)
+        else
+            -- Preview mode or no prompt data: fall back to plain hyperlink.
+            GameTooltip:SetHyperlink(cachedItemLink or ("item:" .. cachedDisplayItemID))
+        end
         GameTooltip:Show()
         return
     end
@@ -618,9 +683,10 @@ function BRC.Show()
     cachedDisplayItemID = nil
     cachedItemLink = nil
     local ejBtn = pf.EncounterJournalLinkButton
-    if ejBtn and ejBtn.displayItemID then
-        cachedDisplayItemID = ejBtn.displayItemID
-        cachedItemLink = select(2, GetItemInfo(ejBtn.displayItemID))
+    -- SPELL_CONFIRMATION_PROMPT provides displayItemID authoritatively; EJ button is fallback.
+    cachedDisplayItemID = (cachedPromptData and cachedPromptData.displayItemID) or (ejBtn and ejBtn.displayItemID)
+    if cachedDisplayItemID then
+        cachedItemLink = select(2, GetItemInfo(cachedDisplayItemID))
     end
 
     local iName, _, iQuality, _, _, _, _, _, _, iTexture = GetItemInfo(cachedDisplayItemID or 0)
@@ -660,8 +726,12 @@ function BRC.Show()
 
     -- Dynamic loot odds section
 
-    local source = GetSourceFromDisplayItemID(cachedDisplayItemID)
-    if source then
+    -- Prefer the authoritative source from SPELL_CONFIRMATION_PROMPT; fall back to the
+    -- reverse-lookup + live GetInstanceInfo() approach when unavailable (e.g. preview).
+    local source = (cachedPromptData and ResolveSourceFromPromptData(cachedPromptData)) or
+                       GetSourceFromDisplayItemID(cachedDisplayItemID)
+    if source and not source.difficultyID then
+        -- Fallback path: GetSourceFromDisplayItemID does not set difficultyID.
         if source.sourceType == VCA.ContentType.MYTHIC_PLUS then
             source.difficultyID = VCA.MythicPlusEJDifficulty
         else
@@ -751,6 +821,7 @@ function BRC.Uninject()
     cachedSpecName = nil
     cachedSpecID = nil
     cachedSource = nil
+    cachedPromptData = nil
     previewTimerStart = nil
 end
 
@@ -774,11 +845,25 @@ StaticPopupDialogs["VOIDCORE_BONUS_ROLL"] = {
 
 BRC.Hide = BRC.Uninject
 
+-- Skyreach +10 Voidcache as a realistic preview stand-in (M+ keystone context).
+local PREVIEW_PROMPT_DATA = {
+    confirmType = 1,
+    currencyCost = 1,
+    currencyID = 3418,
+    difficultyID = 8,
+    displayItemID = 268470,
+    duration = 174,
+    itemContext = 16,
+    spellID = 259072,
+    text = "",
+    treasureContextLevel = 10
+}
+
 function BRC.ShowPreview()
     isPreview = true
     previewTimerStart = GetTime()
-    -- Algeth'ar Academy cache item as a live-data stand-in
-    cachedDisplayItemID = 268464
+    cachedPromptData = PREVIEW_PROMPT_DATA
+    cachedDisplayItemID = cachedPromptData.displayItemID
     cachedItemLink = nil
 
     local iName, _, iQuality, _, _, _, _, _, _, iTexture = GetItemInfo(cachedDisplayItemID)
@@ -806,12 +891,12 @@ function BRC.ShowPreview()
     local currInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(VCA.VOIDCORE_CURRENCY_ID)
     local owned = currInfo and currInfo.quantity or 0
 
-    local source = GetSourceFromDisplayItemID(cachedDisplayItemID)
-    if source then
-        if source.sourceType == VCA.ContentType.MYTHIC_PLUS then
+    local source = ResolveSourceFromPromptData(cachedPromptData)
+    if not source then
+        -- Fallback if Skyreach is not in the current season pool.
+        source = GetSourceFromDisplayItemID(cachedDisplayItemID)
+        if source then
             source.difficultyID = VCA.MythicPlusEJDifficulty
-        else
-            source.difficultyID = VCA.Difficulty.RAID_MYTHIC
         end
     end
     cachedSource = source
@@ -858,6 +943,7 @@ end
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:RegisterEvent("SPELL_CONFIRMATION_PROMPT")
 eventFrame:RegisterEvent("BONUS_ROLL_STARTED")
 eventFrame:RegisterEvent("BONUS_ROLL_ACTIVATE")
 eventFrame:RegisterEvent("BONUS_ROLL_RESULT")
@@ -870,6 +956,11 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "ADDON_LOADED" then
         if (...) == "Blizzard_UIPanels_Game" then
             SetupHooks()
+        end
+    elseif event == "SPELL_CONFIRMATION_PROMPT" then
+        local data = ...
+        if data and data.currencyID == VCA.VOIDCORE_CURRENCY_ID then
+            cachedPromptData = data
         end
     elseif event == "BONUS_ROLL_STARTED" then
         if IsEnabled() then
