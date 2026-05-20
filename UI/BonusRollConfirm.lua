@@ -16,6 +16,8 @@ local BRC = VCA.BonusRollConfirm
 local isPreview = false
 local cachedItemLink = nil -- item link for icon tooltip
 local cachedDisplayItemID = nil -- numeric item ID from EJLinkButton.displayItemID
+local cachedSpecIcon = nil -- spec icon texture path for |T|t embedding
+local cachedSpecName = nil -- spec name for combined spec row text
 
 -- â”€â”€ Guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -183,18 +185,21 @@ topSep:SetHeight(1)
 topSep:SetPoint("TOPLEFT", win, "TOPLEFT", 16, -78)
 topSep:SetPoint("TOPRIGHT", win, "TOPRIGHT", -16, -78)
 
--- "Current loot spec:" label + icon (same line, no name)
-local specLabel = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-specLabel:SetPoint("TOPLEFT", win, "TOPLEFT", 16, -90)
-specLabel:SetText("|cff888888" .. L["REMINDER_CURRENT_SPEC"] .. "|r")
+-- Spec row (centered: |T...|t icon + name + " - " + chance in one FontString)
+local specLabel = win:CreateFontString(nil, "OVERLAY", "GameFontNormal") -- retained as upvalue, hidden
+specLabel:Hide()
 
-local specIcon = win:CreateTexture(nil, "ARTWORK")
+local specIcon = win:CreateTexture(nil, "ARTWORK") -- retained as upvalue, hidden (icon embedded via |T|t)
 specIcon:SetSize(16, 16)
-specIcon:SetPoint("LEFT", specLabel, "RIGHT", 8, 0)
-specIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
 local specName = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-specName:SetPoint("LEFT", specIcon, "RIGHT", 6, 0)
+specName:SetPoint("TOP", win, "TOP", 0, -90)
+specName:SetJustifyH("CENTER")
+specName:SetWidth(340)
+
+-- chanceText retained as upvalue, permanently hidden (merged into specName text)
+local chanceText = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+chanceText:Hide()
 
 -- Dynamic loot section (only shown when Detection recognises the source)
 local lootSep = win:CreateTexture(nil, "ARTWORK")
@@ -308,6 +313,10 @@ end
 -- window, advancing `dynY` for each section shown.  Returns the final dynY.
 -- `source` must carry { sourceType, sourceID, difficultyID } or be nil.
 local function LayoutDynamicSection(source, specID, dynY)
+    -- Build the base spec row text (icon + name); valid-prob branch appends the chance.
+    local specIconT = "|T" .. (cachedSpecIcon or "Interface\\Icons\\INV_Misc_QuestionMark") .. ":16:16|t"
+    local specNameBase = specIconT .. " |cffdddddd" .. (cachedSpecName or "?") .. "|r"
+    specName:SetText(specNameBase)
     local selectedSet = (source and source.sourceType and source.sourceID) and
                             VCA.Data.GetSelectedItems(source.sourceType, source.sourceID, source.difficultyID) or nil
     local hasSelection = selectedSet and next(selectedSet)
@@ -328,6 +337,7 @@ local function LayoutDynamicSection(source, specID, dynY)
         lootLine:ClearAllPoints()
         lootLine:SetPoint("TOP", win, "TOP", 0, dynY)
         if not hasSelection then
+            chanceText:Hide()
             lootLine:SetText("|cff888888" .. L["BONUS_ROLL_CONFIRM_NO_SELECTED"] .. "|r")
             lootLine:Show()
             lootCountLine:Hide()
@@ -336,34 +346,32 @@ local function LayoutDynamicSection(source, specID, dynY)
             local prob = VCA.Probability.CalculateForSpec(source.sourceType, source.sourceID, source.difficultyID,
                 VCA.SpecInfo.GetPlayerClassID(), specID, nil, selectedSet)
             if prob.noItems then
+                chanceText:Hide()
                 lootLine:SetText("|cff888888" .. L["BONUS_ROLL_CONFIRM_NO_ITEMS"] .. "|r")
                 lootLine:Show()
                 lootCountLine:Hide()
                 dynY = dynY - 20
             elseif prob.allObtained then
+                chanceText:Hide()
                 lootLine:SetText("|cff00ff00" .. L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] .. "|r")
                 lootLine:Show()
                 lootCountLine:Hide()
                 dynY = dynY - 20
             else
                 local pct = math.floor((prob.remainingOdds or 0) * 100 + 0.5)
-                lootLine:SetText("|cffffff00" .. string.format(L["BONUS_ROLL_CONFIRM_CHANCE"], pct) .. "|r")
-                lootLine:Show()
-                dynY = dynY - 20
-                lootCountLine:ClearAllPoints()
-                lootCountLine:SetPoint("TOP", win, "TOP", 0, dynY)
-                lootCountLine:SetText("|cffaaaaaa" ..
-                                          string.format(
-                        prob.remainingCount == 1 and L["BONUS_ROLL_CONFIRM_WANTED_ONE"] or
-                            L["BONUS_ROLL_CONFIRM_WANTED_MANY"], prob.remainingCount) .. "|r")
-                lootCountLine:Show()
-                dynY = dynY - 20
+                local fmtKey = prob.remainingCount == 1 and "BONUS_ROLL_CONFIRM_CHANCE_ONE" or
+                                   "BONUS_ROLL_CONFIRM_CHANCE"
+                local chanceStr = string.format(L[fmtKey], pct, prob.remainingCount)
+                specName:SetText(specNameBase .. " - |cffffff00" .. chanceStr .. "|r")
+                lootLine:Hide()
+                lootCountLine:Hide()
             end
         end
     else
         lootSep:Hide()
         lootLine:Hide()
         lootCountLine:Hide()
+        chanceText:Hide()
         warnText:Hide()
     end
 
@@ -502,8 +510,8 @@ function BRC.Show()
 
     local specID = VCA.SpecInfo.GetEffectiveLootSpecID()
     local _, sName, _, sIcon = GetSpecializationInfoByID(specID)
-    specIcon:SetTexture(sIcon or "Interface\\Icons\\INV_Misc_QuestionMark")
-    specName:SetText("|cffdddddd" .. (sName or "?") .. "|r")
+    cachedSpecIcon = sIcon or "Interface\\Icons\\INV_Misc_QuestionMark"
+    cachedSpecName = sName or "?"
 
     rollBtn:SetText(ROLL_BTN_TEXT)
     passBtn:SetText(PASS_BTN_TEXT)
@@ -596,6 +604,8 @@ function BRC.Uninject()
     StaticPopup_Hide("VOIDCORE_BONUS_ROLL")
     cachedItemLink = nil
     cachedDisplayItemID = nil
+    cachedSpecIcon = nil
+    cachedSpecName = nil
 end
 
 -- ── Confirmation popups ──────────────────────────────────────────────────────────────────
@@ -636,8 +646,8 @@ function BRC.ShowPreview()
 
     local specID = VCA.SpecInfo.GetEffectiveLootSpecID()
     local _, sName, _, sIcon = GetSpecializationInfoByID(specID)
-    specIcon:SetTexture(sIcon or "Interface\\Icons\\INV_Misc_QuestionMark")
-    specName:SetText("|cffdddddd" .. (sName or "?") .. "|r")
+    cachedSpecIcon = sIcon or "Interface\\Icons\\INV_Misc_QuestionMark"
+    cachedSpecName = sName or "?"
 
     rollBtn:SetText(ROLL_BTN_TEXT)
     passBtn:SetText(PASS_BTN_TEXT)

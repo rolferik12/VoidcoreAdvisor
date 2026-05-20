@@ -177,9 +177,8 @@ L["RESTORE_FAILED"] = "Восстановление не удалось."
 L["BONUS_ROLL_CONFIRM_SUBTITLE"] = "Подтвердить бросок Туманного ядра Бездны"
 L["BONUS_ROLL_CONFIRM_SPEC_LABEL"] = "Активная специализация добычи:"
 L["BONUS_ROLL_CONFIRM_POOL"] = "Осталось %d предмет(ов) в пуле"
-L["BONUS_ROLL_CONFIRM_WANTED_ONE"] = "%d желаемый предмет"
-L["BONUS_ROLL_CONFIRM_WANTED_MANY"] = "%d желаемых предмета(ов)"
-L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% шанс броска"
+L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% шанс (%d предм.)"
+L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% шанс (%d предм.)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] =
     "Все предметы получены для данной специализации"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] =
