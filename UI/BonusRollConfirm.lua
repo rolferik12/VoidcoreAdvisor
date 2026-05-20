@@ -413,11 +413,11 @@ for i = 1, 4 do
     -- Clickable button; spec icon fills the button face
     row.btn = CreateFrame("Button", nil, win)
     row.btn:SetSize(22, 22)
-    -- Soft glow border shown when this spec is the active loot spec
-    row.glow = row.btn:CreateTexture(nil, "BACKGROUND")
-    row.glow:SetPoint("TOPLEFT", row.btn, "TOPLEFT", -3, 3)
-    row.glow:SetPoint("BOTTOMRIGHT", row.btn, "BOTTOMRIGHT", 3, -3)
-    row.glow:SetColorTexture(0.69, 0.28, 0.97, 0.75)
+    -- Soft glow shown when this spec is the active loot spec
+    row.glow = row.btn:CreateTexture(nil, "OVERLAY")
+    row.glow:SetPoint("CENTER", row.btn, "CENTER", 0, 0)
+    row.glow:SetSize(50, 50)
+    row.glow:SetAtlas("currency-frame-glow")
     row.glow:Hide()
     row.icon = row.btn:CreateTexture(nil, "ARTWORK")
     row.icon:SetAllPoints(row.btn)
@@ -610,16 +610,17 @@ local function ShowSpecList(source, dynY)
     specListSep:Show()
     dynY = dynY - 10
 
-    -- Horizontal layout: [icon] count  [icon] count  …
-    -- Cell = 22px icon + 4px gap + ~16px number + 10px between cells = 52px
-    local CELL_W = 52
+    -- Horizontal layout: [icon] N (W)  [icon] N (W)  …
+    -- Cell = 22px icon + 4px gap + ~42px text ("12 (3)") + 10px between = 63px
+    local CELL_W = 60
     local WIN_W = 360
     local specCount = math.min(#specs, 4)
-    -- Total row width: (N-1) gaps + last cell (icon 22 + gap 4 + number ~16)
-    local rowW = (specCount - 1) * CELL_W + 42
+    -- Total row width: (N-1) gaps + last cell (icon 22 + gap 4 + text ~42)
+    local rowW = (specCount - 1) * CELL_W + 68
     local startX = math.floor((WIN_W - rowW) / 2)
 
     local activeSpecID = VCA.SpecInfo.GetEffectiveLootSpecID()
+    local selectedSet = VCA.Data.GetSelectedItems(source.sourceType, source.sourceID, source.difficultyID)
 
     for i, spec in ipairs(specs) do
         if i > 4 then
@@ -633,10 +634,22 @@ local function ShowSpecList(source, dynY)
             items = VCA.LootPool.GetItemsForSpec(source.sourceType, source.sourceID, source.difficultyID, spec.classID,
                 spec.specID)
         end
+        local poolSet = {}
+        for _, itemID in ipairs(items or {}) do
+            poolSet[itemID] = true
+        end
         local remaining = 0
         for _, itemID in ipairs(items or {}) do
             if not VCA.Data.IsObtained(source.sourceType, source.sourceID, source.difficultyID, spec.specID, itemID) then
                 remaining = remaining + 1
+            end
+        end
+        local wanted = 0
+        if selectedSet then
+            for itemID in pairs(selectedSet) do
+                if poolSet[itemID] then
+                    wanted = wanted + 1
+                end
             end
         end
 
@@ -652,7 +665,8 @@ local function ShowSpecList(source, dynY)
         row.label:ClearAllPoints()
         row.label:SetPoint("LEFT", row.btn, "RIGHT", 4, 0)
         local remColor = remaining > 0 and "|cffffffff" or "|cff666666"
-        row.label:SetText(remColor .. remaining .. "|r")
+        local wantedStr = wanted > 0 and ("|cffffff00(" .. wanted .. ")|r") or "|cff666666(-)|r"
+        row.label:SetText(remColor .. remaining .. "|r " .. wantedStr)
 
         -- Capture loop locals for closures
         local capturedSpecID = spec.specID
