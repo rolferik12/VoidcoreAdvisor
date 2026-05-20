@@ -23,7 +23,7 @@ local VaultOverview = VCA.VaultOverview
 
 -- ── Constants ──────────────────────────────────────────────────────────────────
 
-local PANEL_WIDTH = 340
+local PANEL_WIDTH = 260
 local HEADER_H = 50 -- title + status label
 local ROW_H = 44 -- icon(36) + 4px top pad + 4px bottom pad (single text line)
 local ICON_SIZE = 36
@@ -187,6 +187,12 @@ local function GetOrCreateRow(index)
     r.starButton:SetSize(26, 14)
     r.starButton:SetPoint("LEFT", r.star1, "LEFT", 0, 0)
     r.starButton:EnableMouse(false)
+
+    -- Invisible hover target covering pctIcon + pctLabel (70px wide, right-aligned)
+    r.pctButton = CreateFrame("Button", nil, r.frame)
+    r.pctButton:SetSize(70, 14)
+    r.pctButton:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -2, -5)
+    r.pctButton:EnableMouse(false)
 
     _rows[index] = r
     return r
@@ -463,6 +469,23 @@ local VAULT_TIP_SLOT_ORDER = {
     INVTYPE_RANGEDRIGHT = 15
 }
 
+-- Tooltip shown when hovering the pct icon/label.
+local function ShowPctTooltip(owner, isObtained)
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    if isObtained then
+        GameTooltip:SetText(L["VAULT_PCT_TIP_OBTAINED_TITLE"], 1, 1, 1)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(L["VAULT_PCT_TIP_OBTAINED_1"], 0.7, 0.7, 0.7, true)
+    else
+        GameTooltip:SetText(L["VAULT_PCT_TIP_ACTIVE_TITLE"], 1, 1, 1)
+        GameTooltip:AddLine(L["VAULT_PCT_TIP_ACTIVE_1"], 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(L["VAULT_PCT_TIP_ACTIVE_2"], 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L["VAULT_PCT_TIP_ACTIVE_3"], 0.7, 0.7, 0.7)
+    end
+    GameTooltip:Show()
+end
+
 -- Summary + item list tooltip for the star cluster.
 -- Header: source name / count / flavour text, then each wishlist item.
 -- currentItemID is marked with the atlas star; others use a same-width spacer.
@@ -643,26 +666,76 @@ function VaultOverview.Refresh()
             row.starButton:SetScript("OnLeave", nil)
         end
 
-        -- Percentage label: purple if wanted, grey otherwise
+        -- Percentage label: purple if wanted, grey otherwise.
+        -- Check if the vault item itself is obtained for any loot spec first —
+        -- if so, show "—" regardless of what GetBestChanceForItem returns
+        -- (which would otherwise give a non-zero value from other pool items).
         local bestOdds, _ = GetBestChanceForItem(vi.itemID, sourceInfo)
+        local isVaultItemObtained = false
+        if sourceInfo then
+            local specs = VCA.SpecInfo.GetPlayerSpecs()
+            if specs then
+                for _, spec in ipairs(specs) do
+                    if VCA.Data.IsObtained(sourceInfo.sourceType, sourceInfo.sourceID, sourceInfo.difficultyID,
+                        spec.specID, vi.itemID) then
+                        isVaultItemObtained = true
+                        break
+                    end
+                end
+            end
+        end
 
-        if sourceInfo and bestOdds and bestOdds > 0 then
-            local pct = math.floor(bestOdds * 100 + 0.5)
-            local pctColor = isWanted and "|cffb048f8" or "|cff888888"
-            row.pctLabel:SetText(pctColor .. pct .. "%|r")
-            local iconID = GetVoidcoreIconID()
+        local iconID = GetVoidcoreIconID()
+
+        local function showIcon(desaturated)
             if iconID then
                 row.pctIcon:SetTexture(iconID)
+                row.pctIcon:SetDesaturated(desaturated)
                 row.pctIcon:Show()
             else
                 row.pctIcon:Hide()
             end
+        end
+
+        if isVaultItemObtained then
+            row.pctLabel:SetText("|cff888888—|r")
+            showIcon(true)
+            row.pctButton:EnableMouse(true)
+            row.pctButton:SetScript("OnEnter", function(self)
+                ShowPctTooltip(self, true)
+            end)
+            row.pctButton:SetScript("OnLeave", function()
+                GameTooltip:Hide()
+            end)
+        elseif sourceInfo and bestOdds and bestOdds > 0 then
+            local pct = math.floor(bestOdds * 100 + 0.5)
+            local pctColor = isWanted and "|cffb048f8" or "|cff888888"
+            row.pctLabel:SetText(pctColor .. pct .. "%|r")
+            showIcon(false)
+            row.pctButton:EnableMouse(true)
+            row.pctButton:SetScript("OnEnter", function(self)
+                ShowPctTooltip(self, false)
+            end)
+            row.pctButton:SetScript("OnLeave", function()
+                GameTooltip:Hide()
+            end)
         elseif sourceInfo then
-            row.pctLabel:SetText("|cff44ff44" .. L["VAULT_OVERVIEW_OBTAINED"] .. "|r")
-            row.pctIcon:Hide()
+            -- bestOdds == 0: every item in this pool is already obtained
+            row.pctLabel:SetText("|cff888888—|r")
+            showIcon(true)
+            row.pctButton:EnableMouse(true)
+            row.pctButton:SetScript("OnEnter", function(self)
+                ShowPctTooltip(self, true)
+            end)
+            row.pctButton:SetScript("OnLeave", function()
+                GameTooltip:Hide()
+            end)
         else
             row.pctLabel:SetText("")
             row.pctIcon:Hide()
+            row.pctButton:EnableMouse(false)
+            row.pctButton:SetScript("OnEnter", nil)
+            row.pctButton:SetScript("OnLeave", nil)
         end
 
         -- Source name below the item name
