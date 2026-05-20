@@ -73,8 +73,8 @@ L["REMINDER_SPEC_LIST_HEADER"] = "전문화별 남은 아이템:"
 L["REMINDER_SPEC_REMAINING"] = "%d개 남음"
 L["REMINDER_SPEC_NONE"] = "남은 아이템 없음"
 L["SPEC_LIST_TOOLTIP_TITLE"] = "전리품 보호"
-L["SPEC_LIST_ITEM_ONE"] = "원하는 아이템 1개 남음"
-L["SPEC_LIST_ITEM_MANY"] = "원하는 아이템 %d개 남음"
+L["SPEC_LIST_ITEM_ONE"] = "아이템 1개 남음"
+L["SPEC_LIST_ITEM_MANY"] = "아이템 %d개 남음"
 L["SPEC_LIST_ALL_OBTAINED"] = "모두 획득"
 
 -- ── 공허 풀 초기화 경고 팝업 (Reminder.lua) ──────────────────────────────────

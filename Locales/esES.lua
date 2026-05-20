@@ -74,8 +74,8 @@ L["REMINDER_SPEC_LIST_HEADER"] = "Objetos restantes por especialización:"
 L["REMINDER_SPEC_REMAINING"] = "%d restante(s)"
 L["REMINDER_SPEC_NONE"] = "ninguno restante"
 L["SPEC_LIST_TOOLTIP_TITLE"] = "Protección de botín"
-L["SPEC_LIST_ITEM_ONE"] = "1 objeto deseado restante"
-L["SPEC_LIST_ITEM_MANY"] = "%d objetos deseados restantes"
+L["SPEC_LIST_ITEM_ONE"] = "1 objeto restante"
+L["SPEC_LIST_ITEM_MANY"] = "%d objetos restantes"
 L["SPEC_LIST_ALL_OBTAINED"] = "todos obtenidos"
 
 -- ── Popup de aviso de reinicio del grupo de botín (Reminder.lua) ─────────────

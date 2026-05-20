@@ -73,8 +73,8 @@ L["REMINDER_SPEC_LIST_HEADER"] = "Objets restants par spécialisation :"
 L["REMINDER_SPEC_REMAINING"] = "%d restant(s)"
 L["REMINDER_SPEC_NONE"] = "aucun restant"
 L["SPEC_LIST_TOOLTIP_TITLE"] = "Protection du butin"
-L["SPEC_LIST_ITEM_ONE"] = "1 objet désiré restant"
-L["SPEC_LIST_ITEM_MANY"] = "%d objets désirés restants"
+L["SPEC_LIST_ITEM_ONE"] = "1 objet restant"
+L["SPEC_LIST_ITEM_MANY"] = "%d objets restants"
 L["SPEC_LIST_ALL_OBTAINED"] = "tous obtenus"
 
 -- ── Popup d'avertissement de réinitialisation du groupe de butin (Reminder.lua) ──

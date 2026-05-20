@@ -73,8 +73,8 @@ L["REMINDER_SPEC_LIST_HEADER"] = "各专精剩余物品："
 L["REMINDER_SPEC_REMAINING"] = "剩余 %d 件"
 L["REMINDER_SPEC_NONE"] = "无剩余"
 L["SPEC_LIST_TOOLTIP_TITLE"] = "战利品保护"
-L["SPEC_LIST_ITEM_ONE"] = "还有1件想要的物品"
-L["SPEC_LIST_ITEM_MANY"] = "还有%d件想要的物品"
+L["SPEC_LIST_ITEM_ONE"] = "还有1件物品"
+L["SPEC_LIST_ITEM_MANY"] = "还有%d件物品"
 L["SPEC_LIST_ALL_OBTAINED"] = "全部已获得"
 
 -- ── 战利品池重置警告弹窗（Reminder.lua）─────────────────────────────────────

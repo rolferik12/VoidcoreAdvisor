@@ -158,7 +158,7 @@ end)
 -- Item name label
 local winItemName = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 winItemName:SetPoint("TOPLEFT", winItemIcon, "TOPRIGHT", 8, -2)
-winItemName:SetWidth(280)
+winItemName:SetWidth(238)
 winItemName:SetJustifyH("LEFT")
 winItemName:SetWordWrap(true)
 
@@ -245,12 +245,8 @@ for i = 1, 4 do
     specListRows[i] = row
 end
 
--- Hover frame over the spec row — shows per-spec remaining loot as a tooltip
-local specListHitFrame = CreateFrame("Frame", nil, win)
-specListHitFrame:SetPoint("TOP", win, "TOP", 0, -82)
-specListHitFrame:SetSize(340, 26)
-specListHitFrame:EnableMouse(true)
-specListHitFrame:SetScript("OnEnter", function(self)
+-- Shared: build and show the Loot Protection tooltip from any owner frame
+local function ShowSpecListTooltip(owner, anchor)
     if not IsSpecListEnabled() then
         return
     end
@@ -261,7 +257,7 @@ specListHitFrame:SetScript("OnEnter", function(self)
     if not specs or #specs == 0 then
         return
     end
-    GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+    GameTooltip:SetOwner(owner, anchor)
     GameTooltip:SetText(L["SPEC_LIST_TOOLTIP_TITLE"], 1, 0.82, 0)
     GameTooltip:AddLine(" ")
     for _, spec in ipairs(specs) do
@@ -295,11 +291,38 @@ specListHitFrame:SetScript("OnEnter", function(self)
         GameTooltip:AddLine(iconT .. " " .. (sName or "?") .. ": " .. countStr, 1, 1, 1)
     end
     GameTooltip:Show()
+end
+
+-- Hover frame (kept for HideSpecList compatibility; always hidden now)
+local specListHitFrame = CreateFrame("Frame", nil, win)
+specListHitFrame:SetPoint("TOP", win, "TOP", 0, -82)
+specListHitFrame:SetSize(340, 26)
+specListHitFrame:EnableMouse(true)
+specListHitFrame:SetScript("OnEnter", function(self)
+    ShowSpecListTooltip(self, "ANCHOR_BOTTOMRIGHT")
 end)
 specListHitFrame:SetScript("OnLeave", function()
     GameTooltip:Hide()
 end)
 specListHitFrame:Hide()
+
+-- Spec icon in top-right corner — hover shows Loot Protection tooltip
+local specCornerIcon = win:CreateTexture(nil, "ARTWORK")
+specCornerIcon:SetSize(28, 28)
+specCornerIcon:SetPoint("TOPRIGHT", win, "TOPRIGHT", -16, -14)
+specCornerIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+specCornerIcon:Hide()
+
+local specCornerBtn = CreateFrame("Frame", nil, win)
+specCornerBtn:SetSize(28, 28)
+specCornerBtn:SetPoint("TOPRIGHT", win, "TOPRIGHT", -16, -14)
+specCornerBtn:EnableMouse(true)
+specCornerBtn:SetScript("OnEnter", function(self)
+    ShowSpecListTooltip(self, "ANCHOR_BOTTOMLEFT")
+end)
+specCornerBtn:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
 
 -- â”€â”€ Roll button â€” 2-click confirmation (EXTREMELY IMPORTANT) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -372,10 +395,7 @@ end
 -- `source` must carry { sourceType, sourceID, difficultyID } or be nil.
 local function LayoutDynamicSection(source, specID, dynY)
     local initialDynY = dynY
-    -- Build the base spec row text (icon + name); valid-prob branch appends the chance.
-    local specIconT = "|T" .. (cachedSpecIcon or "Interface\\Icons\\INV_Misc_QuestionMark") .. ":16:16|t"
-    local specNameBase = specIconT .. " |cffdddddd" .. (cachedSpecName or "?") .. "|r"
-    specName:SetText(specNameBase)
+    specName:SetText("")
     local selectedSet = (source and source.sourceType and source.sourceID) and
                             VCA.Data.GetSelectedItems(source.sourceType, source.sourceID, source.difficultyID) or nil
     local hasSelection = selectedSet and next(selectedSet)
@@ -390,7 +410,7 @@ local function LayoutDynamicSection(source, specID, dynY)
 
         -- ── Loot probability (filtered by selection) ──────────────────────────
         if not hasSelection then
-            specName:SetText(specNameBase .. " - |cff888888" .. L["BONUS_ROLL_CONFIRM_NO_SELECTED"] .. "|r")
+            specName:SetText("|cff888888" .. L["BONUS_ROLL_CONFIRM_NO_SELECTED"] .. "|r")
             lootLine:Hide()
             lootCountLine:Hide()
         else
@@ -419,7 +439,7 @@ local function LayoutDynamicSection(source, specID, dynY)
                 local fmtKey = prob.remainingCount == 1 and "BONUS_ROLL_CONFIRM_CHANCE_ONE" or
                                    "BONUS_ROLL_CONFIRM_CHANCE"
                 local chanceStr = string.format(L[fmtKey], pct, prob.remainingCount)
-                specName:SetText(specNameBase .. " - |cffffff00" .. chanceStr .. "|r")
+                specName:SetText("|cffffff00" .. chanceStr .. "|r")
                 lootLine:Hide()
                 lootCountLine:Hide()
             end
@@ -430,13 +450,11 @@ local function LayoutDynamicSection(source, specID, dynY)
         lootCountLine:Hide()
         chanceText:Hide()
         warnText:Hide()
+        specName:SetText("")
     end
 
-    -- Per-spec remaining counts shown as tooltip on spec row hover
+    -- Per-spec remaining counts; tooltip on corner icon hover
     HideSpecList()
-    if IsSpecListEnabled() and source and source.sourceType and source.sourceID then
-        specListHitFrame:Show()
-    end
 
     -- ── Warning (shown last, just above buttons) ──────────────────────────────
     if source and source.sourceType and source.sourceID then
@@ -494,9 +512,11 @@ function BRC.Show()
     end
     if iName then
         local _, _, _, hex = GetItemQualityColor(iQuality or 1)
-        winItemName:SetText("|c" .. hex .. iName .. "|r")
+        local shortName = (iName:match("^([^:]+)") or iName):gsub("%s+$", "")
+        winItemName:SetText("|c" .. hex .. shortName .. "|r")
     elseif pf.Name and pf.Name:GetText() and pf.Name:GetText() ~= "" then
-        winItemName:SetText("|cffffffff" .. pf.Name:GetText() .. "|r")
+        local bName = pf.Name:GetText()
+        winItemName:SetText("|cffffffff" .. ((bName:match("^([^:]+)") or bName):gsub("%s+$", "")) .. "|r")
     else
         winItemName:SetText("|cff888888Nebulous Voidcore Roll|r")
     end
@@ -505,6 +525,8 @@ function BRC.Show()
     local _, sName, _, sIcon = GetSpecializationInfoByID(specID)
     cachedSpecIcon = sIcon or "Interface\\Icons\\INV_Misc_QuestionMark"
     cachedSpecName = sName or "?"
+    specCornerIcon:SetTexture(cachedSpecIcon)
+    specCornerIcon:Show()
 
     rollBtn:SetText(ROLL_BTN_TEXT)
     passBtn:SetText(PASS_BTN_TEXT)
@@ -637,25 +659,35 @@ function BRC.ShowPreview()
         winItemIcon:Hide()
     end
     local iHex = iQuality and select(4, GetItemQualityColor(iQuality)) or "ffa335ee"
-    winItemName:SetText("|c" .. iHex .. (iName or "Nebulous Voidcore Roll") .. "|r")
+    local previewName = iName and ((iName:match("^([^:]+)") or iName):gsub("%s+$", "")) or "Nebulous Voidcore Roll"
+    winItemName:SetText("|c" .. iHex .. previewName .. "|r")
 
     local specID = VCA.SpecInfo.GetEffectiveLootSpecID()
     local _, sName, _, sIcon = GetSpecializationInfoByID(specID)
     cachedSpecIcon = sIcon or "Interface\\Icons\\INV_Misc_QuestionMark"
     cachedSpecName = sName or "?"
+    specCornerIcon:SetTexture(cachedSpecIcon)
+    specCornerIcon:Show()
 
     rollBtn:SetText(ROLL_BTN_TEXT)
     passBtn:SetText(PASS_BTN_TEXT)
 
     local currInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(VCA.VOIDCORE_CURRENCY_ID)
     local owned = currInfo and currInfo.quantity or 0
-    winVoidcoreInfo:SetText(string.format(L["BONUS_ROLL_CONFIRM_COST"], VCA.VoidcoreCost.MYTHIC_PLUS, owned))
 
     local source = GetSourceFromDisplayItemID(cachedDisplayItemID)
     if source then
-        source.difficultyID = VCA.MythicPlusEJDifficulty
+        if source.sourceType == VCA.ContentType.MYTHIC_PLUS then
+            source.difficultyID = VCA.MythicPlusEJDifficulty
+        else
+            source.difficultyID = VCA.Difficulty.RAID_MYTHIC
+        end
     end
     cachedSource = source
+
+    local cost = (source and source.sourceType == VCA.ContentType.RAID) and VCA.VoidcoreCost.RAID or
+                     VCA.VoidcoreCost.MYTHIC_PLUS
+    winVoidcoreInfo:SetText(string.format(L["BONUS_ROLL_CONFIRM_COST"], cost, owned))
 
     local dynY = LayoutDynamicSection(source, specID, -112)
     local btnW, btnH = 140, 28

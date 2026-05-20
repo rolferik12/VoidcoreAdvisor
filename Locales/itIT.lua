@@ -73,8 +73,8 @@ L["REMINDER_SPEC_LIST_HEADER"] = "Oggetti rimanenti per specializzazione:"
 L["REMINDER_SPEC_REMAINING"] = "%d rimanente/i"
 L["REMINDER_SPEC_NONE"] = "nessuno rimanente"
 L["SPEC_LIST_TOOLTIP_TITLE"] = "Protezione del bottino"
-L["SPEC_LIST_ITEM_ONE"] = "1 oggetto desiderato rimanente"
-L["SPEC_LIST_ITEM_MANY"] = "%d oggetti desiderati rimanenti"
+L["SPEC_LIST_ITEM_ONE"] = "1 oggetto rimanente"
+L["SPEC_LIST_ITEM_MANY"] = "%d oggetti rimanenti"
 L["SPEC_LIST_ALL_OBTAINED"] = "tutti ottenuti"
 
 -- ── Popup avviso reset pool bottino (Reminder.lua) ────────────────────────────

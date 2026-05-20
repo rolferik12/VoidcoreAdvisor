@@ -73,8 +73,8 @@ L["REMINDER_SPEC_LIST_HEADER"] = "Verbleibende Gegenstände pro Spezialisierung:
 L["REMINDER_SPEC_REMAINING"] = "%d übrig"
 L["REMINDER_SPEC_NONE"] = "nichts übrig"
 L["SPEC_LIST_TOOLTIP_TITLE"] = "Beuteschutz"
-L["SPEC_LIST_ITEM_ONE"] = "1 gewünschter Gegenstand übrig"
-L["SPEC_LIST_ITEM_MANY"] = "%d gewünschte Gegenstände übrig"
+L["SPEC_LIST_ITEM_ONE"] = "1 Gegenstand übrig"
+L["SPEC_LIST_ITEM_MANY"] = "%d Gegenstände übrig"
 L["SPEC_LIST_ALL_OBTAINED"] = "alle erhalten"
 
 -- ── Voidcore-Pool-Reset-Warnungs-Popup (Reminder.lua) ────────────────────────

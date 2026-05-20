@@ -73,8 +73,8 @@ L["REMINDER_SPEC_LIST_HEADER"] = "Itens restantes por especialização:"
 L["REMINDER_SPEC_REMAINING"] = "%d restante(s)"
 L["REMINDER_SPEC_NONE"] = "nenhum restante"
 L["SPEC_LIST_TOOLTIP_TITLE"] = "Proteção de Saque"
-L["SPEC_LIST_ITEM_ONE"] = "1 item desejado restante"
-L["SPEC_LIST_ITEM_MANY"] = "%d itens desejados restantes"
+L["SPEC_LIST_ITEM_ONE"] = "1 item restante"
+L["SPEC_LIST_ITEM_MANY"] = "%d itens restantes"
 L["SPEC_LIST_ALL_OBTAINED"] = "todos obtidos"
 
 -- ── Popup de aviso de redefinição do grupo de saque (Reminder.lua) ───────────
