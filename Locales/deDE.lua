@@ -176,9 +176,11 @@ L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% Chance (%d gewünschte Gegenstände)"
 L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% Chance (1 gewünschter Gegenstand)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Alle Gegenstände für diese Spec erhalten"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Keine gewünschten Gegenstände für diese Spec"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS_OTHER_SPECS"] = "Andere Specs haben gewünschte Gegenstände"
 L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Keine gewünschten Gegenstände"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Quelle nicht verfolgt — keine Chancenangaben verfügbar"
-L["BONUS_ROLL_CONFIRM_WARNING_HEADER"] = "|A:Ping_Chat_Warning:14:14|a |cffffff00Pechschutz wird zurückgesetzt|r"
+L["BONUS_ROLL_CONFIRM_WARNING_HEADER"] =
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00Das Würfeln setzt den Pechschutz zurück|r"
 L["BONUS_ROLL_CONFIRM_WARNING_BODY"] =
     "Nach diesem Zug können vorher geplünderte Gegenstände wieder für alle Spezialisierungen fallen."
 L["BONUS_ROLL_CONFIRM_QUESTION"] = "Möchtest du auf Beute würfeln?"

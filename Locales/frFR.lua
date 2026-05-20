@@ -176,10 +176,11 @@ L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de chance (%d objets désirés)"
 L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% de chance (1 objet désiré)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Tous les objets obtenus pour cette spéc"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Aucun objet souhaité pour cette spéc"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS_OTHER_SPECS"] = "D'autres spécialisations ont des objets souhaités"
 L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Aucun objet désiré"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Source non suivie — aucune estimation disponible"
 L["BONUS_ROLL_CONFIRM_WARNING_HEADER"] =
-    "|A:Ping_Chat_Warning:14:14|a |cffffff00La protection contre la malchance sera réinitialisée|r"
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00Lancer les dés réinitialisera la protection contre la malchance|r"
 L["BONUS_ROLL_CONFIRM_WARNING_BODY"] =
     "Après ce jet, les objets précédemment pillés peuvent à nouveau tomber pour toutes les spécialisations."
 L["BONUS_ROLL_CONFIRM_QUESTION"] = "Voulez-vous lancer pour du butin ?"

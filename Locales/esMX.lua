@@ -177,10 +177,11 @@ L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de probabilidad (%d objetos deseados)"
 L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% de probabilidad (1 objeto deseado)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Todos los objetos obtenidos para esta espec."
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "No hay objetos deseados para esta espec."
+L["BONUS_ROLL_CONFIRM_NO_ITEMS_OTHER_SPECS"] = "Otras especializaciones tienen objetos deseados"
 L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Sin objetos deseados"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Fuente no rastreada — sin probabilidades disponibles"
 L["BONUS_ROLL_CONFIRM_WARNING_HEADER"] =
-    "|A:Ping_Chat_Warning:14:14|a |cffffff00La protección de mala suerte se reiniciará|r"
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00Tirar reiniciará la protección de mala suerte|r"
 L["BONUS_ROLL_CONFIRM_WARNING_BODY"] =
     "Tras esta tirada, los objetos previamente saqueados pueden volver a caer para todas las especializaciones."
 L["BONUS_ROLL_CONFIRM_QUESTION"] = "¿Deseas tirar por botín?"

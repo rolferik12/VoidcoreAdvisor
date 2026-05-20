@@ -176,10 +176,11 @@ L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% di probabilità (%d oggetti desiderati)"
 L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% di probabilità (1 oggetto desiderato)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Tutti gli oggetti ottenuti per questa spec"
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Nessun oggetto desiderato per questa spec"
+L["BONUS_ROLL_CONFIRM_NO_ITEMS_OTHER_SPECS"] = "Altre specializzazioni hanno oggetti desiderati"
 L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Nessun oggetto desiderato"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Fonte non tracciata — nessuna probabilità disponibile"
 L["BONUS_ROLL_CONFIRM_WARNING_HEADER"] =
-    "|A:Ping_Chat_Warning:14:14|a |cffffff00La protezione dalla sfortuna verrà azzerata|r"
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00Tirare azzererà la protezione dalla sfortuna|r"
 L["BONUS_ROLL_CONFIRM_WARNING_BODY"] =
     "Dopo questo tiro, oggetti precedentemente ottenuti possono droppare di nuovo per tutte le specializzazioni."
 L["BONUS_ROLL_CONFIRM_QUESTION"] = "Vuoi tirare per il bottino?"

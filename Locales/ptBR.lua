@@ -176,10 +176,11 @@ L["BONUS_ROLL_CONFIRM_CHANCE"] = "%d%% de chance (%d itens desejados)"
 L["BONUS_ROLL_CONFIRM_CHANCE_ONE"] = "%d%% de chance (1 item desejado)"
 L["BONUS_ROLL_CONFIRM_ALL_OBTAINED"] = "Todos os itens obtidos para esta espec."
 L["BONUS_ROLL_CONFIRM_NO_ITEMS"] = "Nenhum item desejado para esta espec."
+L["BONUS_ROLL_CONFIRM_NO_ITEMS_OTHER_SPECS"] = "Outras especializações têm itens desejados"
 L["BONUS_ROLL_CONFIRM_NO_SELECTED"] = "Nenhum item desejado"
 L["BONUS_ROLL_CONFIRM_NOT_TRACKED"] = "Fonte não rastreada — sem probabilidades disponíveis"
 L["BONUS_ROLL_CONFIRM_WARNING_HEADER"] =
-    "|A:Ping_Chat_Warning:14:14|a |cffffff00A proteção contra má sorte será redefinida|r"
+    "|A:Ping_Chat_Warning:14:14|a |cffffff00Rolar redefinirá a proteção contra má sorte|r"
 L["BONUS_ROLL_CONFIRM_WARNING_BODY"] =
     "Após esta rolagem, itens previamente saqueados podem cair novamente para todas as especializações."
 L["BONUS_ROLL_CONFIRM_QUESTION"] = "Deseja rolar por saque?"
