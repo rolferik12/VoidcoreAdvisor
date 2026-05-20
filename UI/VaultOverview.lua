@@ -120,52 +120,56 @@ local function GetOrCreateRow(index)
     r.iconBorder:SetTexture("Interface\\Common\\WhiteIconFrame")
     r.iconBorder:SetAllPoints(r.iconButton)
 
-    -- Right-side columns anchored from row TOPRIGHT.
-    -- Icon center = 4px top-offset + 18px half-height = 22px below row top.
-    -- 22px star vertically centred: TOPRIGHT y = -(22-11) = -11
-    -- 14px text vertically centred: TOPRIGHT y = -(22-7)  = -15
-    --
-    --  [nameLabel …] [6] [star1](14)[star2](14)[star3] [4] [pctLabel]
-    --                      -68        -60        -52         -2  width=46
+    -- Layout:
+    --   Line 1: [nameLabel …………………………………………………] [4] [pctLabel w=46] [-2]
+    --   Line 2: [sourceLabel text] [4] [★][★][★]
+    --            stars are 14×14, 6px step (8px overlap), anchored to sourceLabel RIGHT.
 
-    -- Percentage label
+    -- Percentage label (top-right, aligned with nameLabel)
     r.pctLabel = r.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    r.pctLabel:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -2, -15)
+    r.pctLabel:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -2, -1)
     r.pctLabel:SetWidth(46)
     r.pctLabel:SetJustifyH("RIGHT")
     r.pctLabel:SetWordWrap(false)
 
-    -- Favorite-count stars (PetJournal-FavoritesIcon atlas, 22×22, 14px overlap).
-    -- star1 = leftmost, star3 = rightmost (closest to pctLabel).
-    r.star3 = r.frame:CreateTexture(nil, "ARTWORK")
-    r.star3:SetAtlas("PetJournal-FavoritesIcon")
-    r.star3:SetSize(22, 22)
-    r.star3:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -52, -11)
-
-    r.star2 = r.frame:CreateTexture(nil, "ARTWORK")
-    r.star2:SetAtlas("PetJournal-FavoritesIcon")
-    r.star2:SetSize(22, 22)
-    r.star2:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -60, -11)
-
-    r.star1 = r.frame:CreateTexture(nil, "ARTWORK")
-    r.star1:SetAtlas("PetJournal-FavoritesIcon")
-    r.star1:SetSize(22, 22)
-    r.star1:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -68, -11)
-
-    -- Item name (left section; TOPRIGHT stops before the stars)
+    -- Item name (top line; right edge stops before pctLabel)
     r.nameLabel = r.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     r.nameLabel:SetPoint("TOPLEFT", r.iconButton, "TOPRIGHT", 5, -1)
-    r.nameLabel:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -96, -1)
+    r.nameLabel:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -52, -1)
     r.nameLabel:SetJustifyH("LEFT")
     r.nameLabel:SetWordWrap(false)
     r.nameLabel:SetHeight(14)
 
-    -- Source name (dungeon / boss, small grey text below item name)
+    -- Source name (dungeon / boss).  No TOPRIGHT bound → auto-sizes to text width
+    -- so stars can anchor to its RIGHT edge.
     r.sourceLabel = r.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     r.sourceLabel:SetPoint("TOPLEFT", r.nameLabel, "BOTTOMLEFT", 0, -2)
-    r.sourceLabel:SetPoint("TOPRIGHT", r.nameLabel, "BOTTOMRIGHT", 0, -2)
     r.sourceLabel:SetJustifyH("LEFT")
     r.sourceLabel:SetWordWrap(false)
+
+    -- Favorite-count stars: 14×14, 8px overlap (6px step), immediately right of sourceLabel.
+    -- star1 = leftmost (drawn first / bottom layer).
+    -- star2/3 drawn on top, each 6px to the right of the previous left edge.
+    r.star1 = r.frame:CreateTexture(nil, "ARTWORK")
+    r.star1:SetAtlas("PetJournal-FavoritesIcon")
+    r.star1:SetSize(14, 14)
+    r.star1:SetPoint("LEFT", r.sourceLabel, "RIGHT", 4, -1)
+
+    r.star2 = r.frame:CreateTexture(nil, "ARTWORK")
+    r.star2:SetAtlas("PetJournal-FavoritesIcon")
+    r.star2:SetSize(14, 14)
+    r.star2:SetPoint("LEFT", r.star1, "LEFT", 6, 0)
+
+    r.star3 = r.frame:CreateTexture(nil, "ARTWORK")
+    r.star3:SetAtlas("PetJournal-FavoritesIcon")
+    r.star3:SetSize(14, 14)
+    r.star3:SetPoint("LEFT", r.star2, "LEFT", 6, 0)
+
+    -- Invisible hover target covering all three stars (star span = 26px wide)
+    r.starButton = CreateFrame("Button", nil, r.frame)
+    r.starButton:SetSize(26, 14)
+    r.starButton:SetPoint("LEFT", r.star1, "LEFT", 0, 0)
+    r.starButton:EnableMouse(false)
 
     _rows[index] = r
     return r
@@ -416,6 +420,87 @@ local function CountFavoritesForSource(sourceInfo)
     return count
 end
 
+-- ── Star tooltip ─────────────────────────────────────────────────────────────
+-- Slot sort order for the item list (mirrors BonusRollConfirm).
+local VAULT_TIP_SLOT_ORDER = {
+    INVTYPE_HEAD = 1,
+    INVTYPE_NECK = 2,
+    INVTYPE_SHOULDER = 3,
+    INVTYPE_CLOAK = 4,
+    INVTYPE_CHEST = 5,
+    INVTYPE_ROBE = 5,
+    INVTYPE_WRIST = 6,
+    INVTYPE_HAND = 7,
+    INVTYPE_WAIST = 8,
+    INVTYPE_LEGS = 9,
+    INVTYPE_FEET = 10,
+    INVTYPE_FINGER = 11,
+    INVTYPE_TRINKET = 12,
+    INVTYPE_WEAPON = 13,
+    INVTYPE_WEAPONMAINHAND = 13,
+    INVTYPE_2HWEAPON = 13,
+    INVTYPE_WEAPONOFFHAND = 14,
+    INVTYPE_SHIELD = 14,
+    INVTYPE_HOLDABLE = 14,
+    INVTYPE_RANGED = 15,
+    INVTYPE_RANGEDRIGHT = 15
+}
+
+-- Summary + item list tooltip for the star cluster.
+-- Header: source name / count / flavour text, then each wishlist item.
+-- currentItemID is marked with the atlas star; others use a same-width spacer.
+local function ShowStarTooltip(owner, source)
+    local sel = VCA.Data.GetSelectedItems(source.sourceType, source.sourceID, source.difficultyID)
+    local count = 0
+    for _ in pairs(sel) do
+        count = count + 1
+    end
+    if count == 0 then
+        return
+    end
+
+    local rows = {}
+    for id in pairs(sel) do
+        local itemName, _, _, _, _, _, _, _, equipLoc, itemTexture = GetItemInfo(id)
+        if itemName then
+            rows[#rows + 1] = {
+                itemName = itemName,
+                itemTexture = itemTexture,
+                equipLoc = equipLoc,
+                sortKey = VAULT_TIP_SLOT_ORDER[equipLoc] or 99
+            }
+        end
+    end
+    table.sort(rows, function(a, b)
+        if a.sortKey ~= b.sortKey then
+            return a.sortKey < b.sortKey
+        end
+        return (a.itemName or "") < (b.itemName or "")
+    end)
+
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    local sourceName = GetSourceName(source) or L["VAULT_OVERVIEW_UNKNOWN_SOURCE"]
+    GameTooltip:SetText(sourceName .. ":", 1, 1, 1)
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("|A:PetJournal-FavoritesIcon:14:14|a " ..
+                            string.format(L["VAULT_OVERVIEW_STAR_TIP_COUNT"], count), 1, 1, 0.82)
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine(L["VAULT_OVERVIEW_STAR_TIP_VOIDCORE_1"], 0.7, 0.7, 0.7)
+    GameTooltip:AddLine(L["VAULT_OVERVIEW_STAR_TIP_VOIDCORE_2"], 0.7, 0.7, 0.7)
+
+    if #rows > 0 then
+        GameTooltip:AddLine(" ")
+        for _, row in ipairs(rows) do
+            local iconMarkup = row.itemTexture and ("|T" .. row.itemTexture .. ":14:14:0:0:64:64:4:60:4:60|t ") or "  "
+            local nameColored = "|cnIQ4:" .. row.itemName .. "|r"
+            local slotText = (row.equipLoc and _G[row.equipLoc] and _G[row.equipLoc] ~= "") and
+                                 (" |cff888888[" .. _G[row.equipLoc] .. "]|r") or ""
+            GameTooltip:AddLine(iconMarkup .. nameColored .. slotText)
+        end
+    end
+    GameTooltip:Show()
+end
+
 -- ── Refresh ────────────────────────────────────────────────────────────────────
 
 function VaultOverview.Refresh()
@@ -455,13 +540,13 @@ function VaultOverview.Refresh()
     statusLabel:SetText("|cff888888" .. countStr .. "|r")
 
     -- Annotate each vault item with the favorite count for its source, then
-    -- sort descending so the most-wanted dungeon/raid appears first.
+    -- sort ascending: fewest favorites first = most attractive vault slots at top.
     local sMap = GetSourceMap()
     for _, vi in ipairs(vaultItems) do
         vi.favCount = CountFavoritesForSource(sMap[vi.itemID])
     end
     table.sort(vaultItems, function(a, b)
-        return (a.favCount or 0) > (b.favCount or 0)
+        return (a.favCount or 0) < (b.favCount or 0)
     end)
 
     -- Render rows
@@ -511,24 +596,44 @@ function VaultOverview.Refresh()
             isWanted = selected[vi.itemID] == true
         end
 
-        -- Name (yellow if wanted, quality colour otherwise)
-        row.nameLabel:SetText((isWanted and "|cffffff00" or QualityColor(quality)) .. itemName .. "|r")
+        -- Name: always quality colour regardless of wanted status
+        row.nameLabel:SetText(QualityColor(quality) .. itemName .. "|r")
 
         -- Favorite stars: count of saved favorites for this vault slot's source.
+        -- Stars are dimmed when this specific item is not on the favorites list.
         local favCount = vi.favCount or 0
         row.star1:SetShown(favCount >= 1)
         row.star2:SetShown(favCount >= 2)
         row.star3:SetShown(favCount >= 3)
+        local starAlpha = isWanted and 1.0 or 0.35
+        row.star1:SetAlpha(starAlpha)
+        row.star2:SetAlpha(starAlpha)
+        row.star3:SetAlpha(starAlpha)
 
-        -- Percentage label (right-aligned column, same line as name)
+        -- Star tooltip: summary + item list for this source
+        if favCount > 0 and sourceInfo then
+            local capSource = sourceInfo
+            row.starButton:EnableMouse(true)
+            row.starButton:SetScript("OnEnter", function(self)
+                ShowStarTooltip(self, capSource)
+            end)
+            row.starButton:SetScript("OnLeave", function()
+                GameTooltip:Hide()
+            end)
+        else
+            row.starButton:EnableMouse(false)
+            row.starButton:SetScript("OnEnter", nil)
+            row.starButton:SetScript("OnLeave", nil)
+        end
+
+        -- Percentage label: purple if wanted, grey otherwise
         local bestOdds, _ = GetBestChanceForItem(vi.itemID, sourceInfo)
 
         if sourceInfo and bestOdds and bestOdds > 0 then
             local pct = math.floor(bestOdds * 100 + 0.5)
-            local pctColor = isWanted and "|cffffff00" or "|cffb048f8"
+            local pctColor = isWanted and "|cffb048f8" or "|cff888888"
             row.pctLabel:SetText(pctColor .. pct .. "%|r")
         elseif sourceInfo then
-            -- All copies obtained for every tracked spec
             row.pctLabel:SetText("|cff44ff44" .. L["VAULT_OVERVIEW_OBTAINED"] .. "|r")
         else
             row.pctLabel:SetText("")
