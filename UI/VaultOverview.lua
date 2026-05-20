@@ -95,6 +95,22 @@ scrollFrame:SetScrollChild(scrollChild)
 
 -- ── Row pool ──────────────────────────────────────────────────────────────────
 
+-- Sets text on a FontString and trims with "..." if it exceeds the widget's width.
+-- Color-code prefix/suffix are separated so only the bare name is trimmed.
+local function SetTextEllipsis(fontString, prefix, text, suffix)
+    suffix = suffix or ""
+    fontString:SetText(prefix .. text .. suffix)
+    local maxW = fontString:GetWidth()
+    if maxW <= 0 or fontString:GetStringWidth() <= maxW then
+        return
+    end
+    local s = text
+    repeat
+        s = s:sub(1, -2)
+        fontString:SetText(prefix .. s .. "..." .. suffix)
+    until #s == 0 or fontString:GetStringWidth() <= maxW
+end
+
 -- Lazy cache for the Nebulous Voidcore currency icon (currency ID 3418).
 local _voidcoreIconID = nil
 local function GetVoidcoreIconID()
@@ -637,7 +653,7 @@ function VaultOverview.Refresh()
         end
 
         -- Name: always quality colour regardless of wanted status
-        row.nameLabel:SetText(QualityColor(quality) .. itemName .. "|r")
+        SetTextEllipsis(row.nameLabel, QualityColor(quality), itemName, "|r")
 
         -- Favorite stars: count of saved favorites for this vault slot's source.
         -- Stars are dimmed when this specific item is not on the favorites list.
