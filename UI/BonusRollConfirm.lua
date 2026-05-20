@@ -576,6 +576,8 @@ end
 -- `source` must carry { sourceType, sourceID, difficultyID } or be nil.
 local function LayoutDynamicSection(source, specID, dynY)
     local initialDynY = dynY
+    topSep:Show()
+    specName:Show()
     specName:SetText("")
     chanceHitFrame:Hide()
     local selectedSet = (source and source.sourceType and source.sourceID) and
@@ -665,7 +667,14 @@ local function LayoutDynamicSection(source, specID, dynY)
 
     -- Compact: nothing was rendered below the spec row; snap to remove the gap
     if dynY == initialDynY then
-        dynY = initialDynY + 12
+        if not (source and source.sourceType and source.sourceID) then
+            -- Source unknown: collapse the separator + spec-row region entirely
+            topSep:Hide()
+            specName:Hide()
+            dynY = -78
+        else
+            dynY = initialDynY + 12
+        end
     end
 
     return dynY
@@ -683,6 +692,19 @@ function BRC.Show()
     cachedDisplayItemID = nil
     cachedItemLink = nil
     local ejBtn = pf.EncounterJournalLinkButton
+    -- If SPELL_CONFIRMATION_PROMPT fired before this addon loaded (e.g. after /reload),
+    -- pull the active prompt data directly.
+    if not cachedPromptData then
+        local prompts = GetSpellConfirmationPromptsInfo()
+        if prompts then
+            for _, entry in pairs(prompts) do
+                if entry.currencyID == VCA.VOIDCORE_CURRENCY_ID then
+                    cachedPromptData = entry
+                    break
+                end
+            end
+        end
+    end
     -- SPELL_CONFIRMATION_PROMPT provides displayItemID authoritatively; EJ button is fallback.
     cachedDisplayItemID = (cachedPromptData and cachedPromptData.displayItemID) or (ejBtn and ejBtn.displayItemID)
     if cachedDisplayItemID then
@@ -847,16 +869,16 @@ BRC.Hide = BRC.Uninject
 
 -- Skyreach +10 Voidcache as a realistic preview stand-in (M+ keystone context).
 local PREVIEW_PROMPT_DATA = {
-    confirmType = 1,
-    currencyCost = 1,
+    treasureContextLevel = 0,
+    duration = 121,
     currencyID = 3418,
-    difficultyID = 8,
-    displayItemID = 268470,
-    duration = 174,
-    itemContext = 16,
-    spellID = 259072,
+    difficultyID = 14,
+    confirmType = 1,
+    itemContext = 55,
+    displayItemID = 269768,
+    currencyCost = 1,
     text = "",
-    treasureContextLevel = 10
+    spellID = 259072
 }
 
 function BRC.ShowPreview()
@@ -958,9 +980,15 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
             SetupHooks()
         end
     elseif event == "SPELL_CONFIRMATION_PROMPT" then
-        local data = ...
-        if data and data.currencyID == VCA.VOIDCORE_CURRENCY_ID then
-            cachedPromptData = data
+        local spellID = ...
+        local prompts = GetSpellConfirmationPromptsInfo()
+        if prompts then
+            for _, entry in pairs(prompts) do
+                if entry.spellID == spellID and entry.currencyID == VCA.VOIDCORE_CURRENCY_ID then
+                    cachedPromptData = entry
+                    break
+                end
+            end
         end
     elseif event == "BONUS_ROLL_STARTED" then
         if IsEnabled() then
