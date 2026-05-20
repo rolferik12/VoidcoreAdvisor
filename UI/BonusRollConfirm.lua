@@ -691,6 +691,7 @@ eventFrame:RegisterEvent("BONUS_ROLL_STARTED")
 eventFrame:RegisterEvent("BONUS_ROLL_ACTIVATE")
 eventFrame:RegisterEvent("BONUS_ROLL_RESULT")
 eventFrame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+eventFrame:RegisterEvent("PLAYER_LOOT_SPEC_UPDATED")
 
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" then
@@ -703,6 +704,48 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         if IsEnabled() then
             SetupHooks()
             BRC.Show()
+        end
+    elseif event == "PLAYER_LOOT_SPEC_UPDATED" then
+        if win:IsShown() then
+            if isPreview then
+                BRC.ShowPreview()
+            else
+                BRC.Show()
+            end
+            -- Bust the tooltip cache by requesting a different voidcache item
+            -- through C_TooltipInfo.  WoW returns stale spec data when the same
+            -- item ID is read on two consecutive tooltip calls; reading a
+            -- different ID in between forces a fresh fetch for our item the next
+            -- time the user hovers the icon (mirrors VoidcacheScan's alternating
+            -- item-ID strategy documented in its header comment).
+            if C_TooltipInfo and C_TooltipInfo.GetItemByID then
+                local bustID = nil
+                for _, id in pairs(VCA.DungeonVoidcacheIDs or {}) do
+                    if id ~= cachedDisplayItemID then
+                        bustID = id
+                        break
+                    end
+                end
+                if not bustID then
+                    for _, id in pairs(VCA.RaidEncounterCacheIDs or {}) do
+                        if id ~= cachedDisplayItemID then
+                            bustID = id
+                            break
+                        end
+                    end
+                end
+                if bustID then
+                    C_TooltipInfo.GetItemByID(bustID)
+                end
+            end
+            -- If the tooltip is already open over the icon, re-request the real
+            -- item now that the cache has been busted.
+            if GameTooltip:IsShown() and GameTooltip:GetOwner() == winIconBtn then
+                local link = cachedItemLink or (cachedDisplayItemID and ("item:" .. cachedDisplayItemID))
+                if link then
+                    GameTooltip:SetHyperlink(link)
+                end
+            end
         end
     elseif event == "BONUS_ROLL_ACTIVATE" or event == "BONUS_ROLL_RESULT" then
         BRC.Uninject()
