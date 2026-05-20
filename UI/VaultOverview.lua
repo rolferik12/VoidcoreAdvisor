@@ -25,7 +25,7 @@ local VaultOverview = VCA.VaultOverview
 
 local PANEL_WIDTH = 340
 local HEADER_H = 50 -- title + status label
-local ROW_H = 54 -- icon(36) + name line + chance/source line + padding
+local ROW_H = 44 -- icon(36) + 4px top pad + 4px bottom pad (single text line)
 local ICON_SIZE = 36
 local PADDING = 12
 
@@ -120,20 +120,52 @@ local function GetOrCreateRow(index)
     r.iconBorder:SetTexture("Interface\\Common\\WhiteIconFrame")
     r.iconBorder:SetAllPoints(r.iconButton)
 
-    -- Item name line
+    -- Right-side columns anchored from row TOPRIGHT.
+    -- Icon center = 4px top-offset + 18px half-height = 22px below row top.
+    -- 22px star vertically centred: TOPRIGHT y = -(22-11) = -11
+    -- 14px text vertically centred: TOPRIGHT y = -(22-7)  = -15
+    --
+    --  [nameLabel …] [6] [star1](14)[star2](14)[star3] [4] [pctLabel]
+    --                      -68        -60        -52         -2  width=46
+
+    -- Percentage label
+    r.pctLabel = r.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    r.pctLabel:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -2, -15)
+    r.pctLabel:SetWidth(46)
+    r.pctLabel:SetJustifyH("RIGHT")
+    r.pctLabel:SetWordWrap(false)
+
+    -- Favorite-count stars (PetJournal-FavoritesIcon atlas, 22×22, 14px overlap).
+    -- star1 = leftmost, star3 = rightmost (closest to pctLabel).
+    r.star3 = r.frame:CreateTexture(nil, "ARTWORK")
+    r.star3:SetAtlas("PetJournal-FavoritesIcon")
+    r.star3:SetSize(22, 22)
+    r.star3:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -52, -11)
+
+    r.star2 = r.frame:CreateTexture(nil, "ARTWORK")
+    r.star2:SetAtlas("PetJournal-FavoritesIcon")
+    r.star2:SetSize(22, 22)
+    r.star2:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -60, -11)
+
+    r.star1 = r.frame:CreateTexture(nil, "ARTWORK")
+    r.star1:SetAtlas("PetJournal-FavoritesIcon")
+    r.star1:SetSize(22, 22)
+    r.star1:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -68, -11)
+
+    -- Item name (left section; TOPRIGHT stops before the stars)
     r.nameLabel = r.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     r.nameLabel:SetPoint("TOPLEFT", r.iconButton, "TOPRIGHT", 5, -1)
-    r.nameLabel:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", 0, -1)
+    r.nameLabel:SetPoint("TOPRIGHT", r.frame, "TOPRIGHT", -96, -1)
     r.nameLabel:SetJustifyH("LEFT")
     r.nameLabel:SetWordWrap(false)
     r.nameLabel:SetHeight(14)
 
-    -- Chance / source line (below name)
-    r.chanceLabel = r.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    r.chanceLabel:SetPoint("TOPLEFT", r.nameLabel, "BOTTOMLEFT", 0, -3)
-    r.chanceLabel:SetPoint("TOPRIGHT", r.nameLabel, "BOTTOMRIGHT", 0, -3)
-    r.chanceLabel:SetJustifyH("LEFT")
-    r.chanceLabel:SetWordWrap(false)
+    -- Source name (dungeon / boss, small grey text below item name)
+    r.sourceLabel = r.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    r.sourceLabel:SetPoint("TOPLEFT", r.nameLabel, "BOTTOMLEFT", 0, -2)
+    r.sourceLabel:SetPoint("TOPRIGHT", r.nameLabel, "BOTTOMRIGHT", 0, -2)
+    r.sourceLabel:SetJustifyH("LEFT")
+    r.sourceLabel:SetWordWrap(false)
 
     _rows[index] = r
     return r
@@ -369,6 +401,21 @@ local function CollectVaultItems()
     return result
 end
 
+-- Count saved favorites for this vault slot's source, read from the persisted DB
+-- via Data.GetSelectedItems.  Panel._s.selectedItemIDs is per-context (one dungeon
+-- at a time) and must NOT be used here.
+local function CountFavoritesForSource(sourceInfo)
+    if not sourceInfo then
+        return 0
+    end
+    local selected = VCA.Data.GetSelectedItems(sourceInfo.sourceType, sourceInfo.sourceID, sourceInfo.difficultyID)
+    local count = 0
+    for _ in pairs(selected) do
+        count = count + 1
+    end
+    return count
+end
+
 -- ── Refresh ────────────────────────────────────────────────────────────────────
 
 function VaultOverview.Refresh()
@@ -385,7 +432,6 @@ function VaultOverview.Refresh()
     end
 
     local vaultItems = CollectVaultItems()
-    local selectedItemIDs = VCA.Panel and VCA.Panel._s and VCA.Panel._s.selectedItemIDs
 
     if #vaultItems == 0 then
         statusLabel:SetText("|cff888888" .. L["VAULT_OVERVIEW_NO_QUALIFYING"] .. "|r")
@@ -407,6 +453,16 @@ function VaultOverview.Refresh()
         countStr = countStr .. "  |cff888888" .. L["VAULT_OVERVIEW_EXAMPLES_SUFFIX"] .. "|r"
     end
     statusLabel:SetText("|cff888888" .. countStr .. "|r")
+
+    -- Annotate each vault item with the favorite count for its source, then
+    -- sort descending so the most-wanted dungeon/raid appears first.
+    local sMap = GetSourceMap()
+    for _, vi in ipairs(vaultItems) do
+        vi.favCount = CountFavoritesForSource(sMap[vi.itemID])
+    end
+    table.sort(vaultItems, function(a, b)
+        return (a.favCount or 0) > (b.favCount or 0)
+    end)
 
     -- Render rows
     local colW = PANEL_WIDTH - PADDING * 2
@@ -446,30 +502,41 @@ function VaultOverview.Refresh()
             GameTooltip:Hide()
         end)
 
-        -- Name (yellow if on wanted list, quality colour otherwise)
-        local isWanted = selectedItemIDs and selectedItemIDs[vi.itemID]
+        -- Resolve source and wanted status from persisted DB (not Panel context).
+        local sourceInfo = sMap[vi.itemID]
+        local isWanted = false
+        if sourceInfo then
+            local selected = VCA.Data.GetSelectedItems(sourceInfo.sourceType, sourceInfo.sourceID,
+                sourceInfo.difficultyID)
+            isWanted = selected[vi.itemID] == true
+        end
+
+        -- Name (yellow if wanted, quality colour otherwise)
         row.nameLabel:SetText((isWanted and "|cffffff00" or QualityColor(quality)) .. itemName .. "|r")
 
-        -- Chance line: "<source name>  XX%"
-        local sourceInfo = GetSourceMap()[vi.itemID]
+        -- Favorite stars: count of saved favorites for this vault slot's source.
+        local favCount = vi.favCount or 0
+        row.star1:SetShown(favCount >= 1)
+        row.star2:SetShown(favCount >= 2)
+        row.star3:SetShown(favCount >= 3)
+
+        -- Percentage label (right-aligned column, same line as name)
         local bestOdds, _ = GetBestChanceForItem(vi.itemID, sourceInfo)
-        local chanceText
 
         if sourceInfo and bestOdds and bestOdds > 0 then
             local pct = math.floor(bestOdds * 100 + 0.5)
-            local sourceName = GetSourceName(sourceInfo) or "?"
             local pctColor = isWanted and "|cffffff00" or "|cffb048f8"
-            chanceText = "|cff888888" .. sourceName .. "|r  " .. pctColor .. pct .. "%|r"
+            row.pctLabel:SetText(pctColor .. pct .. "%|r")
         elseif sourceInfo then
-            -- Item IS tracked but all copies obtained (remaining = 0 for every spec)
-            chanceText = "|cff888888" .. (GetSourceName(sourceInfo) or "?") .. "  |r|cff44ff44" ..
-                             L["VAULT_OVERVIEW_OBTAINED"] .. "|r"
+            -- All copies obtained for every tracked spec
+            row.pctLabel:SetText("|cff44ff44" .. L["VAULT_OVERVIEW_OBTAINED"] .. "|r")
         else
-            -- Item is not in any tracked loot pool (e.g. token, currency)
-            chanceText = "|cff555555" .. L["VAULT_OVERVIEW_UNKNOWN_SOURCE"] .. "|r"
+            row.pctLabel:SetText("")
         end
 
-        row.chanceLabel:SetText(chanceText)
+        -- Source name below the item name
+        local sourceName = GetSourceName(sourceInfo)
+        row.sourceLabel:SetText(sourceName and ("|cff888888" .. sourceName .. "|r") or "")
 
         totalH = totalH + ROW_H + 2
     end
