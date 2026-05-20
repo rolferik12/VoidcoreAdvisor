@@ -21,7 +21,8 @@ end
 local function GetGlobalDefaults()
     return {
         reminderEnabled = true,
-        bonusRollConfirmEnabled = false
+        bonusRollConfirmEnabled = false,
+        brcSpecListEnabled = true
     }
 end
 
@@ -48,6 +49,9 @@ local function InitDB()
         end
         if gdb.bonusRollConfirmEnabled == nil then
             gdb.bonusRollConfirmEnabled = false
+        end
+        if gdb.brcSpecListEnabled == nil then
+            gdb.brcSpecListEnabled = true
         end
     end
 

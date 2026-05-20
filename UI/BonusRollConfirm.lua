@@ -674,6 +674,55 @@ local function ShowSpecList(source, dynY)
         row.btn:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(string.format(L["BRC_SWITCH_SPEC_TIP"], capturedSpecName))
+
+            if cachedSource and cachedSource.sourceType and cachedSource.sourceID then
+                local source = cachedSource
+                local specItems = VCA.LootPool.GetItemsForSpec(source.sourceType, source.sourceID, source.difficultyID,
+                    VCA.SpecInfo.GetPlayerClassID(), capturedSpecID)
+                local specItemSet = {}
+                for _, itemID in ipairs(specItems) do
+                    specItemSet[itemID] = true
+                end
+
+                local selectedSet = VCA.Data.GetSelectedItems(source.sourceType, source.sourceID, source.difficultyID)
+                local wantedItems = {}
+                for itemID in pairs(selectedSet) do
+                    if specItemSet[itemID] and
+                        not VCA.Data
+                            .IsObtainedForKeyTier(source.sourceType, source.sourceID, source.difficultyID,
+                            capturedSpecID, itemID, nil) then
+                        local itemName, _, _, _, _, _, _, _, equipLoc, itemTexture = GetItemInfo(itemID)
+                        if itemName then
+                            wantedItems[#wantedItems + 1] = {
+                                itemName = itemName,
+                                itemTexture = itemTexture,
+                                equipLoc = equipLoc,
+                                sortKey = CHANCE_TIP_SLOT_ORDER[equipLoc] or 99
+                            }
+                        end
+                    end
+                end
+
+                if #wantedItems > 0 then
+                    table.sort(wantedItems, function(a, b)
+                        if a.sortKey ~= b.sortKey then
+                            return a.sortKey < b.sortKey
+                        end
+                        return (a.itemName or "") < (b.itemName or "")
+                    end)
+                    GameTooltip:AddLine(" ")
+                    GameTooltip:AddLine(L["BONUS_ROLL_WANTED_TOOLTIP_TITLE"], 0.85, 0.3, 1)
+                    for _, item in ipairs(wantedItems) do
+                        local iconMarkup = item.itemTexture and
+                                               ("|T" .. item.itemTexture .. ":14:14:0:0:64:64:4:60:4:60|t ") or "  "
+                        local nameColored = "|cnIQ4:" .. item.itemName .. "|r"
+                        local slotText = (item.equipLoc and _G[item.equipLoc] and _G[item.equipLoc] ~= "") and
+                                             (" |cff888888[" .. _G[item.equipLoc] .. "]|r") or ""
+                        GameTooltip:AddLine("  " .. iconMarkup .. nameColored .. slotText)
+                    end
+                end
+            end
+
             GameTooltip:Show()
         end)
         row.btn:SetScript("OnLeave", function()
