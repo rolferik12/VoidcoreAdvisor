@@ -20,6 +20,8 @@ local cachedSpecIcon = nil -- spec icon texture path for |T|t embedding
 local cachedSpecName = nil -- spec name for combined spec row text
 local cachedSource = nil -- source table for spec list tooltip
 local cachedSpecID = nil -- specID used when the window is currently displayed
+local previewTimerStart = nil -- GetTime() when ShowPreview was called (nil in live mode)
+local previewTimerDuration = 30 -- seconds; mirrors a typical bonus-roll countdown
 
 -- â”€â”€ Guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -472,6 +474,14 @@ end)
 -- â”€â”€ Timer mirroring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 win:SetScript("OnUpdate", function()
+    if isPreview then
+        if previewTimerStart then
+            local elapsed = (GetTime() - previewTimerStart) % previewTimerDuration
+            timerBar:SetMinMaxValues(0, previewTimerDuration)
+            timerBar:SetValue(previewTimerDuration - elapsed)
+        end
+        return
+    end
     -- Timer is the StatusBar widget itself; .Bar is its fill Texture (no GetValue)
     if not (BonusRollFrame and BonusRollFrame.PromptFrame and BonusRollFrame.PromptFrame.Timer) then
         return
@@ -741,6 +751,7 @@ function BRC.Uninject()
     cachedSpecName = nil
     cachedSpecID = nil
     cachedSource = nil
+    previewTimerStart = nil
 end
 
 -- ── Confirmation popups ──────────────────────────────────────────────────────────────────
@@ -765,6 +776,7 @@ BRC.Hide = BRC.Uninject
 
 function BRC.ShowPreview()
     isPreview = true
+    previewTimerStart = GetTime()
     -- Algeth'ar Academy cache item as a live-data stand-in
     cachedDisplayItemID = 268464
     cachedItemLink = nil
