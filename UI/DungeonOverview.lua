@@ -1082,6 +1082,7 @@ local function GetOrCreateDungeonRow(parent)
 
     local rowFrame = CreateFrame("Frame", nil, parent)
     rowFrame:SetHeight(ROW_H)
+    rowFrame:EnableMouse(true)
 
     -- Dungeon name (left side)
     local dungeonLabel = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -1326,6 +1327,17 @@ Populate = function()
         end)
         row.frame:SetScript("OnLeave", function()
             GameTooltip:Hide()
+        end)
+        row.frame:SetScript("OnMouseUp", function(self, button)
+            if button == "LeftButton" and capturedInstanceID then
+                Overview.Hide()
+                if NavBar_Reset and EncounterJournal and EncounterJournal.navBar then
+                    NavBar_Reset(EncounterJournal.navBar)
+                end
+                if type(EncounterJournal_DisplayInstance) == "function" then
+                    EncounterJournal_DisplayInstance(capturedInstanceID)
+                end
+            end
         end)
     end
 
