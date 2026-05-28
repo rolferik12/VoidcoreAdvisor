@@ -153,12 +153,12 @@ L["SCAN_COMPLETE"] = "✓ Escaneamento Concluído"
 L["SCAN_ABORTED"] = "Escaneamento Cancelado"
 L["SCAN_CONFIRM_TITLE"] = "Escanear Specs de Saque?"
 L["SCAN_CONFIRM_BODY"] =
-    "Isso irá escanear o tooltip do Voidcache Nebuloso para cada uma de suas especializações de saque em todas as masmorras da temporada.\n\nOs dados de saque existentes serão redefinidos.\n\nNão entre em combate ou em uma masmorra durante o escaneamento."
+    "Isso irá escanear o tooltip do Voidcache Nebuloso para cada uma de suas especializações de saque em todas as masmorras da temporada.\n\nDificuldade escaneada:\n|cffffff00Mítico+ nível de chave +10|r|cffaaaaaa\n\nOs dados de saque existentes serão redefinidos.\n\nNão entre em combate ou em uma masmorra durante o escaneamento."
 L["SCAN_UNAVAILABLE_COMBAT"] = "Não é possível escanear em combate."
 L["SCAN_UNAVAILABLE_INSTANCE"] = "Não é possível escanear dentro de uma masmorra."
 L["RAID_SCAN_CONFIRM_TITLE"] = "Escanear Specs de Saque de Raide?"
 L["RAID_SCAN_CONFIRM_BODY"] =
-    "Isso irá escanear o tooltip do Voidcache Nebuloso para cada uma de suas especializações de saque em todos os encontros de Raide Mítico.\n\nOs dados de Raide Mítico existentes serão redefinidos.\n\nNão entre em combate durante o escaneamento."
+    "Isso irá escanear o tooltip do Voidcache Nebuloso para cada uma de suas especializações de saque em todos os encontros de Raide Mítico.\n\nDificuldade escaneada:\n|cffffff00Mítico|r|cffaaaaaa\n\nOs dados de Raide Mítico existentes serão redefinidos.\n\nNão entre em combate durante o escaneamento."
 
 -- ── Comandos slash (adições) ──────────────────────────────────────────────────
 

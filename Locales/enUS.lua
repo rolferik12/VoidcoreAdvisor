@@ -176,12 +176,12 @@ L["SCAN_COMPLETE"] = "✓ Scan Done"
 L["SCAN_ABORTED"] = "Scan Cancelled"
 L["SCAN_CONFIRM_TITLE"] = "Scan Loot Specs?"
 L["SCAN_CONFIRM_BODY"] =
-    "This will scan the Nebulous Voidcache tooltip for each of your loot specializations across all season dungeons.\n\nExisting dungeon obtained data will be backed up and reset.\n\nDo not enter combat or a dungeon during the scan."
+    "This will scan the Nebulous Voidcache tooltip for each of your loot specializations across all season dungeons.\n\nScanning the following difficulty:\n|cffffff00Mythic+ keylevel +10|r|cffaaaaaa\n\nExisting dungeon obtained data will be backed up and reset.\n\nDo not enter combat or a dungeon during the scan."
 L["SCAN_UNAVAILABLE_COMBAT"] = "Cannot scan while in combat."
 L["SCAN_UNAVAILABLE_INSTANCE"] = "Cannot scan while inside a dungeon."
 L["RAID_SCAN_CONFIRM_TITLE"] = "Scan Raid Loot Specs?"
 L["RAID_SCAN_CONFIRM_BODY"] =
-    "This will scan the Nebulous Voidcache tooltip for each of your loot specializations across all Mythic raid encounters.\n\nExisting Mythic raid obtained data will be reset.\n\nDo not enter combat during the scan."
+    "This will scan the Nebulous Voidcache tooltip for each of your loot specializations across all raid encounters.\n\nScanning the following difficulty:\n|cffffff00Mythic|r|cffaaaaaa\n\nExisting Mythic raid obtained data will be reset.\n\nDo not enter combat during the scan."
 
 L["RAID_OVERVIEW_SUBTITLE"] = "Raid Bosses — Loot Chance"
 L["RAID_OVERVIEW_COL_BOSS"] = "BOSS"

@@ -154,12 +154,12 @@ L["SCAN_COMPLETE"] = "✓ Escán completado"
 L["SCAN_ABORTED"] = "Escán cancelado"
 L["SCAN_CONFIRM_TITLE"] = "¿Escanear espec. de botín?"
 L["SCAN_CONFIRM_BODY"] =
-    "Se escaneará el texto del Vacíocache nebuloso para cada una de tus especializaciones de botín en todas las mazmorras de la temporada.\n\nLos datos de botín existentes serán restablecidos.\n\nNo entres en combate ni en una mazmorra durante el escán."
+    "Se escaneará el texto del Vacíocache nebuloso para cada una de tus especializaciones de botín en todas las mazmorras de la temporada.\n\nDificultad analizada:\n|cffffff00Mítica+ nivel de llave +10|r|cffaaaaaa\n\nLos datos de botín existentes serán restablecidos.\n\nNo entres en combate ni en una mazmorra durante el escán."
 L["SCAN_UNAVAILABLE_COMBAT"] = "No se puede escanear en combate."
 L["SCAN_UNAVAILABLE_INSTANCE"] = "No se puede escanear dentro de una mazmorra."
 L["RAID_SCAN_CONFIRM_TITLE"] = "¿Escanear espec. de botín de banda?"
 L["RAID_SCAN_CONFIRM_BODY"] =
-    "Se escaneará el texto del Vacíocache nebuloso para cada una de tus especializaciones de botín en todos los encuentros de banda Mítica.\n\nLos datos de banda Mítica existentes serán restablecidos.\n\nNo entres en combate durante el escán."
+    "Se escaneará el texto del Vacíocache nebuloso para cada una de tus especializaciones de botín en todos los encuentros de banda Mítica.\n\nDificultad analizada:\n|cffffff00Mítica|r|cffaaaaaa\n\nLos datos de banda Mítica existentes serán restablecidos.\n\nNo entres en combate durante el escán."
 
 -- ── Comandos slash (adiciones) ────────────────────────────────────────────────
 

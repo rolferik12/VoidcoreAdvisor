@@ -153,12 +153,12 @@ L["SCAN_COMPLETE"] = "✓ Scan terminé"
 L["SCAN_ABORTED"] = "Scan annulé"
 L["SCAN_CONFIRM_TITLE"] = "Scanner les specs de butin ?"
 L["SCAN_CONFIRM_BODY"] =
-    "Cela analysera l'infobulle du Voidcache nébuleux pour chacune de vos spécialisations de butin dans tous les donjons de la saison.\n\nLes données de butin existantes seront réinitialisées.\n\nN'entrez pas en combat ni dans un donjon pendant le scan."
+    "Cela analysera l'infobulle du Voidcache nébuleux pour chacune de vos spécialisations de butin dans tous les donjons de la saison.\n\nDifficulté analysée :\n|cffffff00Mythique+ niveau de clé +10|r|cffaaaaaa\n\nLes données de butin existantes seront réinitialisées.\n\nN'entrez pas en combat ni dans un donjon pendant le scan."
 L["SCAN_UNAVAILABLE_COMBAT"] = "Impossible de scanner en combat."
 L["SCAN_UNAVAILABLE_INSTANCE"] = "Impossible de scanner dans un donjon."
 L["RAID_SCAN_CONFIRM_TITLE"] = "Scanner les specs de butin du raid ?"
 L["RAID_SCAN_CONFIRM_BODY"] =
-    "Cela analysera l'infobulle du Voidcache nébuleux pour chacune de vos spécialisations de butin dans tous les affrontements de raid Mythique.\n\nLes données de raid Mythique existantes seront réinitialisées.\n\nN'entrez pas en combat pendant le scan."
+    "Cela analysera l'infobulle du Voidcache nébuleux pour chacune de vos spécialisations de butin dans tous les affrontements de raid Mythique.\n\nDifficulté analysée :\n|cffffff00Mythique|r|cffaaaaaa\n\nLes données de raid Mythique existantes seront réinitialisées.\n\nN'entrez pas en combat pendant le scan."
 
 -- ── Commandes slash (ajouts) ──────────────────────────────────────────────────
 

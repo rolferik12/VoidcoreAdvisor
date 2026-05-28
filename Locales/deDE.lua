@@ -153,12 +153,12 @@ L["SCAN_COMPLETE"] = "✓ Scan abgeschlossen"
 L["SCAN_ABORTED"] = "Scan abgebrochen"
 L["SCAN_CONFIRM_TITLE"] = "Beutespeccs scannen?"
 L["SCAN_CONFIRM_BODY"] =
-    "Dabei wird der Nebulöse-Leerencache-Tooltip für jede Beutespezialisierung in allen Saisondungeons gescannt.\n\nVorhandene Dungeon-Beutedaten werden zurückgesetzt.\n\nWähre des Scans nicht in Kampf oder Dungeon eintreten."
+    "Dabei wird der Nebulöse-Leerencache-Tooltip für jede Beutespezialisierung in allen Saisondungeons gescannt.\n\nFolgende Schwierigkeit wird gescannt:\n|cffffff00Mythic+ Schlüsselstufe +10|r|cffaaaaaa\n\nVorhandene Dungeon-Beutedaten werden zurückgesetzt.\n\nWähre des Scans nicht in Kampf oder Dungeon eintreten."
 L["SCAN_UNAVAILABLE_COMBAT"] = "Scan während des Kampfes nicht möglich."
 L["SCAN_UNAVAILABLE_INSTANCE"] = "Scan innerhalb eines Dungeons nicht möglich."
 L["RAID_SCAN_CONFIRM_TITLE"] = "Raidbeutespeccs scannen?"
 L["RAID_SCAN_CONFIRM_BODY"] =
-    "Dabei wird der Nebulöse-Leerencache-Tooltip für jede Beutespezialisierung in allen mythischen Raidbegegnungen gescannt.\n\nVorhandene mythische Raid-Beutedaten werden zurückgesetzt.\n\nWähre des Scans nicht in den Kampf eintreten."
+    "Dabei wird der Nebulöse-Leerencache-Tooltip für jede Beutespezialisierung in allen mythischen Raidbegegnungen gescannt.\n\nFolgende Schwierigkeit wird gescannt:\n|cffffff00Mythisch|r|cffaaaaaa\n\nVorhandene mythische Raid-Beutedaten werden zurückgesetzt.\n\nWähre des Scans nicht in den Kampf eintreten."
 
 -- ── Slash-Befehle (Ergänzungen) ───────────────────────────────────────────────
 

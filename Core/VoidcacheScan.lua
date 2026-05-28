@@ -285,7 +285,7 @@ ScanStep = function()
     end
 
     -- Read the Voidcache tooltip via C_TooltipInfo (pure data call, no frame needed).
-    local tooltipData = C_TooltipInfo.GetItemByID(dungeonEntry.voidcacheID)
+    local tooltipData = C_TooltipInfo.GetItemByID(dungeonEntry.voidcacheID, nil, 16, 10)
     local numLines = (tooltipData and tooltipData.lines) and #tooltipData.lines or 0
     local parsed = ParseVoidcacheTooltip(tooltipData, numLines)
 
@@ -597,7 +597,7 @@ RaidScanStep = function()
         _raidState.specSwitchDone = false
     end
 
-    local tooltipData = C_TooltipInfo.GetItemByID(encounterEntry.voidcacheID)
+    local tooltipData = C_TooltipInfo.GetItemByID(encounterEntry.voidcacheID, nil, 6)
     local numLines = (tooltipData and tooltipData.lines) and #tooltipData.lines or 0
     local parsed = ParseVoidcacheTooltip(tooltipData, numLines)
 
