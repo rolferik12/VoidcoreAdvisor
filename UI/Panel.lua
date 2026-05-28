@@ -323,6 +323,54 @@ local lootSpecLabel = contentArea:CreateFontString(nil, "OVERLAY", "GameFontNorm
 lootSpecLabel:SetJustifyH("RIGHT")
 lootSpecLabel:SetText("")
 
+-- ── Voidcache icon button (spec column header, right of loot spec label) ──────
+-- EJ difficulty → SetItemByID item-context argument
+local _raidDiffToContext = {
+    [VCA.Difficulty.RAID_NORMAL] = 3,
+    [VCA.Difficulty.RAID_LFR] = 4,
+    [VCA.Difficulty.RAID_HEROIC] = 5,
+    [VCA.Difficulty.RAID_MYTHIC] = 6
+}
+-- Currently displayed voidcache item ID; kept in sync by Refresh / ClearContext.
+local _currentVoidcacheID = nil
+
+local voidcacheIconBtn = CreateFrame("Button", nil, contentArea)
+voidcacheIconBtn:SetSize(16, 16)
+voidcacheIconBtn:Hide()
+
+local voidcacheIconTex = voidcacheIconBtn:CreateTexture(nil, "ARTWORK")
+voidcacheIconTex:SetAllPoints(voidcacheIconBtn)
+voidcacheIconTex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+local voidcacheIconHL = voidcacheIconBtn:CreateTexture(nil, "HIGHLIGHT")
+voidcacheIconHL:SetAllPoints(voidcacheIconBtn)
+voidcacheIconHL:SetColorTexture(1, 1, 1, 0.25)
+
+local function ShowVoidcacheTooltip(owner)
+    if not _currentVoidcacheID then
+        return
+    end
+    GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
+    if Panel.sourceType == VCA.ContentType.MYTHIC_PLUS then
+        GameTooltip:SetItemByID(_currentVoidcacheID, nil, 16, selectedKeyLevel)
+    elseif Panel.sourceType == VCA.ContentType.RAID then
+        local ctx = _raidDiffToContext[Panel.difficultyID]
+        if ctx then
+            GameTooltip:SetItemByID(_currentVoidcacheID, nil, ctx)
+        else
+            GameTooltip:SetItemByID(_currentVoidcacheID)
+        end
+    end
+    GameTooltip:Show()
+end
+
+voidcacheIconBtn:SetScript("OnEnter", function(self)
+    ShowVoidcacheTooltip(self)
+end)
+voidcacheIconBtn:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
+
 -- Vertical separator between columns
 local colSep = contentArea:CreateTexture(nil, "ARTWORK")
 
@@ -913,9 +961,13 @@ local function DoLayout()
     clearItemBtn:ClearAllPoints()
     clearItemBtn:SetPoint("RIGHT", contentArea, "TOPLEFT", splitX - 22, -6 - (COL_HEADER_H / 2) + 4)
 
-    -- Loot spec label (right-aligned in the spec column header row)
+    -- Voidcache icon (at the far right of the spec column header row)
+    voidcacheIconBtn:ClearAllPoints()
+    voidcacheIconBtn:SetPoint("RIGHT", contentArea, "TOPRIGHT", -PADDING, -6 - (COL_HEADER_H / 2) + 4)
+
+    -- Loot spec label (right-aligned, to the left of the voidcache icon)
     lootSpecLabel:ClearAllPoints()
-    lootSpecLabel:SetPoint("RIGHT", contentArea, "TOPRIGHT", -PADDING, -6 - (COL_HEADER_H / 2) + 4)
+    lootSpecLabel:SetPoint("RIGHT", voidcacheIconBtn, "LEFT", -4, 0)
 
     -- Item scroll frame
     itemScrollFrame:ClearAllPoints()
@@ -1010,6 +1062,8 @@ function Panel.ClearContext()
     sourceLabel:SetText("")
     infoLabel:SetText("")
     lootSpecLabel:SetText("")
+    _currentVoidcacheID = nil
+    voidcacheIconBtn:Hide()
     lootColHeader:SetText("|cffb048f8" .. L["COL_LOOT"] .. "|r")
     specColHeader:SetText("|cffb048f8" .. L["COL_SPEC_RANKING"] .. "|r")
     clearSpecBtn:Hide()
@@ -1038,6 +1092,26 @@ function Panel.Refresh()
         end
     else
         lootSpecLabel:SetText("")
+    end
+
+    -- Update voidcache icon
+    local newVoidcacheID
+    if Panel.sourceType == VCA.ContentType.MYTHIC_PLUS then
+        newVoidcacheID = VCA.DungeonVoidcacheIDs and VCA.DungeonVoidcacheIDs[Panel.sourceID]
+    elseif Panel.sourceType == VCA.ContentType.RAID then
+        newVoidcacheID = VCA.RaidEncounterCacheIDs and VCA.RaidEncounterCacheIDs[Panel.sourceID]
+    end
+    _currentVoidcacheID = newVoidcacheID
+    if newVoidcacheID then
+        local texture = select(10, GetItemInfo(newVoidcacheID))
+        if texture then
+            voidcacheIconTex:SetTexture(texture)
+            voidcacheIconBtn:Show()
+        else
+            voidcacheIconBtn:Hide()
+        end
+    else
+        voidcacheIconBtn:Hide()
     end
 
     -- Update info label with voidcore cost; turn red when the player cannot afford it.
@@ -1133,8 +1207,51 @@ local specChangeFrame = CreateFrame("Frame")
 specChangeFrame:RegisterEvent("PLAYER_LOOT_SPEC_UPDATED")
 specChangeFrame:RegisterEvent("EJ_LOOT_DATA_RECIEVED")
 specChangeFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
-specChangeFrame:SetScript("OnEvent", function()
-    Panel.Refresh()
+specChangeFrame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+specChangeFrame:SetScript("OnEvent", function(self, event, ...)
+    if event == "PLAYER_LOOT_SPEC_UPDATED" then
+        if _currentVoidcacheID and frame:IsShown() then
+            -- Bust the tooltip cache using a different voidcache ID so the next
+            -- SetItemByID call fetches fresh spec data (same pattern as BonusRollConfirm).
+            if C_TooltipInfo and C_TooltipInfo.GetItemByID then
+                local bustID = nil
+                for _, id in pairs(VCA.DungeonVoidcacheIDs or {}) do
+                    if id ~= _currentVoidcacheID then
+                        bustID = id;
+                        break
+                    end
+                end
+                if not bustID then
+                    for _, id in pairs(VCA.RaidEncounterCacheIDs or {}) do
+                        if id ~= _currentVoidcacheID then
+                            bustID = id;
+                            break
+                        end
+                    end
+                end
+                if bustID then
+                    C_TooltipInfo.GetItemByID(bustID)
+                end
+            end
+            -- Re-show tooltip immediately if it is already open over the icon.
+            if GameTooltip:IsShown() and GameTooltip:GetOwner() == voidcacheIconBtn then
+                ShowVoidcacheTooltip(voidcacheIconBtn)
+            end
+        end
+        Panel.Refresh()
+    elseif event == "GET_ITEM_INFO_RECEIVED" then
+        -- Retry showing the icon if item data arrived after the initial Refresh.
+        local itemID = ...
+        if itemID == _currentVoidcacheID and frame:IsShown() and not voidcacheIconBtn:IsShown() then
+            local texture = select(10, GetItemInfo(itemID))
+            if texture then
+                voidcacheIconTex:SetTexture(texture)
+                voidcacheIconBtn:Show()
+            end
+        end
+    else
+        Panel.Refresh()
+    end
 end)
 
 local zoneResetFrame = CreateFrame("Frame")
