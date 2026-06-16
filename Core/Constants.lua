@@ -119,7 +119,8 @@ VCA.RaidEncounterCacheIDs = {
     [2738] = 267488, -- Crown of the Cosmos
     [2739] = 268458, -- Belo'ren, Child of Al'ar
     [2740] = 262658, -- Midnight Falls
-    [2795] = 268464 -- Chimaerus the Undreamt God
+    [2795] = 268464, -- Chimaerus the Undreamt God
+    [2711] = 275228 -- Rotmire
 }
 
 -- ── Detection ─────────────────────────────────────────────────────────────────
